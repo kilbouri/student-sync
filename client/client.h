@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../shared.h";
-#include <iostream>
 
 class Client {
 public:

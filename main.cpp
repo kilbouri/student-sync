@@ -11,8 +11,8 @@ int main()
 	WSADATA winsockData;
 
 	int socketStartupCode = WSAStartup(winsockVersion, &winsockData);
-	
-	if (socketStartupCode != 0 ) {
+
+	if (socketStartupCode != 0) {
 		std::cerr << "Winsock2 Starup failed.\n";
 		return 1;
 	}
@@ -54,7 +54,7 @@ int main()
 		std::cin >> serverPort;
 
 		Client client{ "localhost", serverPort };
-		
+
 		if (client.Initialize() != 0) {
 			std::cerr << "Failed to start client\n";
 			WSACleanup();

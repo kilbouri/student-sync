@@ -46,8 +46,7 @@ int Server::Initialize() {
 	return 0;
 }
 
-int Server::Start()
-{
+int Server::Start() {
 	// begin listening with max queue length
 	if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR) {
 		return 1;
@@ -61,7 +60,7 @@ int Server::Start()
 		if (clientSocket == INVALID_SOCKET) {
 			continue;
 		}
-		
+
 		shutdown(clientSocket, SD_RECEIVE);
 
 		const char* message = "Hello from the server!";

@@ -1,10 +1,9 @@
 #pragma once
 
 #include "../shared.h";
-#include <iostream>
 
 class Server {
-public: 
+public:
 	Server(int portNumber);
 
 	int Initialize();

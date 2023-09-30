@@ -35,7 +35,7 @@ int Client::Connect() {
 	if (connect(connectSocket, serverAddress->ai_addr, serverAddress->ai_addrlen) == SOCKET_ERROR) {
 		closesocket(connectSocket);
 		connectSocket = INVALID_SOCKET;
-		
+
 		freeaddrinfo(serverAddress);
 		serverAddress = nullptr;
 
@@ -48,7 +48,7 @@ int Client::Connect() {
 	shutdown(connectSocket, SD_SEND);
 
 	constexpr auto BUFF_SIZE = 256;
-	char recvBuffer[BUFF_SIZE] = {0};
+	char recvBuffer[BUFF_SIZE] = { 0 };
 
 	int recvResult;
 	do {
