@@ -65,11 +65,11 @@ int Client::Connect() {
 
 		std::cout << "Would you like to send a string or a number\nSTRING = 0,\nNUMBER = 1,\nGOODBYE = 3\n";
 
-		while (!(std::cin >> choice) || (choice != 0 && choice != 1 && choice != 3)) {
+		while (!(std::cin >> choice) || !(choice == 0 || choice == 1 || choice == 3)) {
 			// Handle invalid input
 			std::cout << "Invalid input. Please enter a valid number.\n";
 			std::cin.clear(); // Clear the error flag
-			std::cin.ignore(10000);
+			std::cin.ignore(MAX_STREAM_SIZE, '\n');
 		}
 
 		if (choice == 0) { //STRING
@@ -97,7 +97,7 @@ int Client::Connect() {
 		{
 			std::cout << "Invalid choice. Please enter a valid option.\n";
 			std::cin.clear(); // Clear the error flag
-			std::cin.ignore(10000, '\n'); // Use a large constant value to clear the input buffer
+			std::cin.ignore(MAX_STREAM_SIZE, '\n');
 			continue;
 		}
 
