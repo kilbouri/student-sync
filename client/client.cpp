@@ -2,6 +2,8 @@
 
 #include <string>
 #include <WS2tcpip.h>
+#include <optional>
+#include "../common/message/message.h"
 
 Client::Client(std::string_view serverHostname, int serverPort)
 	: hostname{ std::string(serverHostname) }, port{ std::to_string(serverPort) }, hints{},
@@ -31,31 +33,14 @@ int Client::Initialize() {
 	return 0;
 }
 
-bool Client::SendMessage(SOCKET socket, const std::string& message) {
-	int result = send(socket, message.c_str(), message.length()+1, 0);
-	return result != SOCKET_ERROR;
-}
-
-bool Client::SendMessage(SOCKET socket, int64_t message) {
-	const char* data = reinterpret_cast<const char*>(&message);
-	int dataSize = sizeof(message)+1;
-
-	int result = send(socket, data, dataSize, 0);
-	return result != SOCKET_ERROR;
-}
-
-std::string Client::ReceiveMessage(SOCKET socket) {
-	constexpr auto BUFF_SIZE = 256;
-	char recvBuffer[BUFF_SIZE + 1];
-
-	int recvResult = recv(socket, recvBuffer, BUFF_SIZE, 0);
-	if (recvResult > 0) {
-		recvBuffer[std::min<size_t>(static_cast<size_t>(recvResult), BUFF_SIZE)] = '\0';
-		return recvBuffer;
+std::optional<std::string> ReceiveMessage(SOCKET socket) {
+	std::optional<Message> messageOpt = receiveMessage(socket);
+	if (!messageOpt.has_value()) {
+		return std::nullopt;
 	}
-	else {
-		return "";
-	}
+
+	Message message = messageOpt.value();
+	return std::string{ message.data.data()};
 }
 
 int Client::Connect() {
@@ -72,45 +57,43 @@ int Client::Connect() {
 	freeaddrinfo(serverAddress);
 	serverAddress = nullptr;
 
-	std::string Buffer;
-	int64_t Number = 0;
-	int Choice;
+	std::string buffer;
+	int64_t number = 0;
+	int choice;
 
 	do {
 
 		std::cout << "Would you like to send a string or a number\nSTRING = 0,\nNUMBER = 1,\nGOODBYE = 3\n";
 
-		while (!(std::cin >> Choice) || (Choice != 0 && Choice != 1 && Choice != 3)) {
+		while (!(std::cin >> choice) || (choice != 0 && choice != 1 && choice != 3)) {
 			// Handle invalid input
 			std::cout << "Invalid input. Please enter a valid number.\n";
 			std::cin.clear(); // Clear the error flag
-
-			// Clear the input buffer
-			while (std::cin.get() != '\n');
+			std::cin.ignore(10000);
 		}
 
-		if (Choice == 0) {//STRING
+		if (choice == 0) { //STRING
 			std::cout << "Please type your String: ";
-			std::cin >> Buffer;
+			std::cin >> buffer;
 
-			if (!SendMessage(connectSocket, Buffer)) {
+			if (sendMessage(connectSocket, messageFrom(buffer))) {
 				std::cout << "WARNING: send() failed with code " << GetLastError() << "\n";
 				closesocket(connectSocket);
 				continue;
 			}
 		}
-		else if (Choice == 1)//NUMBER
+		else if (choice == 1)//NUMBER
 		{
 			std::cout << "Please type your Number: ";
-			std::cin >> Number;
+			std::cin >> number;
 
-			if (!SendMessage(connectSocket, Number)) {
+			if (sendMessage(connectSocket, messageFrom(number))) {
 				std::cout << "WARNING: send() failed with code " << GetLastError() << "\n";
 				closesocket(connectSocket);
 				continue;
 			}
 		}
-		else if (Choice != 3)
+		else if (choice != 3)
 		{
 			std::cout << "Invalid choice. Please enter a valid option.\n";
 			std::cin.clear(); // Clear the error flag
@@ -120,32 +103,12 @@ int Client::Connect() {
 
 		std::cout << std::flush;
 
-	} while (Choice != 3);
+	} while (choice != 3);
 
-
-	/*
-	constexpr auto BUFF_SIZE = 255;
-	char recvBuffer[BUFF_SIZE] = { 0 };
-
-	int recvResult; // recieve the "Hello from the server" message.
-
-	do {
-		recvResult = recv(connectSocket, recvBuffer, BUFF_SIZE, 0);
-		if (recvResult > 0) {
-			// Null-terminate the received buffer
-			recvBuffer[std::min<size_t>(recvResult, BUFF_SIZE)] = '\0'; // make sure to use std::min<size_t> so it doesnt overrun the buffer 
-			std::cout << recvBuffer << "\n";
-		}
-		else if (recvResult == 0) {
-			std::cout << "\nConnection closed.\n";
-		}
-		else {
-			std::cout << "recv failed\n";
-		}
-
-	} while (recvResult > 0);*/
-
+	// this may fail but who cares
+	sendMessage(connectSocket, goodbyeMessage());
 	shutdown(connectSocket, SD_SEND);
+	
 	return 0;
 }
 

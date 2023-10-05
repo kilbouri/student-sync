@@ -1,7 +1,9 @@
 #include "server.h"
+#include "../common/message/message.h"
 
 #include <string>
 #include <WS2tcpip.h>
+#include <optional>
 
 /**
  * Creates a server that will listen on the specified port
@@ -46,23 +48,9 @@ int Server::Initialize() {
 	return 0;
 }
 
-bool Server::sendMessage(SOCKET socket, const std::string& message) {
-	int result = send(socket, message.c_str(), message.length(), 0);
+bool sendMessage(SOCKET socket, std::vector<char> buffer) {
+	int result = send(socket, buffer.data(), buffer.size(), 0);
 	return result != SOCKET_ERROR;
-}
-
-std::string Server::receiveMessage(SOCKET socket) {
-	constexpr auto BUFF_SIZE = 256;
-	char recvBuffer[BUFF_SIZE + 1];
-
-	int recvResult = recv(socket, recvBuffer, BUFF_SIZE, 0);
-	if (recvResult > 0) {
-		recvBuffer[std::min<size_t>(static_cast<size_t>(recvResult), BUFF_SIZE)] = '\0';
-		return recvBuffer;
-	}
-	else {
-		return "";
-	}
 }
 
 int Server::Start() {
@@ -78,32 +66,53 @@ int Server::Start() {
 			continue;
 		}
 
-		const char* message = "Hello from the server!";
-		if (!sendMessage(clientSocket, message)) {
-			std::cout << "WARNING: send() failed with code " << GetLastError() << "\n";
-			continue;
-		}
+		shutdown(clientSocket, SD_SEND);
 
-		_flushall();
-		std::string buffer;
-		std::cin.ignore();
-		do {
-			std::cout << "Enter a message (or 'Exit' to quit)";
-			std::getline(std::cin, buffer);
-
-			if (!sendMessage(clientSocket, buffer)) {
-				std::cout << "WARNING: send() failed with code " << GetLastError() << "\n";
-				closesocket(clientSocket);
-				continue;
+		// receive all messages regardless of type,
+		// echo to screen. Breaks when GOODBYE is received,
+		// or socket is closed
+		while (true) {
+			std::optional<Message> messageOpt = receiveMessage(clientSocket);
+			if (!messageOpt.has_value()) {
+				// no message, socket closed
+				std::cout << "Malformed/no message received\n";
+;				break;
 			}
 
-			std::cout << std::flush;
+			Message message = messageOpt.value();
+			if (message.type == MessageType::GOODBYE) {
+				// goodbye message received, client is hecking off to god knows where else
+				std::cout << "Goodbye message received\n";
+				break;
+			}
 
-		} while (buffer != "Exit");
+			if (message.type == MessageType::NUMBER_64) {
+				int64_t receivedNumber;
+				memcpy(&receivedNumber, message.data.data(), sizeof(int64_t));
 
-		shutdown(clientSocket, SD_SEND);
+				// convert from network to host byte order
+				receivedNumber = ntohll(receivedNumber);
+				std::cout << "Received NUMBER_64: " << receivedNumber << "\n";
+			}
+			else if (message.type == MessageType::STRING) {
+				std::string receivedString(message.data.data(), message.dataLength);
+				std::cout << "Received STRING: " << receivedString << "\n";
+				std::cout << "Raw buffer: " << message.data.data() << "\n";
+			}
+			else {
+				std::cout << "Invalid message type received " << message.type << "\n";
+			}
+		}
+
+		std::cout << "Connection closed\n";
+
+		shutdown(clientSocket, SD_RECEIVE);
 		closesocket(clientSocket);
 	}
+}
+
+void HandleConnection(SOCKET server, SOCKET client) {
+	
 }
 
 Server::~Server() {
