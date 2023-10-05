@@ -46,29 +46,60 @@ int Server::Initialize() {
 	return 0;
 }
 
+bool Server::sendMessage(SOCKET socket, const std::string& message) {
+	int result = send(socket, message.c_str(), message.length(), 0);
+	return result != SOCKET_ERROR;
+}
+
+std::string Server::receiveMessage(SOCKET socket) {
+	constexpr auto BUFF_SIZE = 256;
+	char recvBuffer[BUFF_SIZE + 1];
+
+	int recvResult = recv(socket, recvBuffer, BUFF_SIZE, 0);
+	if (recvResult > 0) {
+		recvBuffer[std::min<size_t>(static_cast<size_t>(recvResult), BUFF_SIZE)] = '\0';
+		return recvBuffer;
+	}
+	else {
+		return "";
+	}
+}
+
 int Server::Start() {
-	// begin listening with max queue length
 	if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR) {
 		return 1;
 	}
 
 	SOCKET clientSocket = INVALID_SOCKET;
 	while (true) {
-		clientSocket = accept(listenSocket, NULL, NULL); // accept first in queue
+		clientSocket = accept(listenSocket, NULL, NULL);
 
-		// something went wrong, skip this connection
 		if (clientSocket == INVALID_SOCKET) {
 			continue;
 		}
 
-		shutdown(clientSocket, SD_RECEIVE);
-
 		const char* message = "Hello from the server!";
-		if (send(clientSocket, message, strlen(message), 0) == SOCKET_ERROR) {
+		if (!sendMessage(clientSocket, message)) {
 			std::cout << "WARNING: send() failed with code " << GetLastError() << "\n";
-			closesocket(clientSocket);
 			continue;
 		}
+
+		_flushall();
+		std::string buffer;
+		std::cin.ignore();
+		do {
+			std::cout << "Enter a message (or 'Exit' to quit)";
+			std::getline(std::cin, buffer);
+
+			if (!sendMessage(clientSocket, buffer)) {
+				std::cout << "WARNING: send() failed with code " << GetLastError() << "\n";
+				closesocket(clientSocket);
+				continue;
+			}
+
+			std::cout << std::flush;
+
+		} while (buffer != "Exit");
 
 		shutdown(clientSocket, SD_SEND);
 		closesocket(clientSocket);

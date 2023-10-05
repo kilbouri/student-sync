@@ -3,6 +3,7 @@
 #include <string>
 #include <WS2tcpip.h>
 
+
 Client::Client(std::string_view serverHostname, int serverPort)
 	: hostname{ std::string(serverHostname) }, port{ std::to_string(serverPort) }, hints{},
 	connectSocket{ INVALID_SOCKET }, serverAddress{ nullptr }
@@ -45,16 +46,16 @@ int Client::Connect() {
 	freeaddrinfo(serverAddress);
 	serverAddress = nullptr;
 
-	shutdown(connectSocket, SD_SEND);
-
-	constexpr auto BUFF_SIZE = 256;
+	constexpr auto BUFF_SIZE = 255;
 	char recvBuffer[BUFF_SIZE] = { 0 };
 
-	int recvResult;
+	int recvResult; // recieve the "Hello from the server" message.
 	do {
 		recvResult = recv(connectSocket, recvBuffer, BUFF_SIZE, 0);
 		if (recvResult > 0) {
-			std::cout << recvBuffer;
+			// Null-terminate the received buffer
+			recvBuffer[std::min<size_t>(recvResult, BUFF_SIZE)] = '\0'; // make sure to use std::min<size_t> so it doesnt overrun the buffer 
+			std::cout << recvBuffer << "\n";
 		}
 		else if (recvResult == 0) {
 			std::cout << "\nConnection closed.\n";
@@ -62,8 +63,10 @@ int Client::Connect() {
 		else {
 			std::cout << "recv failed\n";
 		}
+		_flushall();
 	} while (recvResult > 0);
 
+	shutdown(connectSocket, SD_SEND);
 	return 0;
 }
 
