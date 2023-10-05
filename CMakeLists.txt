@@ -12,7 +12,7 @@ endif()
 project ("comp-4990-project")
 
 # Add source to this project's executable.
-add_executable (comp-4990-project "main.cpp"  "server/server.cpp"  "shared.h" "server/server.h" "client/client.h" "client/client.cpp" "common/message/message.h"  "common/message/message.cpp")
+add_executable (comp-4990-project "main.cpp"  "server/server.cpp"  "shared.h" "server/server.h" "client/client.h" "client/client.cpp" "common/message/message.h"  "common/message/message.cpp" )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET comp-4990-project PROPERTY CXX_STANDARD 20)

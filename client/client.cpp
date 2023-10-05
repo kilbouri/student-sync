@@ -61,20 +61,29 @@ int Client::Connect() {
 	int64_t number = 0;
 	int choice;
 
-	do {
+	auto invalidInput = []() {
+		std::cout << "Invalid input, try again: ";
+		std::cin.clear();
+		std::cin.ignore(MAX_STREAM_SIZE, '\n');
+	};
 
-		std::cout << "Would you like to send a string or a number\nSTRING = 0,\nNUMBER = 1,\nGOODBYE = 3\n";
+	do {
+		std::cout
+			<< "What data would you like to send?\n"
+			<< "STRING = 0\n"
+			<< "NUMBER = 1\n"
+			<< "GOODBYE = 3\n";
 
 		while (!(std::cin >> choice) || !(choice == 0 || choice == 1 || choice == 3)) {
-			// Handle invalid input
-			std::cout << "Invalid input. Please enter a valid number.\n";
-			std::cin.clear(); // Clear the error flag
-			std::cin.ignore(MAX_STREAM_SIZE, '\n');
+			invalidInput();
 		}
+
+		std::cin.clear();
+		std::cin.ignore(MAX_STREAM_SIZE, '\n');
 
 		if (choice == 0) { //STRING
 			std::cout << "Please type your String: ";
-			std::cin >> buffer;
+			std::getline(std::cin, buffer);
 
 			if (Message(buffer).Send(connectSocket)) {
 				std::cout << "WARNING: send() failed with code " << GetLastError() << "\n";
@@ -82,10 +91,13 @@ int Client::Connect() {
 				continue;
 			}
 		}
-		else if (choice == 1)//NUMBER
+		else if (choice == 1) //NUMBER
 		{
 			std::cout << "Please type your Number: ";
-			std::cin >> number;
+
+			while (!(std::cin >> number)) {
+				invalidInput();
+			};
 
 			if (Message(number).Send(connectSocket)) {
 				std::cout << "WARNING: send() failed with code " << GetLastError() << "\n";
@@ -95,9 +107,7 @@ int Client::Connect() {
 		}
 		else if (choice != 3)
 		{
-			std::cout << "Invalid choice. Please enter a valid option.\n";
-			std::cin.clear(); // Clear the error flag
-			std::cin.ignore(MAX_STREAM_SIZE, '\n');
+			invalidInput();
 			continue;
 		}
 
