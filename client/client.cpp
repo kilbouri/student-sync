@@ -34,7 +34,7 @@ int Client::Initialize() {
 }
 
 std::optional<std::string> ReceiveMessage(SOCKET socket) {
-	std::optional<Message> messageOpt = receiveMessage(socket);
+	std::optional<Message> messageOpt = Message::TryReceive(socket);
 	if (!messageOpt.has_value()) {
 		return std::nullopt;
 	}
@@ -76,7 +76,7 @@ int Client::Connect() {
 			std::cout << "Please type your String: ";
 			std::cin >> buffer;
 
-			if (sendMessage(connectSocket, messageFrom(buffer))) {
+			if (Message(buffer).Send(connectSocket)) {
 				std::cout << "WARNING: send() failed with code " << GetLastError() << "\n";
 				closesocket(connectSocket);
 				continue;
@@ -87,7 +87,7 @@ int Client::Connect() {
 			std::cout << "Please type your Number: ";
 			std::cin >> number;
 
-			if (sendMessage(connectSocket, messageFrom(number))) {
+			if (Message(number).Send(connectSocket)) {
 				std::cout << "WARNING: send() failed with code " << GetLastError() << "\n";
 				closesocket(connectSocket);
 				continue;
@@ -106,7 +106,7 @@ int Client::Connect() {
 	} while (choice != 3);
 
 	// this may fail but who cares
-	sendMessage(connectSocket, goodbyeMessage());
+	Message::Goodbye().Send(connectSocket);
 	shutdown(connectSocket, SD_SEND);
 
 	return 0;

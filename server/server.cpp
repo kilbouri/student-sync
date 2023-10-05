@@ -5,6 +5,8 @@
 #include <WS2tcpip.h>
 #include <optional>
 
+void HandleConnection(SOCKET server, SOCKET client);
+
 /**
  * Creates a server that will listen on the specified port
  */
@@ -72,7 +74,7 @@ void HandleConnection(SOCKET server, SOCKET client) {
 	// echo to screen. Breaks when GOODBYE is received,
 	// or socket is closed
 	while (true) {
-		std::optional<Message> messageOpt = receiveMessage(client);
+		std::optional<Message> messageOpt = Message::TryReceive(client);
 		if (!messageOpt.has_value()) {
 			// no message, socket closed
 			std::cout << "Malformed/no message received\n";
@@ -80,13 +82,13 @@ void HandleConnection(SOCKET server, SOCKET client) {
 		}
 
 		Message message = messageOpt.value();
-		if (message.type == MessageType::GOODBYE) {
+		if (message.type == Message::Type::GOODBYE) {
 			// goodbye message received, client is hecking off to god knows where else
 			std::cout << "Received GOODBYE\n";
 			break;
 		}
 
-		if (message.type == MessageType::NUMBER_64) {
+		if (message.type == Message::Type::NUMBER_64) {
 			int64_t receivedNumber;
 			memcpy(&receivedNumber, message.data.data(), sizeof(int64_t));
 
@@ -94,8 +96,8 @@ void HandleConnection(SOCKET server, SOCKET client) {
 			receivedNumber = ntohll(receivedNumber);
 			std::cout << "Received NUMBER_64: " << receivedNumber << "\n";
 		}
-		else if (message.type == MessageType::STRING) {
-			std::string receivedString(message.data.data(), message.dataLength);
+		else if (message.type == Message::Type::STRING) {
+			std::string receivedString(message.data.data(), message.length);
 			std::cout << "Received STRING: " << receivedString << "\n";
 		}
 		else {

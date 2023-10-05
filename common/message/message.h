@@ -5,29 +5,36 @@
 
 #include "../../shared.h"
 
-// An enumeration of "tags" for use in the Message struct
-enum MessageType: int32_t {
-	STRING = 0,
-	NUMBER_64 = 1,
-	GOODBYE = ~0
-};
+// Represents a Type-Length-Value encoded message that
+// may be transmitted over a socket.
+class Message {
+public:
 
-// A container for TLV-encoded messages
-struct Message
-{
-	MessageType type;
-	int64_t dataLength;
+	// An enumeration of Types that may be sent
+	enum Type : int32_t {
+		STRING = 0, // An ASCII string. No null terminator is included.
+		NUMBER_64 = 1, // A 64-bit signed integer.
+		GOODBYE = ~0 // A special type, indicating the conversation is over.
+	};
+
+	const Type type;
+	const int length;
 	std::vector<char> data;
+
+	Message(std::string_view);
+	Message(int64_t);
+
+	static Message Goodbye();
+
+	// Tries to receive a message from the specified socket.
+	// Returns std::nullopt if an error occurs, or the message is
+	// malformed, otherwise the received message.
+	static std::optional<Message> TryReceive(SOCKET socket);
+
+	// Sends the message on the specified socket.
+	// Returns 1 if an error occurs, otherwise 0.
+	int Send(SOCKET socket);
+	
+private:
+	Message(Type, int, std::vector<char>);
 };
-
-Message messageFrom(int64_t value);
-Message messageFrom(std::string_view value);
-Message goodbyeMessage();
-
-// Tries to receive a message on the provided socket.
-// Returns std::nullopt if any error occurs in the process.
-std::optional<Message> receiveMessage(SOCKET socket);
-
-// Tries to send a message. Returns 0 if it succeeds,
-// otherwise 1.
-int sendMessage(SOCKET socket, Message toSend);
