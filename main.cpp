@@ -1,5 +1,5 @@
-﻿#include "shared.h";
-#include "server/server.h";
+﻿#include "shared.h"
+#include "server/server.h"
 #include "client/client.h"
 
 constexpr auto MODE_SERVER = 1;
