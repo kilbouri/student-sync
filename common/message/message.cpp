@@ -28,41 +28,32 @@ int sendBytesSafe(SOCKET socket, char* dataBuffer, int numBytes) {
 	return 0;
 }
 
-Message messageFrom(int64_t value)
-{
-	std::cout << "Creating message for integer " << value << "\n";
-
+Message messageFrom(int64_t value) {
 	std::vector<char> dataBuffer(sizeof(value));
 	int64_t networkValue = htonll(value);
 
-	memcpy(dataBuffer.data(), &networkValue, sizeof(networkValue));
+	std::memcpy(dataBuffer.data(), &networkValue, sizeof(networkValue));
 
-	return Message {
+	return Message{
 		.type = MessageType::NUMBER_64,
 		.dataLength = sizeof(value),
 		.data = dataBuffer,
 	};
 }
 
-Message messageFrom(std::string_view value)
-{
-	std::cout << "Creating message for string " << value << " (length " << value.length() << ")\n";
-
+Message messageFrom(std::string_view value) {
 	// assumes value is NON-UNICODE! Network byte order MAY mismatch and screw up
 	// Unicode strings.
 	std::vector<char> dataBuffer(value.data(), value.data() + value.length());
 
 	return Message{
 		.type = MessageType::STRING,
-		.dataLength = sizeof(value),
+		.dataLength = (int64_t)value.length(), // casting from unsigned to signed... VERY unlikely to have 2^63 character strings...
 		.data = dataBuffer,
 	};
 }
 
-Message goodbyeMessage()
-{
-	std::cout << "Creating goodbye message\n";
-
+Message goodbyeMessage() {
 	return Message{
 		.type = MessageType::GOODBYE,
 		.dataLength = 0,
@@ -71,8 +62,6 @@ Message goodbyeMessage()
 }
 
 std::optional<Message> receiveMessage(SOCKET socket) {
-	std::cout << "Begin receiving message\n";
-
 	int32_t type;
 	int64_t length;
 
@@ -80,12 +69,10 @@ std::optional<Message> receiveMessage(SOCKET socket) {
 	char lengthData[sizeof(int64_t)] = { 0 };
 
 	if (recvBytesSafe(socket, typeData, sizeof(int32_t))) {
-		std::cout << "Failed to recieve message type\n";
 		return std::nullopt;
 	}
 
 	if (recvBytesSafe(socket, lengthData, sizeof(int64_t))) {
-		std::cout << "Failed to recieve message length\n";
 		return std::nullopt;
 	}
 
@@ -97,9 +84,11 @@ std::optional<Message> receiveMessage(SOCKET socket) {
 	type = ntohl(type);
 	length = ntohll(length);
 
-	std::vector<char> data(length); // this is guaranteed to be contiguous memory
-	if (recvBytesSafe(socket, data.data(), length)) {
-		std::cout << "Failed to recieve message data\n";
+	std::vector<char> data(length);
+
+	// the length check here prevents us from trying to receive data when
+	// there is 0 bytes of data to be received (such as in the case of GOODBYE)
+	if (length != 0 && recvBytesSafe(socket, data.data(), length)) {
 		return std::nullopt;
 	}
 
@@ -111,19 +100,21 @@ std::optional<Message> receiveMessage(SOCKET socket) {
 }
 
 int sendMessage(SOCKET socket, Message toSend) {
-	std::cout << "Begin sending message\n";
-
-	int32_t networkType = htonl(toSend.type);
+	int32_t networkTag = htonl(toSend.type);
 	int64_t networkLength = htonll(toSend.dataLength);
 
-	int64_t dataSize = sizeof(networkType) + sizeof(networkLength) + toSend.dataLength;
-	std::vector<char> dataBuffer(dataSize);
+	int64_t dataSize = sizeof(networkTag) + sizeof(networkLength) + toSend.dataLength;
+	std::vector<char> networkValue(dataSize);
 
-	memcpy(dataBuffer.data(), &networkType, sizeof(networkType));
-	memcpy(dataBuffer.data() + sizeof(networkType), &networkLength, sizeof(networkLength));
-	memcpy(dataBuffer.data() + sizeof(networkType) + sizeof(networkLength), toSend.data.data(), toSend.dataLength);
+	char* tagStart = networkValue.data();
+	char* lengthStart = tagStart + sizeof(networkTag);
+	char* dataStart = lengthStart + sizeof(networkLength);
 
-	if (sendBytesSafe(socket, dataBuffer.data(), dataSize)) {
+	std::memcpy(tagStart, &networkTag, sizeof(networkTag));
+	std::memcpy(lengthStart, &networkLength, sizeof(networkLength));
+	std::memcpy(dataStart, toSend.data.data(), toSend.dataLength);
+
+	if (sendBytesSafe(socket, networkValue.data(), dataSize)) {
 		return 1;
 	}
 

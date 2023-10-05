@@ -40,7 +40,7 @@ std::optional<std::string> ReceiveMessage(SOCKET socket) {
 	}
 
 	Message message = messageOpt.value();
-	return std::string{ message.data.data()};
+	return std::string{ message.data.data() };
 }
 
 int Client::Connect() {
@@ -53,7 +53,7 @@ int Client::Connect() {
 
 		return 1;
 	}
-	
+
 	freeaddrinfo(serverAddress);
 	serverAddress = nullptr;
 
@@ -108,7 +108,7 @@ int Client::Connect() {
 	// this may fail but who cares
 	sendMessage(connectSocket, goodbyeMessage());
 	shutdown(connectSocket, SD_SEND);
-	
+
 	return 0;
 }
 

@@ -48,11 +48,6 @@ int Server::Initialize() {
 	return 0;
 }
 
-bool sendMessage(SOCKET socket, std::vector<char> buffer) {
-	int result = send(socket, buffer.data(), buffer.size(), 0);
-	return result != SOCKET_ERROR;
-}
-
 int Server::Start() {
 	if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR) {
 		return 1;
@@ -66,53 +61,52 @@ int Server::Start() {
 			continue;
 		}
 
-		shutdown(clientSocket, SD_SEND);
-
-		// receive all messages regardless of type,
-		// echo to screen. Breaks when GOODBYE is received,
-		// or socket is closed
-		while (true) {
-			std::optional<Message> messageOpt = receiveMessage(clientSocket);
-			if (!messageOpt.has_value()) {
-				// no message, socket closed
-				std::cout << "Malformed/no message received\n";
-;				break;
-			}
-
-			Message message = messageOpt.value();
-			if (message.type == MessageType::GOODBYE) {
-				// goodbye message received, client is hecking off to god knows where else
-				std::cout << "Goodbye message received\n";
-				break;
-			}
-
-			if (message.type == MessageType::NUMBER_64) {
-				int64_t receivedNumber;
-				memcpy(&receivedNumber, message.data.data(), sizeof(int64_t));
-
-				// convert from network to host byte order
-				receivedNumber = ntohll(receivedNumber);
-				std::cout << "Received NUMBER_64: " << receivedNumber << "\n";
-			}
-			else if (message.type == MessageType::STRING) {
-				std::string receivedString(message.data.data(), message.dataLength);
-				std::cout << "Received STRING: " << receivedString << "\n";
-				std::cout << "Raw buffer: " << message.data.data() << "\n";
-			}
-			else {
-				std::cout << "Invalid message type received " << message.type << "\n";
-			}
-		}
-
-		std::cout << "Connection closed\n";
-
-		shutdown(clientSocket, SD_RECEIVE);
-		closesocket(clientSocket);
+		HandleConnection(listenSocket, clientSocket);
 	}
 }
 
 void HandleConnection(SOCKET server, SOCKET client) {
-	
+	shutdown(client, SD_SEND);
+
+	// receive all messages regardless of type,
+	// echo to screen. Breaks when GOODBYE is received,
+	// or socket is closed
+	while (true) {
+		std::optional<Message> messageOpt = receiveMessage(client);
+		if (!messageOpt.has_value()) {
+			// no message, socket closed
+			std::cout << "Malformed/no message received\n";
+			;				break;
+		}
+
+		Message message = messageOpt.value();
+		if (message.type == MessageType::GOODBYE) {
+			// goodbye message received, client is hecking off to god knows where else
+			std::cout << "Received GOODBYE\n";
+			break;
+		}
+
+		if (message.type == MessageType::NUMBER_64) {
+			int64_t receivedNumber;
+			memcpy(&receivedNumber, message.data.data(), sizeof(int64_t));
+
+			// convert from network to host byte order
+			receivedNumber = ntohll(receivedNumber);
+			std::cout << "Received NUMBER_64: " << receivedNumber << "\n";
+		}
+		else if (message.type == MessageType::STRING) {
+			std::string receivedString(message.data.data(), message.dataLength);
+			std::cout << "Received STRING: " << receivedString << "\n";
+		}
+		else {
+			std::cout << "Invalid message type received " << message.type << "\n";
+		}
+	}
+
+	std::cout << "Client connection closed\n";
+
+	shutdown(client, SD_RECEIVE);
+	closesocket(client);
 }
 
 Server::~Server() {
