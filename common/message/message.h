@@ -14,6 +14,7 @@ public:
 	enum Type : int32_t {
 		STRING = 0, // An ASCII string. No null terminator is included.
 		NUMBER_64 = 1, // A 64-bit signed integer.
+		IMAGE_BMP = 2, // a bitmap image, uncompressed
 		GOODBYE = ~0 // A special type, indicating the conversation is over.
 	};
 
@@ -23,6 +24,7 @@ public:
 
 	Message(std::string_view);
 	Message(int64_t);
+	Message(Type, std::vector<char>);
 
 	static Message Goodbye();
 
@@ -34,7 +36,4 @@ public:
 	// Sends the message on the specified socket.
 	// Returns 1 if an error occurs, otherwise 0.
 	int Send(SOCKET socket);
-	
-private:
-	Message(Type, int, std::vector<char>);
 };

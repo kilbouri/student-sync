@@ -3,8 +3,13 @@
 int recvBytesSafe(SOCKET socket, char* dataBuffer, int numBytes);
 int sendBytesSafe(SOCKET socket, char* dataBuffer, int numBytes);
 
-Message::Message(Type type, int length, std::vector<char> data)
-	: type{ type }, length{ length }, data{ data } {}
+Message::Message(std::string_view value)
+	: type{ Type::STRING }, length{ (int)value.length() }
+{
+	// assumes value is NON-UNICODE! Network byte order MAY mismatch and screw up
+	// Unicode strings.
+	this->data = std::vector<char>(value.data(), value.data() + value.length());
+}
 
 Message::Message(int64_t value)
 	: type{ Type::NUMBER_64 }, length{ sizeof(value) }
@@ -15,16 +20,11 @@ Message::Message(int64_t value)
 	std::memcpy(this->data.data(), &networkValue, sizeof(value));
 }
 
-Message::Message(std::string_view value)
-	: type{ Type::STRING }, length{ (int) value.length() }
-{
-	// assumes value is NON-UNICODE! Network byte order MAY mismatch and screw up
-	// Unicode strings.
-	this->data = std::vector<char>(value.data(), value.data() + value.length());
-}
+Message::Message(Type dataType, std::vector<char> data)
+	: type{ dataType }, length{ (int)data.size() }, data{ data } { }
 
 Message Message::Goodbye() {
-	return Message(Type::GOODBYE, 0, std::vector<char>(0));
+	return Message(Type::GOODBYE, std::vector<char>(0));
 }
 
 std::optional<Message> Message::TryReceive(SOCKET socket) {
@@ -58,7 +58,7 @@ std::optional<Message> Message::TryReceive(SOCKET socket) {
 		return std::nullopt;
 	}
 
-	return Message((Type)type, length, data);
+	return Message((Type)type, data);
 }
 
 int Message::Send(SOCKET socket) {

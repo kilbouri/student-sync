@@ -78,7 +78,7 @@ void HandleConnection(SOCKET server, SOCKET client) {
 		if (!messageOpt.has_value()) {
 			// no message, socket closed
 			std::cout << "Malformed/no message received\n";
-			;				break;
+			break;
 		}
 
 		Message message = messageOpt.value();
