@@ -1,8 +1,8 @@
 #include "client.h"
 
-#include <string>
-#include <WS2tcpip.h>
 #include <optional>
+#include <string>
+
 #include "../common/message/message.h"
 
 Client::Client(std::string_view serverHostname, int serverPort)
@@ -64,7 +64,7 @@ int Client::Connect() {
 	auto invalidInput = []() {
 		std::cout << "Invalid input, try again: ";
 		std::cin.clear();
-		std::cin.ignore(MAX_STREAM_SIZE, '\n');
+		std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 	};
 
 	do {
@@ -79,7 +79,7 @@ int Client::Connect() {
 		}
 
 		std::cin.clear();
-		std::cin.ignore(MAX_STREAM_SIZE, '\n');
+		std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
 		if (choice == 0) { //STRING
 			std::cout << "Please type your String: ";

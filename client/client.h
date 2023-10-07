@@ -1,6 +1,8 @@
 #pragma once
 
-#include "../shared.h"
+#include <iostream>
+
+#include "../win32includes.h"
 
 class Client {
 public:

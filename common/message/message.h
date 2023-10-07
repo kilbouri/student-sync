@@ -1,9 +1,10 @@
 #include <cstdint>
+#include <string>
 #include <vector>
 #include <memory>
 #include <optional>
 
-#include "../../shared.h"
+#include "../../win32includes.h"
 
 // Represents a Type-Length-Value encoded message that
 // may be transmitted over a socket.

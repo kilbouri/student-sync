@@ -1,9 +1,9 @@
 #include "server.h"
-#include "../common/message/message.h"
 
 #include <string>
-#include <WS2tcpip.h>
 #include <optional>
+
+#include "../common/message/message.h"
 
 void HandleConnection(SOCKET server, SOCKET client);
 
