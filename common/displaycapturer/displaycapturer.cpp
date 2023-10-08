@@ -57,10 +57,8 @@ std::vector<char> DisplayCapturer::CaptureScreen(DisplayCapturer::Format format)
 
 	// save the bitmap into the stream in the appropriate format
 	CLSID formatClsid = getFormatCLSID(format);
-	Gdiplus::Bitmap encoder(screenBitmap, NULL);
-	Gdiplus::Status status = encoder.Save(encodingStream, &formatClsid, NULL); 
-
-	if (status != Gdiplus::Status::Ok) {
+	Gdiplus::Status encodeStatus = Gdiplus::Bitmap(screenBitmap, NULL).Save(encodingStream, &formatClsid, NULL); 
+	if (encodeStatus != Gdiplus::Status::Ok) {
 		std::cout << "Failed to save image in format " << format << "\n";
 		throw "Failed to save image in format " + format;
 	}
@@ -92,9 +90,10 @@ std::vector<char> DisplayCapturer::CaptureScreen(DisplayCapturer::Format format)
 	GlobalUnlock(encodingStreamHandle);
 	encodedDataPointer = nullptr;
 
-	DeleteObject(screenBitmap);
+	// release the last few handles/allocated memory
 	encodingStream->Release();
-
+	DeleteObject(screenBitmap);
+	
 	return encodedImageData;
 }
 
