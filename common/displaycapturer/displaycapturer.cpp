@@ -8,6 +8,7 @@ BITMAPINFOHEADER createBitmapHeader(int width, int height);
 CLSID getFormatCLSID(DisplayCapturer::Format format);
 
 std::vector<char> DisplayCapturer::CaptureScreen(DisplayCapturer::Format format) {
+
 	int screenx = GetSystemMetrics(SM_XVIRTUALSCREEN);
 	int screeny = GetSystemMetrics(SM_YVIRTUALSCREEN);
 	int width = GetSystemMetrics(SM_CXVIRTUALSCREEN);
@@ -15,6 +16,7 @@ std::vector<char> DisplayCapturer::CaptureScreen(DisplayCapturer::Format format)
 
 	HDC screenDC = GetDC(NULL);
 	HDC screenCompatibleDC = CreateCompatibleDC(screenDC);
+
 	HBITMAP screenBitmap = CreateCompatibleBitmap(screenDC, width, height);
 	BITMAPINFOHEADER screenBitmapHeader = createBitmapHeader(width, height);
 

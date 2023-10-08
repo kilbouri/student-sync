@@ -116,7 +116,9 @@ int GdiPlusStartup(ULONG_PTR* tokenOut) {
 	if (startStatus != Gdiplus::Status::Ok) {
 		return 1;
 	}
-
+	
+	// this is important for image capture to obtain the entire screen
+	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 	return 0;
 }
 
