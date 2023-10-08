@@ -5,25 +5,43 @@
 constexpr auto MODE_SERVER = 1;
 constexpr auto MODE_CLIENT = 2;
 
-int main()
-{
-	WORD winsockVersion = MAKEWORD(2, 2); // version 2.2
-	WSADATA winsockData;
+int Winsock2Startup();
+void Winsock2Shutdown();
+int GdiPlusStartup(ULONG_PTR* tokenOut);
+void GdiPlusShutdown(ULONG_PTR token);
 
-	int socketStartupCode = WSAStartup(winsockVersion, &winsockData);
-
-	if (socketStartupCode != 0) {
-		std::cerr << "Winsock2 Starup failed.\n";
-		return 1;
-	}
-	else if (winsockData.wVersion != winsockVersion) {
-		std::cerr << "Winsock2 version != 2.2\n";
-		WSACleanup();
+int main() {
+	// Initialize GDI+
+	ULONG_PTR gdiPlusToken;
+	if (GdiPlusStartup(&gdiPlusToken) != 0) {
+		std::cerr << "GDI+ startup failed\n";
 		return 1;
 	}
 	else {
-		std::cout << "Winsock2 Startup succeeded.\n";
+		std::cout << "GDI+ startup succeeded\n";
 	}
+
+	// Initialize WinSock2
+	int winsockStartupCode = Winsock2Startup();
+	if (winsockStartupCode == 0) {
+		std::cout << "Winsock2 startup succeeded\n";
+	}
+	else if (winsockStartupCode == 1) {
+		std::cerr << "Winsock2 version != 2.2\n";
+		GdiPlusShutdown(gdiPlusToken);
+		return 1;
+	}
+	else {
+		std::cerr << "Winsock2 startup failed\n";
+		GdiPlusShutdown(gdiPlusToken);
+		return 1;
+	}
+
+	auto Quit = [gdiPlusToken](int exitCode) {
+		Winsock2Shutdown();
+		GdiPlusShutdown(gdiPlusToken);
+		return exitCode;
+	};
 
 	std::cout << "Should I be a client, or a server?\n" << MODE_SERVER << ": server\n" << MODE_CLIENT << ": client\n";
 
@@ -39,14 +57,12 @@ int main()
 
 		if (server.Initialize() != 0) {
 			std::cerr << "Failed to start server\n";
-			WSACleanup();
-			return 1;
+			return Quit(1);
 		}
 
 		std::cout << "Starting server on port " << port << "\n";
 		server.Start();
-		WSACleanup();
-		return 1;
+		return Quit(1);
 	}
 	else if (mode == MODE_CLIENT) {
 		int serverPort;
@@ -57,17 +73,53 @@ int main()
 
 		if (client.Initialize() != 0) {
 			std::cerr << "Failed to start client\n";
-			WSACleanup();
-			return 1;
+			return Quit(1);
 		}
 
 		client.Connect();
-		WSACleanup();
-		return 0;
+		return Quit(0);
 	}
 	else {
 		std::cout << "Invalid selection.\n";
-		WSACleanup();
+		return Quit(1);
+	}
+}
+
+int Winsock2Startup() {
+	WORD winsockVersion = MAKEWORD(2, 2); // version 2.2
+	WSADATA winsockData;
+
+	int socketStartupCode = WSAStartup(winsockVersion, &winsockData);
+	if (socketStartupCode != 0) {
+		return -1; // start failed
+	}
+
+	if (winsockData.wVersion != winsockVersion) {
+		return 1; // bad version
+	}
+
+	return 0;
+}
+
+void Winsock2Shutdown() {
+	WSACleanup();
+}
+
+int GdiPlusStartup(ULONG_PTR* tokenOut) {
+	if (tokenOut == NULL) {
+		throw "Null tokenOut pointer received in GdiPlusStartup";
+	}
+
+	Gdiplus::GdiplusStartupInput startupInfo;
+	Gdiplus::Status startStatus = Gdiplus::GdiplusStartup(tokenOut, &startupInfo, NULL);
+
+	if (startStatus != Gdiplus::Status::Ok) {
 		return 1;
 	}
+
+	return 0;
+}
+
+void GdiPlusShutdown(ULONG_PTR token) {
+	Gdiplus::GdiplusShutdown(token);
 }

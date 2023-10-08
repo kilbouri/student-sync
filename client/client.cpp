@@ -1,9 +1,11 @@
 #include "client.h"
 
+#include <fstream>
 #include <optional>
 #include <string>
 
 #include "../common/message/message.h"
+#include "../common/displaycapturer/displaycapturer.h"
 
 Client::Client(std::string_view serverHostname, int serverPort)
 	: hostname{ std::string(serverHostname) }, port{ std::to_string(serverPort) }, hints{},
@@ -72,9 +74,10 @@ int Client::Connect() {
 			<< "What data would you like to send?\n"
 			<< "STRING = 0\n"
 			<< "NUMBER = 1\n"
+			<< "SCREENSHOT = 2\n"
 			<< "GOODBYE = 3\n";
 
-		while (!(std::cin >> choice) || !(choice == 0 || choice == 1 || choice == 3)) {
+		while (!(std::cin >> choice)) {
 			invalidInput();
 		}
 
@@ -91,8 +94,7 @@ int Client::Connect() {
 				continue;
 			}
 		}
-		else if (choice == 1) //NUMBER
-		{
+		else if (choice == 1) { // NUMBER
 			std::cout << "Please type your Number: ";
 
 			while (!(std::cin >> number)) {
@@ -105,8 +107,23 @@ int Client::Connect() {
 				continue;
 			}
 		}
-		else if (choice != 3)
-		{
+		else if (choice == 2) { // SCREENSHOT
+			std::vector<char> screenshotData = DisplayCapturer::CaptureScreen(DisplayCapturer::Format::PNG);
+
+			std::cout << "There are " << screenshotData.size() << " bytes of screenshot data\n";
+			std::cout << "The first byte is " << screenshotData[0] << "\n";
+
+			std::ofstream outFile("./screenshot.png", std::ios::binary);
+			if (!outFile.is_open()) {
+				std::cout << "Failed to open ./screenshot.png\n";
+			}
+
+			outFile.write(screenshotData.data(), screenshotData.size());
+			outFile.close();
+
+			std::cout << "Write complete. Check ./screenshot.png!\n";
+		}
+		else if (choice != 3) {
 			invalidInput();
 			continue;
 		}
