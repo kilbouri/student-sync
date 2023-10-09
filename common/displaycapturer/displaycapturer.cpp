@@ -4,115 +4,72 @@
 #include <string>
 #include <memory>
 
-BITMAPINFOHEADER createBitmapHeader(int width, int height);
+#include "../managedhandle/managedhandle.h"
+
 CLSID getFormatCLSID(DisplayCapturer::Format format);
 
-std::vector<char> DisplayCapturer::CaptureScreen(DisplayCapturer::Format format) {
-
+std::optional<std::vector<char>> DisplayCapturer::CaptureScreen(DisplayCapturer::Format format) {
 	int screenx = GetSystemMetrics(SM_XVIRTUALSCREEN);
 	int screeny = GetSystemMetrics(SM_YVIRTUALSCREEN);
 	int width = GetSystemMetrics(SM_CXVIRTUALSCREEN);
 	int height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 
-	HDC screenDC = GetDC(NULL);
-	HDC screenCompatibleDC = CreateCompatibleDC(screenDC);
+	// grab the virtual screen device context
+	ManagedHandle<HDC> screenDC(GetDC(NULL), [](HDC value) { ReleaseDC(NULL, value); });
 
-	HBITMAP screenBitmap = CreateCompatibleBitmap(screenDC, width, height);
-	BITMAPINFOHEADER screenBitmapHeader = createBitmapHeader(width, height);
+	// create a compatible memory device context and bitmap
+	ManagedHandle<HDC> memoryDC(CreateCompatibleDC(screenDC), DeleteDC);
+	ManagedHandle<HBITMAP> memoryBitmap(CreateCompatibleBitmap(screenDC, width, height), DeleteObject);
 
-	SelectObject(screenCompatibleDC, screenBitmap);
+	// copy current screen data into our memory device
+	SelectObject(memoryDC, memoryBitmap);
+	BitBlt(memoryDC, screenx, screeny, width, height, screenDC, 0, 0, SRCCOPY);
 
-	// figure out how big our image is gonna be
-	int bitsPerRow = width * screenBitmapHeader.biBitCount;
-	int dwordsPerRow = (bitsPerRow + 31) / 32; // must be 32-bit aligned for GetDIBits below
-	int bytesPerRow = dwordsPerRow * 4;
-	int totalImageBytes = bytesPerRow * height;
+	// note: at this point, the screen has been captured into an in-memory device context, which is backed by
+	// memoryBitmap. If you really wanted to, you could return and work with this bitmap directly.
+	// For now, we encode the bitmap into a normal image format before we return.
 
-	// allocate a locked global object to contain the image
-	HANDLE bitmapBufferHandle = GlobalAlloc(GHND, totalImageBytes);
-	if (bitmapBufferHandle == 0) {
-		std::cout << "Failed to allocate bitmap buffer";
-		throw "Failed to allocate bitmap buffer";
+	Gdiplus::Bitmap bitmap(memoryBitmap, NULL);
+
+	// create an encoding stream
+	IStream* encodeStream = nullptr;
+	if (!SUCCEEDED(CreateStreamOnHGlobal(NULL, TRUE, &encodeStream))) {
+		return std::nullopt;
 	}
 
-	char* bitmapBuffer = (char*)GlobalLock(bitmapBufferHandle);
-	if (bitmapBuffer == 0) {
-		std::cout << "Failed to acquire bitmap buffer";
-		throw "Failed to acquire bitmap buffer";
-	}
-
-	// copy screen into memory device, then image data into buffer
-	BitBlt(screenCompatibleDC, screenx, screeny, width, height, screenDC, 0, 0, SRCCOPY);
-	GetDIBits(screenCompatibleDC, screenBitmap, 0, height, bitmapBuffer, (BITMAPINFO*)&screenBitmapHeader, DIB_RGB_COLORS);
-
-	// clean up capture handles
-	DeleteDC(screenCompatibleDC);
-	ReleaseDC(NULL, screenDC);
-
-	// create a stream to store the encoded image
-	IStream* encodingStream = nullptr;
-	HRESULT streamCreateResult = CreateStreamOnHGlobal(NULL, TRUE, &encodingStream);
-	if (!SUCCEEDED(streamCreateResult)) {
-		std::cout << "Failed to create image encoding stream";
-		throw "Failed to create image encoding stream";
-	}
-
-	// save the bitmap into the stream in the appropriate format
-	CLSID formatClsid = getFormatCLSID(format);
-	Gdiplus::Status encodeStatus = Gdiplus::Bitmap(screenBitmap, NULL).Save(encodingStream, &formatClsid, NULL); 
-	if (encodeStatus != Gdiplus::Status::Ok) {
-		std::cout << "Failed to save image in format " << format << "\n";
-		throw "Failed to save image in format " + format;
+	// encode into the stream
+	CLSID encoderClsid = getFormatCLSID(format);
+	if (bitmap.Save(encodeStream, &encoderClsid) != Gdiplus::Status::Ok) {
+		encodeStream->Release();
+		return std::nullopt;
 	}
 
 	// get memory handle for the encoding stream
 	HGLOBAL encodingStreamHandle = NULL;
-	HRESULT fetchEncodingStreamHandleResult = GetHGlobalFromStream(encodingStream, &encodingStreamHandle);
-	if (!SUCCEEDED(fetchEncodingStreamHandleResult)) {
-		std::cout << "Failed to fetch encoding stream handle";
-		throw "Failed to fetch encoding stream handle";
+	if (!SUCCEEDED(GetHGlobalFromStream(encodeStream, &encodingStreamHandle))) {
+		encodeStream->Release();
+		return std::nullopt;
 	}
 
-	SIZE_T encodedBytes = GlobalSize(encodingStreamHandle);
-	std::vector<char> encodedImageData(encodedBytes);
-
-	// lock
-	LPVOID encodedDataPointer = GlobalLock(encodingStreamHandle);
-	if (encodedDataPointer == NULL) {
-		int lastError = GetLastError();
-		std::cout << "Failed to lock encoded data with error " << lastError;
-		throw "Failed to lock encoded data with error " + lastError;
+	// lock the stream data
+	LPVOID encodedBytes = GlobalLock(encodingStreamHandle);
+	if (encodedBytes == NULL) {
+		encodeStream->Release();
+		return std::nullopt;
 	}
 
-	// copy
-	encodedImageData.resize(encodedBytes); // this will do nothing other than set size=encodedBytes
-	std::memcpy(encodedImageData.data(), encodedDataPointer, encodedBytes);
+	// copy encoded data into a vector
+	SIZE_T numEncodedBytes = GlobalSize(encodingStreamHandle);
+	std::vector<char> encodedImageData(numEncodedBytes);
+	
+	encodedImageData.resize(numEncodedBytes); // this sets size = numEncodedBytes
+	std::memcpy(encodedImageData.data(), encodedBytes, numEncodedBytes);
 
-	// unlock
-	GlobalUnlock(encodingStreamHandle);
-	encodedDataPointer = nullptr;
-
-	// release the last few handles/allocated memory
-	encodingStream->Release();
-	DeleteObject(screenBitmap);
+	// release lock and free stream
+	GlobalUnlock(encodedBytes);
+	encodeStream->Release();
 	
 	return encodedImageData;
-}
-
-BITMAPINFOHEADER createBitmapHeader(int width, int height) {
-	return BITMAPINFOHEADER{
-		.biSize = sizeof(BITMAPINFOHEADER),
-		.biWidth = width,
-		.biHeight = height,
-		.biPlanes = 1,
-		.biBitCount = 32,
-		.biCompression = BI_RGB,
-		.biSizeImage = 0,
-		.biXPelsPerMeter = 0,
-		.biYPelsPerMeter = 0,
-		.biClrUsed = 0,
-		.biClrImportant = 0,
-	};
 }
 
 CLSID getFormatCLSID(DisplayCapturer::Format format) {

@@ -108,17 +108,19 @@ int Client::Connect() {
 			}
 		}
 		else if (choice == 2) { // SCREENSHOT
-			std::vector<char> screenshotData = DisplayCapturer::CaptureScreen(DisplayCapturer::Format::PNG);
-
-			std::cout << "There are " << screenshotData.size() << " bytes of screenshot data\n";
-			std::cout << "The first byte is " << screenshotData[0] << "\n";
+			std::optional<std::vector<char>> screenshotData = DisplayCapturer::CaptureScreen(DisplayCapturer::Format::PNG);
+			if (!screenshotData.has_value()) {
+				std::cerr << "Failed to capture screenshot\n";
+				continue;
+			}
+			std::vector<char> data = screenshotData.value();
 
 			std::ofstream outFile("./screenshot.png", std::ios::binary);
 			if (!outFile.is_open()) {
 				std::cout << "Failed to open ./screenshot.png\n";
 			}
 
-			outFile.write(screenshotData.data(), screenshotData.size());
+			outFile.write(data.data(), data.size());
 			outFile.close();
 
 			std::cout << "Write complete. Check ./screenshot.png!\n";

@@ -1,5 +1,7 @@
 #include "../../win32includes.h"
+
 #include <vector>
+#include <optional>
 
 class DisplayCapturer {
 public:
@@ -11,5 +13,5 @@ public:
 		TIF = 4
 	};
 
-	static std::vector<char> CaptureScreen(Format);
+	static std::optional<std::vector<char>> CaptureScreen(Format);
 };
