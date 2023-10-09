@@ -38,7 +38,7 @@ int Server::Initialize() {
 	}
 
 	// try to bind the socket
-	if (bind(acquiredSocket, resolvedAddress->ai_addr, resolvedAddress->ai_addrlen) == SOCKET_ERROR) {
+	if (bind(acquiredSocket, resolvedAddress->ai_addr, (int)resolvedAddress->ai_addrlen) == SOCKET_ERROR) {
 		freeaddrinfo(resolvedAddress);
 		closesocket(acquiredSocket);
 

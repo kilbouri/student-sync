@@ -73,7 +73,7 @@ std::vector<char> DisplayCapturer::CaptureScreen(DisplayCapturer::Format format)
 		throw "Failed to fetch encoding stream handle";
 	}
 
-	int encodedBytes = GlobalSize(encodingStreamHandle);
+	SIZE_T encodedBytes = GlobalSize(encodingStreamHandle);
 	std::vector<char> encodedImageData(encodedBytes);
 
 	// lock
@@ -122,11 +122,12 @@ CLSID getFormatCLSID(DisplayCapturer::Format format) {
 	switch (format) {
 		// heck you Microsoft for not providing a CLSIDFromString macro that doesn't require an output pointer
 		// CLSID string source: https://superkogito.github.io/blog/2020/07/26/capture_screen_using_gdiplus.html
-		case Format::BMP: CLSIDFromString(L"{557cf400-1a04-11d3-9a73-0000f81ef32e}", &result); break;
-		case Format::PNG: CLSIDFromString(L"{557cf406-1a04-11d3-9a73-0000f81ef32e}", &result); break;
-		case Format::JPG: CLSIDFromString(L"{557cf401-1a04-11d3-9a73-0000f81ef32e}", &result); break;
-		case Format::GIF: CLSIDFromString(L"{557cf402-1a04-11d3-9a73-0000f81ef32e}", &result); break;
-		case Format::TIF: CLSIDFromString(L"{557cf405-1a04-11d3-9a73-0000f81ef32e}", &result); break;
+		case Format::BMP: (void)CLSIDFromString(L"{557cf400-1a04-11d3-9a73-0000f81ef32e}", &result); break;
+		case Format::PNG: (void)CLSIDFromString(L"{557cf406-1a04-11d3-9a73-0000f81ef32e}", &result); break;
+		case Format::JPG: (void)CLSIDFromString(L"{557cf401-1a04-11d3-9a73-0000f81ef32e}", &result); break;
+		case Format::GIF: (void)CLSIDFromString(L"{557cf402-1a04-11d3-9a73-0000f81ef32e}", &result); break;
+		case Format::TIF: (void)CLSIDFromString(L"{557cf405-1a04-11d3-9a73-0000f81ef32e}", &result); break;
+		default: result = getFormatCLSID(Format::PNG); break;
 	}
 
 	return result;

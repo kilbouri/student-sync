@@ -46,7 +46,7 @@ std::optional<std::string> ReceiveMessage(SOCKET socket) {
 }
 
 int Client::Connect() {
-	if (connect(connectSocket, serverAddress->ai_addr, serverAddress->ai_addrlen) == SOCKET_ERROR) {
+	if (connect(connectSocket, serverAddress->ai_addr, (int)serverAddress->ai_addrlen) == SOCKET_ERROR) {
 		closesocket(connectSocket);
 		connectSocket = INVALID_SOCKET;
 
