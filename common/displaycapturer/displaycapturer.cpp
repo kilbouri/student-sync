@@ -92,8 +92,8 @@ std::optional<std::vector<char>> DisplayCapturer::CaptureScreen(DisplayCapturer:
 	int totalHeight = HeightOfRect(boundingRect);
 
 	HBITMAP combinedBitmap;
-	Gdiplus::Status createBitmapStatus = Gdiplus::Bitmap(totalWidth, totalHeight, PixelFormat32bppARGB).GetHBITMAP(Gdiplus::Color::Transparent, &combinedBitmap);
-	if (createBitmapStatus != Gdiplus::Status::Ok) {
+	Gdiplus::Status createStatus = Gdiplus::Bitmap(totalWidth, totalHeight, PixelFormat32bppARGB).GetHBITMAP(Gdiplus::Color::Transparent, &combinedBitmap);
+	if (createStatus != Gdiplus::Status::Ok) {
 		return std::nullopt;
 	}
 
@@ -115,13 +115,14 @@ std::optional<std::vector<char>> DisplayCapturer::CaptureScreen(DisplayCapturer:
 		int width = WidthOfRect(monitor.rect);
 		int height = HeightOfRect(monitor.rect);
 
+		// If this fails, it is what it is. Hopefully others will succeed.
 		BitBlt(memoryDC, targetX, targetY, width, height, monitorDC, 0, 0, SRCCOPY);
 	}
 
 	// create stream to store encoded image data
 	IStream* encodeStream = nullptr;
 	if (!SUCCEEDED(CreateStreamOnHGlobal(nullptr, true, &encodeStream))) {
-		std::cerr << "Failed to create encoding stream";
+		DeleteObject(combinedBitmap);
 		return std::nullopt;
 	}
 
@@ -133,7 +134,8 @@ std::optional<std::vector<char>> DisplayCapturer::CaptureScreen(DisplayCapturer:
 	HGLOBAL encodeStreamHG;
 	void* encodedData = nullptr;
 	if (!SUCCEEDED(GetHGlobalFromStream(encodeStream, &encodeStreamHG)) || (encodedData = GlobalLock(encodeStreamHG)) == nullptr) {
-		std::cerr << "Failed to access encoding stream data";
+		encodeStream->Release();
+		DeleteObject(combinedBitmap);
 		return std::nullopt;
 	}
 
@@ -144,6 +146,8 @@ std::optional<std::vector<char>> DisplayCapturer::CaptureScreen(DisplayCapturer:
 	// unlock and free stream
 	GlobalUnlock(encodeStreamHG);
 	encodeStream->Release();
+
+	DeleteObject(combinedBitmap);
 
 	return imageData;
 }
