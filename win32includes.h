@@ -11,3 +11,5 @@
 #include <WS2tcpip.h>
 #include <Windows.h>
 #include <gdiplus.h>
+#include <KnownFolders.h>
+#include <ShlObj.h>

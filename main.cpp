@@ -7,6 +7,8 @@ constexpr auto MODE_CLIENT = 2;
 
 int Winsock2Startup();
 void Winsock2Shutdown();
+int InitializeCOM();
+void UninitializeCOM();
 int GdiPlusStartup(ULONG_PTR* tokenOut);
 void GdiPlusShutdown(ULONG_PTR token);
 
@@ -21,6 +23,15 @@ int main() {
 		std::cout << "GDI+ startup succeeded\n";
 	}
 
+	if (!InitializeCOM()) {
+		std::cerr << "Failed to start COM Library\n";
+		GdiPlusShutdown(gdiPlusToken);
+		return 1;
+	}
+	else {
+		std::cout << "COM library initialized\n";
+	}
+
 	// Initialize WinSock2
 	int winsockStartupCode = Winsock2Startup();
 	if (winsockStartupCode == 0) {
@@ -29,11 +40,13 @@ int main() {
 	else if (winsockStartupCode == 1) {
 		std::cerr << "Winsock2 version != 2.2\n";
 		GdiPlusShutdown(gdiPlusToken);
+		UninitializeCOM();
 		return 1;
 	}
 	else {
 		std::cerr << "Winsock2 startup failed\n";
 		GdiPlusShutdown(gdiPlusToken);
+		UninitializeCOM();
 		return 1;
 	}
 
@@ -105,6 +118,14 @@ void Winsock2Shutdown() {
 	WSACleanup();
 }
 
+int InitializeCOM() {
+	return SUCCEEDED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED));
+}
+
+void UninitializeCOM() {
+	CoUninitialize();
+}
+
 int GdiPlusStartup(ULONG_PTR* tokenOut) {
 	if (tokenOut == NULL) {
 		throw "Null tokenOut pointer received in GdiPlusStartup";
@@ -116,7 +137,7 @@ int GdiPlusStartup(ULONG_PTR* tokenOut) {
 	if (startStatus != Gdiplus::Status::Ok) {
 		return 1;
 	}
-	
+
 	// this is important for image capture to obtain the entire screen
 	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 	return 0;

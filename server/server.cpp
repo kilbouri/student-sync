@@ -2,6 +2,7 @@
 
 #include <string>
 #include <optional>
+#include <fstream>
 
 #include "../common/message/message.h"
 
@@ -69,44 +70,91 @@ int Server::Start() {
 
 void HandleConnection(SOCKET server, SOCKET client) {
 	shutdown(client, SD_SEND);
+	using Type = Message::Type;
 
-	// receive all messages regardless of type,
-	// echo to screen. Breaks when GOODBYE is received,
-	// or socket is closed
+	// Receive all messages regardless of type, echo to screen. 
+	// Breaks when GOODBYE is received, or socket is closed
 	while (true) {
 		std::optional<Message> messageOpt = Message::TryReceive(client);
-		if (!messageOpt.has_value()) {
-			// no message, socket closed
+		if (!messageOpt) {
 			std::cout << "Malformed/no message received\n";
 			break;
 		}
 
-		Message message = messageOpt.value();
-		if (message.type == Message::Type::GOODBYE) {
+		Message message = std::move(*messageOpt);
+		if (message.type == Type::GOODBYE) {
 			// goodbye message received, client is hecking off to god knows where else
 			std::cout << "Received GOODBYE\n";
 			break;
 		}
+		
+		switch (message.type) {
+			case Type::NUMBER_64:
+				int64_t receivedNumber;
+				memcpy(&receivedNumber, message.data.data(), sizeof(int64_t));
 
-		if (message.type == Message::Type::NUMBER_64) {
-			int64_t receivedNumber;
-			memcpy(&receivedNumber, message.data.data(), sizeof(int64_t));
+				// convert from network to host byte order
+				receivedNumber = ntohll(receivedNumber);
+				std::cout << "Received NUMBER_64: " << receivedNumber << "\n";
+				break;
 
-			// convert from network to host byte order
-			receivedNumber = ntohll(receivedNumber);
-			std::cout << "Received NUMBER_64: " << receivedNumber << "\n";
-		}
-		else if (message.type == Message::Type::STRING) {
-			std::string receivedString(message.data.data(), message.length);
-			std::cout << "Received STRING: " << receivedString << "\n";
-		}
-		else {
-			std::cout << "Invalid message type received " << message.type << "\n";
+			case Type::STRING: {
+				std::string receivedString(message.data.data(), message.length);
+				std::cout << "Received STRING: " << receivedString << "\n";
+				break;
+			}
+
+			case Type::IMAGE_PNG:
+			case Type::IMAGE_JPG: {
+				std::wstring extension = (message.type == Type::IMAGE_PNG) ? L".png" : L".jpg";
+				std::cout << "Received IMAGE_" << ((message.type == Type::IMAGE_PNG) ? "PNG" : "JPG") << "\n";
+				
+				IKnownFolderManager* folderManager = nullptr;
+				if (!SUCCEEDED(CoCreateInstance(CLSID_KnownFolderManager, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&folderManager)))) {
+					std::cerr << "Failed to obtain a KnownFolderManager to save the image\n";
+					break;
+				}
+
+				IKnownFolder* picturesFolder = nullptr;
+				if (!SUCCEEDED(folderManager->GetFolder(FOLDERID_Pictures, &picturesFolder))) {
+					std::cerr << "Failed to obtain KnownFolder FOLDERID_Pictures\n";
+					folderManager->Release();
+					break;
+				}
+
+				LPWSTR picturesFolderPath = nullptr;
+				if (!SUCCEEDED(picturesFolder->GetPath(KF_FLAG_DEFAULT, &picturesFolderPath)) || picturesFolderPath == nullptr) {
+					std::cerr << "Failed to get path for KnownFolder FOLDERID_Pictures\n";
+					folderManager->Release();
+					picturesFolder->Release();
+					break;
+				}
+
+				std::wstring picturesPath(picturesFolderPath);
+				picturesPath = picturesPath + L"\\receivedImage" + extension;
+
+				std::ofstream outFile(picturesPath, std::ios::binary);
+				if (!outFile.is_open()) {
+					std::wcerr << "Failed to open " << picturesPath << "\n";
+				}
+				else {
+					outFile.write(message.data.data(), message.data.size());
+					std::wcout << "Wrote image to '" << picturesPath << "'\n";
+				}
+
+				CoTaskMemFree(picturesFolderPath);
+				folderManager->Release();
+				picturesFolder->Release();
+				break;
+			}
+
+			default:
+				std::cout << "Invalid message type received " << message.type << "\n";
+				break;
 		}
 	}
 
-	std::cout << "Client connection closed\n";
-
+	std::cout << "Connection closed\n";
 	shutdown(client, SD_RECEIVE);
 	closesocket(client);
 }

@@ -15,7 +15,8 @@ public:
 	enum Type : int32_t {
 		STRING = 0, // An ASCII string. No null terminator is included.
 		NUMBER_64 = 1, // A 64-bit signed integer.
-		IMAGE_BMP = 2, // a bitmap image, uncompressed
+		IMAGE_JPG = 2, // a JPEG-encoded image
+		IMAGE_PNG = 3, // a PNG-encoded image
 		GOODBYE = ~0 // A special type, indicating the conversation is over.
 	};
 

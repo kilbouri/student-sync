@@ -9,7 +9,7 @@
 
 Client::Client(std::string_view serverHostname, int serverPort)
 	: hostname{ std::string(serverHostname) }, port{ std::to_string(serverPort) }, hints{},
-	connectSocket{ INVALID_SOCKET }, serverAddress{ nullptr }
+	serverSocket{ INVALID_SOCKET }, serverAddress{ nullptr }
 {
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
@@ -31,7 +31,7 @@ int Client::Initialize() {
 	}
 
 	serverAddress = resolvedAddress;
-	connectSocket = acquiredSocket;
+	serverSocket = acquiredSocket;
 	return 0;
 }
 
@@ -46,9 +46,9 @@ std::optional<std::string> ReceiveMessage(SOCKET socket) {
 }
 
 int Client::Connect() {
-	if (connect(connectSocket, serverAddress->ai_addr, (int)serverAddress->ai_addrlen) == SOCKET_ERROR) {
-		closesocket(connectSocket);
-		connectSocket = INVALID_SOCKET;
+	if (connect(serverSocket, serverAddress->ai_addr, (int)serverAddress->ai_addrlen) == SOCKET_ERROR) {
+		closesocket(serverSocket);
+		serverSocket = INVALID_SOCKET;
 
 		freeaddrinfo(serverAddress);
 		serverAddress = nullptr;
@@ -59,85 +59,106 @@ int Client::Connect() {
 	freeaddrinfo(serverAddress);
 	serverAddress = nullptr;
 
-	std::string buffer;
-	int64_t number = 0;
-	int choice;
-
 	auto invalidInput = []() {
 		std::cout << "Invalid input, try again: ";
 		std::cin.clear();
 		std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 	};
 
+	enum Choice : int {
+		STRING = 0,
+		NUMBER = 1,
+		SCREENSHOT_JPG = 2,
+		SCREENSHOT_PNG = 3,
+		GOODBYE = 4
+	};
+
+	int choice;
 	do {
 		std::cout
 			<< "What data would you like to send?\n"
-			<< "STRING = 0\n"
-			<< "NUMBER = 1\n"
-			<< "SCREENSHOT = 2\n"
-			<< "GOODBYE = 3\n";
+			<< "STRING = " << Choice::STRING << "\n"
+			<< "NUMBER = " << Choice::NUMBER << "\n"
+			<< "SCREENSHOT (JPG) = " << Choice::SCREENSHOT_JPG << "\n"
+			<< "SCREENSHOT (PNG) = " << Choice::SCREENSHOT_PNG << "\n"
+			<< "GOODBYE = " << Choice::GOODBYE << "\n";
 
-		while (!(std::cin >> choice)) {
-			invalidInput();
-		}
+		while (!(std::cin >> choice)) { invalidInput(); }
 
 		std::cin.clear();
 		std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-		if (choice == 0) { //STRING
-			std::cout << "Please type your String: ";
-			std::getline(std::cin, buffer);
+		std::unique_ptr<Message> messageToSend = nullptr;
 
-			if (Message(buffer).Send(connectSocket)) {
-				std::cout << "WARNING: send() failed with code " << GetLastError() << "\n";
-				closesocket(connectSocket);
-				continue;
+		switch (choice) {
+			case Choice::STRING: {
+				std::string userString;
+
+				std::cout << "Please type your String: ";
+				std::getline(std::cin, userString);
+
+				messageToSend = std::make_unique<Message>(userString);
+				break;
 			}
-		}
-		else if (choice == 1) { // NUMBER
-			std::cout << "Please type your Number: ";
 
-			while (!(std::cin >> number)) {
+			case Choice::NUMBER: {
+				int64_t userNumber;
+
+				std::cout << "Please type your Number: ";
+				while (!(std::cin >> userNumber)) { invalidInput(); }
+
+				messageToSend = std::make_unique<Message>(userNumber);
+				break;
+			}
+
+			case Choice::SCREENSHOT_JPG:
+			case Choice::SCREENSHOT_PNG: {
+				DisplayCapturer::Format format;
+				Message::Type messageType;
+
+				if (choice == Choice::SCREENSHOT_JPG) {
+					format = DisplayCapturer::Format::JPG;
+					messageType = Message::Type::IMAGE_JPG;
+				}
+				else {
+					format = DisplayCapturer::Format::PNG;
+					messageType = Message::Type::IMAGE_PNG;
+				}
+
+				auto captureResult = DisplayCapturer::CaptureScreen(format);
+				if (!captureResult) {
+					std::cerr << "Failed to capture screen\n";
+					messageToSend = nullptr;
+					break;
+				}
+
+				std::vector<char> captureData = std::move(*captureResult);
+				messageToSend = std::make_unique<Message>(messageType, captureData);
+
+				break;
+			}
+
+			case Choice::GOODBYE:
+				messageToSend = std::make_unique<Message>(Message::Goodbye());
+				break;
+
+			default:
 				invalidInput();
-			};
-
-			if (Message(number).Send(connectSocket)) {
-				std::cout << "WARNING: send() failed with code " << GetLastError() << "\n";
-				closesocket(connectSocket);
 				continue;
-			}
 		}
-		else if (choice == 2) { // SCREENSHOT
-			std::optional<std::vector<char>> screenshotData = DisplayCapturer::CaptureScreen(DisplayCapturer::Format::PNG);
-			if (!screenshotData.has_value()) {
-				std::cerr << "Failed to capture screenshot\n";
-				continue;
-			}
-			std::vector<char> data = screenshotData.value();
 
-			std::ofstream outFile("./screenshot.png", std::ios::binary);
-			if (!outFile.is_open()) {
-				std::cout << "Failed to open ./screenshot.png\n";
-			}
-
-			outFile.write(data.data(), data.size());
-			outFile.close();
-
-			std::cout << "Write complete. Check ./screenshot.png!\n";
-		}
-		else if (choice != 3) {
-			invalidInput();
+		if (messageToSend == nullptr) {
+			std::cerr << "No message to send!\n";
 			continue;
 		}
 
-		std::cout << std::flush;
+		int sendStatus = (*messageToSend).Send(serverSocket);
+		if (sendStatus != 0) {
+			std::cerr << "Failed to send message with error code " << GetLastError() << "\n";
+		}
+	} while (choice != Choice::GOODBYE);
 
-	} while (choice != 3);
-
-	// this may fail but who cares
-	Message::Goodbye().Send(connectSocket);
-	shutdown(connectSocket, SD_SEND);
-
+	shutdown(serverSocket, SD_BOTH);
 	return 0;
 }
 
@@ -145,9 +166,9 @@ Client::~Client() {
 	std::cout << "Destroying client!\n";
 
 	// clean up listen socket
-	if (connectSocket != INVALID_SOCKET) {
-		closesocket(connectSocket);
-		connectSocket = INVALID_SOCKET;
+	if (serverSocket != INVALID_SOCKET) {
+		closesocket(serverSocket);
+		serverSocket = INVALID_SOCKET;
 	}
 
 	if (serverAddress != nullptr) {

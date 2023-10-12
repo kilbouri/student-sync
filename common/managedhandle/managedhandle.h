@@ -11,7 +11,6 @@ public:
 	~ManagedHandle() { deleter(this->value); }
 	
 	operator TValue() { return this->value; }
-	
 
 private:
 	TValue value;

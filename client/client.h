@@ -18,5 +18,5 @@ private:
 
 	struct addrinfo hints;
 	struct addrinfo* serverAddress;
-	SOCKET connectSocket;
+	SOCKET serverSocket;
 };
