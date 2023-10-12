@@ -109,24 +109,9 @@ void HandleConnection(SOCKET server, SOCKET client) {
 				std::wstring extension = (message.type == Type::IMAGE_PNG) ? L".png" : L".jpg";
 				std::cout << "Received IMAGE_" << ((message.type == Type::IMAGE_PNG) ? "PNG" : "JPG") << "\n";
 				
-				IKnownFolderManager* folderManager = nullptr;
-				if (!SUCCEEDED(CoCreateInstance(CLSID_KnownFolderManager, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&folderManager)))) {
-					std::cerr << "Failed to obtain a KnownFolderManager to save the image\n";
-					break;
-				}
-
-				IKnownFolder* picturesFolder = nullptr;
-				if (!SUCCEEDED(folderManager->GetFolder(FOLDERID_Pictures, &picturesFolder))) {
-					std::cerr << "Failed to obtain KnownFolder FOLDERID_Pictures\n";
-					folderManager->Release();
-					break;
-				}
-
 				LPWSTR picturesFolderPath = nullptr;
-				if (!SUCCEEDED(picturesFolder->GetPath(KF_FLAG_DEFAULT, &picturesFolderPath)) || picturesFolderPath == nullptr) {
-					std::cerr << "Failed to get path for KnownFolder FOLDERID_Pictures\n";
-					folderManager->Release();
-					picturesFolder->Release();
+				if (!SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Pictures, 0, nullptr, &picturesFolderPath))) {
+					std::cerr << "Failed to obtain user Pictures folder\n";
 					break;
 				}
 
@@ -143,8 +128,6 @@ void HandleConnection(SOCKET server, SOCKET client) {
 				}
 
 				CoTaskMemFree(picturesFolderPath);
-				folderManager->Release();
-				picturesFolder->Release();
 				break;
 			}
 
