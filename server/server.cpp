@@ -9,11 +9,40 @@
 void HandleConnection(SOCKET server, SOCKET client);
 
 /**
- * Creates a server that will listen on the specified port
+ * Creates a server that will listen on the specified interface and port
  */
-Server::Server(int portNumber, bool netAttach)
-	: ipAddress{ netAttach ? "0.0.0.0" : "127.0.0.1" }, port{ std::to_string(portNumber) }, listenSocket{ INVALID_SOCKET }
+Server::Server(std::string& ipAddress, int portNumber)
+	: ipAddress{ std::string(ipAddress) }, portNumber{ portNumber }, listenSocket{ INVALID_SOCKET }
 {}
+
+std::string Server::GetExternalAddress() {
+	return std::string(ipAddress);
+}
+
+int Server::GetPortNumber() {
+	if (listenSocket == INVALID_SOCKET) {
+		// This shouldn't happen unless Initialize() wasn't called first.
+		// Which makes this a pretty exceptional circumstance.
+		throw "GetPortNumber called while Server has invalid socket";
+	}
+
+	// if port is non-zero, and we are successfully bound, then the port is the same
+	if (portNumber != 0) {
+		return portNumber;
+	}
+
+	// if the port is zero, and we are successfully bound, then the port is unknown and must be retrieved
+	
+	struct sockaddr_in socketInfo = {};
+	int socketInfoLength = sizeof(socketInfo);
+
+	if (getsockname(listenSocket, (struct sockaddr*)&socketInfo, &socketInfoLength) != 0) {
+		throw "Failed to get server socket info";
+	}
+
+	portNumber = ntohs(socketInfo.sin_port);
+	return portNumber;
+}
 
 /**
  * Prepares the server to start listening for connections.
@@ -25,7 +54,6 @@ int Server::Initialize() {
 		listenSocket = INVALID_SOCKET;
 	}
 
-
 	struct addrinfo hints = { .ai_family = AF_INET, .ai_socktype = SOCK_STREAM, .ai_protocol = IPPROTO_TCP };
 	listenSocket = socket(hints.ai_family, hints.ai_socktype, hints.ai_protocol);
 
@@ -34,7 +62,7 @@ int Server::Initialize() {
 	}
 
 	struct addrinfo* addressInfo;
-	if (getaddrinfo(ipAddress.c_str(), port.c_str(), &hints, &addressInfo)) {
+	if (getaddrinfo(ipAddress.c_str(), std::to_string(portNumber).c_str(), &hints, &addressInfo)) {
 		return 1;
 	}
 

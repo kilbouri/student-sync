@@ -3,22 +3,21 @@
 #include "client/client.h"
 #include <optional>
 #include <iomanip>
+#include <unordered_map>
 
 constexpr auto MODE_SERVER = 1;
 constexpr auto MODE_CLIENT = 2;
+constexpr auto INVALID_TRY_AGAIN = "Invalid, try again: ";
 
-int Winsock2Startup();
-void Winsock2Shutdown();
-int GdiPlusStartup(ULONG_PTR* tokenOut);
-void GdiPlusShutdown(ULONG_PTR token);
+int DoRunServer();
+int DoRunClient();
 
 typedef struct {
 	std::string name;
 	std::wstring friendlyName;
 	std::vector<std::string> ipAddresses;
 } SystemInterface;
-
-std::optional<std::vector<SystemInterface>> GetInterfaces();
+std::optional<std::vector<SystemInterface>> GetNetworkAdapters();
 
 int main() {
 	// Initialize GDI+
@@ -47,124 +46,108 @@ int main() {
 		return 1;
 	}
 
+	// A closure that performs pre-exit cleanup. Any exiting path should call this.
+	// TODO: does a better way exist?
 	auto Quit = [gdiPlusToken](int exitCode) {
 		Winsock2Shutdown();
 		GdiPlusShutdown(gdiPlusToken);
-		return exitCode;
+		return exitCode; // allows return chaining for pretty syntax :)
 	};
 
-	std::cout << "\n--- BEGIN INTERFACE LIST ---\n";
-	auto interfaces = GetInterfaces();
-	if (interfaces) {
-		size_t maxInterfaceNameLength = 0;
-		for (auto& $interface : *interfaces) {
-			maxInterfaceNameLength = std::max(maxInterfaceNameLength, $interface.friendlyName.length());
-		}
-
-		for (auto& $interface : *interfaces) {
-			int addrCount = $interface.ipAddresses.size();
-
-			std::wcout << std::setw(maxInterfaceNameLength) << $interface.friendlyName;
-			std::cout << ": ";
-
-			std::string_view sep = "";
-			for (auto& address : $interface.ipAddresses) {
-				std::cout << sep << address;
-				sep = ", ";
-			}
-			std::cout << "\n";
-		}
-	}
-	std::cout << "--- END INTERFACE LIST ---\n\n";
-
-	std::cout << "Should I be a client, or a server?\n" << MODE_SERVER << ": server\n" << MODE_CLIENT << ": client\n";
-
 	int mode;
-	std::cin >> mode;
+	std::cout << "Client or server? (server = " << MODE_SERVER << ", client = " << MODE_CLIENT << "): ";
+	while (!(std::cin >> mode) || !(mode == MODE_SERVER || mode == MODE_CLIENT)) {
+		std::cout << INVALID_TRY_AGAIN;
+	}
 
 	if (mode == MODE_SERVER) {
-		int port;
-		std::cout << "On which port shall I listen? ";
-		std::cin >> port;
-
-		int localhostOnly;
-		std::cout << "Local host only? (yes = 1, no = 0)";
-		std::cin >> localhostOnly;
-
-		Server server(port, !localhostOnly);
-
-		if (server.Initialize() != 0) {
-			std::cerr << "Failed to start server\n";
-			return Quit(1);
-		}
-
-		std::cout << "Starting server on port " << port << "\n";
-		server.Start();
-		return Quit(1);
+		return Quit(DoRunServer());
 	}
 	else if (mode == MODE_CLIENT) {
-		int serverPort;
-		std::cout << "What port is the server listening on? ";
-		std::cin >> serverPort;
-
-		Client client{ "localhost", serverPort };
-
-		if (client.Initialize() != 0) {
-			std::cerr << "Failed to start client\n";
-			return Quit(1);
-		}
-
-		client.Connect();
-		return Quit(0);
+		return Quit(DoRunClient());
 	}
 	else {
-		std::cout << "Invalid selection.\n";
+		// should never happen, but  ＼（〇_ｏ）／
+		std::cout << "Invalid choice. Somehow.\n";
 		return Quit(1);
 	}
 }
 
-int Winsock2Startup() {
-	WORD winsockVersion = MAKEWORD(2, 2); // version 2.2
-	WSADATA winsockData;
-
-	int socketStartupCode = WSAStartup(winsockVersion, &winsockData);
-	if (socketStartupCode != 0) {
-		return -1; // start failed
-	}
-
-	if (winsockData.wVersion != winsockVersion) {
-		return 1; // bad version
-	}
-
-	return 0;
-}
-
-void Winsock2Shutdown() {
-	WSACleanup();
-}
-
-int GdiPlusStartup(ULONG_PTR* tokenOut) {
-	if (tokenOut == NULL) {
-		throw "Null tokenOut pointer received in GdiPlusStartup";
-	}
-
-	Gdiplus::GdiplusStartupInput startupInfo;
-	Gdiplus::Status startStatus = Gdiplus::GdiplusStartup(tokenOut, &startupInfo, NULL);
-
-	if (startStatus != Gdiplus::Status::Ok) {
+int DoRunServer() {
+	auto getInterfaceResult = GetNetworkAdapters();
+	if (!getInterfaceResult) {
+		std::cerr << "Failed to enumerate network adapters\n";
 		return 1;
 	}
 
-	// this is important for image capture to obtain the entire screen
-	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+	auto& adapters = *getInterfaceResult;
+
+	std::cout << "Which network adapter should the server bind to?\n";
+	std::unordered_map<int, std::string&> indexToAddress{};
+
+	int addressOptionNumber = 1;
+	for (auto& adapter : adapters) {
+		for (auto& address : adapter.ipAddresses) {
+			indexToAddress.insert(std::pair<const int, std::string&>(addressOptionNumber, address));
+
+			std::cout << addressOptionNumber << ": " << address << " (on ";
+			std::wcout << adapter.friendlyName;
+			std::cout << ")\n";
+
+			addressOptionNumber++;
+		}
+	}
+
+	int addressChoiceNumber;
+	while (!(std::cin >> addressChoiceNumber) || !(1 <= addressChoiceNumber && addressChoiceNumber <= addressOptionNumber)) {
+		std::cout << INVALID_TRY_AGAIN;
+	}
+
+	std::string& chosenAddress = indexToAddress.at(addressChoiceNumber);
+
+	int port;
+	std::cout << "What port should the server use? (0 = any) ";
+	while (!(std::cin >> port)) {
+		std::cout << INVALID_TRY_AGAIN;
+	}
+
+	Server server(chosenAddress, port);
+
+	if (server.Initialize() != 0) {
+		int errorCode = GetLastError();
+		if (errorCode == WSAEADDRNOTAVAIL) {
+			std::cerr << "Unable to bind to requested interface/port\n";
+		}
+		else {
+			std::cerr << "Failed to start server with code " << GetLastError() << "\n";
+		}
+		return 1;
+	}
+
+	std::cout << "Starting server at " << server.GetExternalAddress() << ":" << server.GetPortNumber() << "\n";
+	server.Start();
+
+	return 1; // we should never get here, as Start is non-returning
+}
+
+int DoRunClient() {
+	int serverPort;
+	std::cout << "What port is the server listening on? ";
+	std::cin >> serverPort;
+
+	Client client{ "localhost", serverPort };
+
+	if (client.Initialize() != 0) {
+		std::cerr << "Failed to start client\n";
+		return 1;
+	}
+
+	client.Connect();
 	return 0;
 }
 
-void GdiPlusShutdown(ULONG_PTR token) {
-	Gdiplus::GdiplusShutdown(token);
-}
-
-std::optional<std::vector<SystemInterface>> GetInterfaces() {
+// Retrieves information about all IPv4-compatible interfaces on the host.
+std::optional<std::vector<SystemInterface>> GetNetworkAdapters() {
 	ULONG family = AF_INET;
 	PIP_ADAPTER_ADDRESSES adapters = nullptr;
 	ULONG bufferSize = 0;
@@ -177,7 +160,7 @@ std::optional<std::vector<SystemInterface>> GetInterfaces() {
 			return std::nullopt;
 		}
 
-		if (GetAdaptersAddresses(family, flags, NULL, adapters, &bufferSize) != NOERROR) {
+		if (GetAdaptersAddresses(family, flags, nullptr, adapters, &bufferSize) != NOERROR) {
 			std::free(adapters);
 			return std::nullopt;
 		}
@@ -203,6 +186,11 @@ std::optional<std::vector<SystemInterface>> GetInterfaces() {
 			inet_ntop(AF_INET, &(ipv4->sin_addr), ipString, sizeof(ipString));
 
 			addresses.push_back(std::string(ipString));
+		}
+
+		if (addresses.size() == 0) {
+			// ignore adapters with no assigned IP address
+			continue;
 		}
 
 		thisInterface.name = std::string(currentAdapter->AdapterName);
