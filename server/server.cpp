@@ -11,43 +11,39 @@ void HandleConnection(SOCKET server, SOCKET client);
 /**
  * Creates a server that will listen on the specified port
  */
-Server::Server(int portNumber)
-	: port{ std::to_string(portNumber) }, hints{}, listenSocket{ INVALID_SOCKET }
-{
-	hints.ai_family = AF_INET; // IPv4
-	hints.ai_socktype = SOCK_STREAM; // this already has TCP implied for IPv4 but...
-	hints.ai_protocol = IPPROTO_TCP; // ...the docs say to also include this
-	hints.ai_flags = AI_PASSIVE; // indicates will call bind() with this socket
-}
+Server::Server(int portNumber, bool netAttach)
+	: ipAddress{ netAttach ? "0.0.0.0" : "127.0.0.1" }, port{ std::to_string(portNumber) }, listenSocket{ INVALID_SOCKET }
+{}
 
 /**
  * Prepares the server to start listening for connections.
  */
 int Server::Initialize() {
-	// get granted address information
-	struct addrinfo* resolvedAddress;
+	// while this should never be called multiple times, can't hurt to make sure the old socket gets cleaned
+	if (listenSocket != INVALID_SOCKET) {
+		closesocket(listenSocket);
+		listenSocket = INVALID_SOCKET;
+	}
 
-	if (getaddrinfo(nullptr, port.c_str(), &hints, &resolvedAddress) != 0) {
+
+	struct addrinfo hints = { .ai_family = AF_INET, .ai_socktype = SOCK_STREAM, .ai_protocol = IPPROTO_TCP };
+	listenSocket = socket(hints.ai_family, hints.ai_socktype, hints.ai_protocol);
+
+	if (listenSocket == INVALID_SOCKET) {
 		return 1;
 	}
 
-	// try to obtain a socket
-	SOCKET acquiredSocket = socket(resolvedAddress->ai_family, resolvedAddress->ai_socktype, resolvedAddress->ai_protocol);
-	if (acquiredSocket == INVALID_SOCKET) {
-		freeaddrinfo(resolvedAddress);
+	struct addrinfo* addressInfo;
+	if (getaddrinfo(ipAddress.c_str(), port.c_str(), &hints, &addressInfo)) {
 		return 1;
 	}
 
-	// try to bind the socket
-	if (bind(acquiredSocket, resolvedAddress->ai_addr, (int)resolvedAddress->ai_addrlen) == SOCKET_ERROR) {
-		freeaddrinfo(resolvedAddress);
-		closesocket(acquiredSocket);
-
+	if (bind(listenSocket, addressInfo->ai_addr, addressInfo->ai_addrlen) == SOCKET_ERROR) {
 		return 1;
 	}
 
-	freeaddrinfo(resolvedAddress);
-	listenSocket = acquiredSocket;
+	freeaddrinfo(addressInfo);
+	addressInfo = nullptr;
 	return 0;
 }
 
@@ -87,7 +83,7 @@ void HandleConnection(SOCKET server, SOCKET client) {
 			std::cout << "Received GOODBYE\n";
 			break;
 		}
-		
+
 		switch (message.type) {
 			case Type::NUMBER_64:
 				int64_t receivedNumber;
@@ -108,7 +104,7 @@ void HandleConnection(SOCKET server, SOCKET client) {
 			case Type::IMAGE_JPG: {
 				std::wstring extension = (message.type == Type::IMAGE_PNG) ? L".png" : L".jpg";
 				std::cout << "Received IMAGE_" << ((message.type == Type::IMAGE_PNG) ? "PNG" : "JPG") << "\n";
-				
+
 				LPWSTR picturesFolderPath = nullptr;
 				if (!SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Pictures, 0, nullptr, &picturesFolderPath))) {
 					std::cerr << "Failed to obtain user Pictures folder\n";

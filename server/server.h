@@ -7,15 +7,14 @@
 
 class Server {
 public:
-	Server(int portNumber);
+	Server(int portNumber, bool netAttach = false);
 
 	int Initialize();
 	int Start();
 
 	~Server();
 private:
-	std::string port;
-
-	struct addrinfo hints;
+	const std::string port;
+	const std::string ipAddress;
 	SOCKET listenSocket;
 };

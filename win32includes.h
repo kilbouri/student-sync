@@ -2,12 +2,14 @@
 
 #pragma comment(lib, "Ws2_32.lib") // this indicates the WinSock2 DLL is needed
 #pragma comment(lib, "gdiplus.lib") // this indicates the GDI+ DLL is needed
+#pragma comment(lib, "IPHLPAPI.lib") // this indicates the IP Helper API DLL is needed
 
 #define NOMINMAX // disable Min/Max macros in minwindef.h (included transitively below)
 
 // WinSock2 must be first, to prevent the inclusion of
 // WinSock1. Both cannot coexist.
 #include <WinSock2.h>
+#include <iphlpapi.h> // this must be after WinSock2.h
 #include <WS2tcpip.h>
 #include <Windows.h>
 #include <gdiplus.h>

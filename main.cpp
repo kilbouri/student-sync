@@ -1,6 +1,8 @@
 ﻿#include "win32includes.h"
 #include "server/server.h"
 #include "client/client.h"
+#include <optional>
+#include <iomanip>
 
 constexpr auto MODE_SERVER = 1;
 constexpr auto MODE_CLIENT = 2;
@@ -9,6 +11,14 @@ int Winsock2Startup();
 void Winsock2Shutdown();
 int GdiPlusStartup(ULONG_PTR* tokenOut);
 void GdiPlusShutdown(ULONG_PTR token);
+
+typedef struct {
+	std::string name;
+	std::wstring friendlyName;
+	std::vector<std::string> ipAddresses;
+} SystemInterface;
+
+std::optional<std::vector<SystemInterface>> GetInterfaces();
 
 int main() {
 	// Initialize GDI+
@@ -43,6 +53,30 @@ int main() {
 		return exitCode;
 	};
 
+	std::cout << "\n--- BEGIN INTERFACE LIST ---\n";
+	auto interfaces = GetInterfaces();
+	if (interfaces) {
+		size_t maxInterfaceNameLength = 0;
+		for (auto& $interface : *interfaces) {
+			maxInterfaceNameLength = std::max(maxInterfaceNameLength, $interface.friendlyName.length());
+		}
+
+		for (auto& $interface : *interfaces) {
+			int addrCount = $interface.ipAddresses.size();
+
+			std::wcout << std::setw(maxInterfaceNameLength) << $interface.friendlyName;
+			std::cout << ": ";
+
+			std::string_view sep = "";
+			for (auto& address : $interface.ipAddresses) {
+				std::cout << sep << address;
+				sep = ", ";
+			}
+			std::cout << "\n";
+		}
+	}
+	std::cout << "--- END INTERFACE LIST ---\n\n";
+
 	std::cout << "Should I be a client, or a server?\n" << MODE_SERVER << ": server\n" << MODE_CLIENT << ": client\n";
 
 	int mode;
@@ -53,7 +87,11 @@ int main() {
 		std::cout << "On which port shall I listen? ";
 		std::cin >> port;
 
-		Server server{ port };
+		int localhostOnly;
+		std::cout << "Local host only? (yes = 1, no = 0)";
+		std::cin >> localhostOnly;
+
+		Server server(port, !localhostOnly);
 
 		if (server.Initialize() != 0) {
 			std::cerr << "Failed to start server\n";
@@ -124,4 +162,54 @@ int GdiPlusStartup(ULONG_PTR* tokenOut) {
 
 void GdiPlusShutdown(ULONG_PTR token) {
 	Gdiplus::GdiplusShutdown(token);
+}
+
+std::optional<std::vector<SystemInterface>> GetInterfaces() {
+	ULONG family = AF_INET;
+	PIP_ADAPTER_ADDRESSES adapters = nullptr;
+	ULONG bufferSize = 0;
+
+	int flags = GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST;
+	if (GetAdaptersAddresses(family, flags, NULL, adapters, &bufferSize) == ERROR_BUFFER_OVERFLOW) {
+		adapters = (PIP_ADAPTER_ADDRESSES)std::malloc(bufferSize);
+
+		if (adapters == nullptr) {
+			return std::nullopt;
+		}
+
+		if (GetAdaptersAddresses(family, flags, NULL, adapters, &bufferSize) != NOERROR) {
+			std::free(adapters);
+			return std::nullopt;
+		}
+	}
+
+	std::vector<SystemInterface> result;
+	for (PIP_ADAPTER_ADDRESSES currentAdapter = adapters; currentAdapter != nullptr; currentAdapter = currentAdapter->Next) {
+		SystemInterface thisInterface{};
+
+		if (!currentAdapter->FirstUnicastAddress) {
+			continue;
+		}
+
+		std::vector<std::string> addresses;
+		for (PIP_ADAPTER_UNICAST_ADDRESS unicastAddr = currentAdapter->FirstUnicastAddress; unicastAddr != nullptr; unicastAddr = unicastAddr->Next) {
+			struct sockaddr* socketAddress = unicastAddr->Address.lpSockaddr;
+			if (socketAddress->sa_family != AF_INET) {
+				continue; // not IPv4, skip
+			}
+
+			struct sockaddr_in* ipv4 = (struct sockaddr_in*)socketAddress;
+			char ipString[INET_ADDRSTRLEN];
+			inet_ntop(AF_INET, &(ipv4->sin_addr), ipString, sizeof(ipString));
+
+			addresses.push_back(std::string(ipString));
+		}
+
+		thisInterface.name = std::string(currentAdapter->AdapterName);
+		thisInterface.friendlyName = std::wstring(currentAdapter->FriendlyName);
+		thisInterface.ipAddresses = addresses;
+		result.push_back(thisInterface);
+	}
+
+	return result;
 }
