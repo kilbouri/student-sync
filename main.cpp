@@ -206,5 +206,6 @@ std::optional<std::vector<SystemInterface>> GetNetworkAdapters() {
 		result.push_back(thisInterface);
 	}
 
+	std::free(adapters);
 	return result;
 }
