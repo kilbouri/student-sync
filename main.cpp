@@ -4,6 +4,7 @@
 #include <optional>
 #include <iomanip>
 #include <unordered_map>
+#include <string>
 
 constexpr auto MODE_SERVER = 1;
 constexpr auto MODE_CLIENT = 2;
@@ -131,12 +132,18 @@ int DoRunServer() {
 }
 
 int DoRunClient() {
-	int serverPort;
-	std::cout << "What port is the server listening on? ";
-	std::cin >> serverPort;
+	std::cout << "What is the server address? ";
+	std::string serverAddress;
+	std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+	std::getline(std::cin, serverAddress);
 
-	Client client{ "localhost", serverPort };
+	std::cout << "What is the server port? ";
+	int portNumber;
+	while (!(std::cin >> portNumber) || portNumber == 0) {
+		std::cout << INVALID_TRY_AGAIN;
+	}
 
+	Client client(serverAddress, portNumber);
 	if (client.Initialize() != 0) {
 		std::cerr << "Failed to start client\n";
 		return 1;
