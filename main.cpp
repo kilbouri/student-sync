@@ -83,6 +83,14 @@ int DoRunServer() {
 
 	auto& adapters = *getInterfaceResult;
 
+	SystemInterface allInterfaces{
+		.name = "all interfaces",
+		.friendlyName = L"all interfaces",
+		.ipAddresses = std::vector<std::string>{"0.0.0.0"}
+	};
+
+	adapters.push_back(allInterfaces);
+
 	std::cout << "Which network adapter should the server bind to?\n";
 	std::unordered_map<int, std::string&> indexToAddress{};
 
@@ -91,13 +99,14 @@ int DoRunServer() {
 		for (auto& address : adapter.ipAddresses) {
 			indexToAddress.insert(std::pair<const int, std::string&>(addressOptionNumber, address));
 
-			std::cout << addressOptionNumber << ": " << address << " (on ";
+			std::cout << addressOptionNumber << ": " << address << " (";
 			std::wcout << adapter.friendlyName;
 			std::cout << ")\n";
 
 			addressOptionNumber++;
 		}
 	}
+
 
 	int addressChoiceNumber;
 	while (!(std::cin >> addressChoiceNumber) || !(1 <= addressChoiceNumber && addressChoiceNumber <= addressOptionNumber)) {
