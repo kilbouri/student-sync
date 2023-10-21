@@ -20,7 +20,9 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
 endif()
 
-# TODO: Add tests and install targets if needed.
+# Add wxWidgets library
+# Config info: https://docs.wxwidgets.org/latest/overview_cmake.html#cmake_options
 set(wxBUILD_SHARED OFF)
+set(wxBUILD_COMPATIBILITY "3.1")
 add_subdirectory(libs/wxWidgets)
 target_link_libraries(${PROJECT_NAME} wx::net wx::core wx::base)
