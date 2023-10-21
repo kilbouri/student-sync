@@ -12,10 +12,13 @@ endif()
 project ("comp-4990-project")
 
 # Add source to this project's executable.
-add_executable (comp-4990-project "main.cpp" "server/server.cpp" "server/server.h" "client/client.h" "client/client.cpp" "common/message/message.h" "common/message/message.cpp" "win32includes.h" "common/displaycapturer/displaycapturer.cpp" "common/displaycapturer/displaycapturer.h" "common/managedhandle/managedhandle.h")
+add_executable (comp-4990-project "main.cpp" "server/server.cpp" "server/server.h" "client/client.h" "client/client.cpp" "common/message/message.h" "common/message/message.cpp" "win32includes.h" "common/displaycapturer/displaycapturer.cpp" "common/displaycapturer/displaycapturer.h" "common/managedhandle/managedhandle.h" "GUI/GUI.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET comp-4990-project PROPERTY CXX_STANDARD 20)
 endif()
 
 # TODO: Add tests and install targets if needed.
+set (wxSHARED OFF)
+add_subdirectory(lib/wxWidgets)
+target_link_libraries(comp-4990-project wx::net wx::core wx::base)

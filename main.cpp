@@ -1,6 +1,7 @@
 ﻿#include "win32includes.h"
 #include "server/server.h"
 #include "client/client.h"
+#include "GUI/GUI.h"
 #include <optional>
 #include <iomanip>
 #include <unordered_map>
