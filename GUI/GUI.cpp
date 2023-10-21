@@ -1,69 +1,8 @@
 // For compilers that support precompilation, includes "wx/wx.h".
 
-#include <wx/wx.h>
+#include "GUI.h"
 
-class MyApp : public wxApp
-{
-public:
-    virtual bool OnInit();
-};
-//setting up the different frames...
-class MyFrame : public wxFrame
-{
-public:
-    MyFrame();
-
-private:
-    void OnClient(wxCommandEvent& event);
-    void OnServer(wxCommandEvent& event);
-
-    void OnExit(wxCommandEvent& event);
-    void OnAbout(wxCommandEvent& event);
-};
-
-class clientFrame : public wxFrame
-{
-public:
-    clientFrame();
-
-private:
-
-    void OnString(wxCommandEvent& event);
-    void OnNumber(wxCommandEvent& event);
-    void OnPNG(wxCommandEvent& event);
-    void OnJPG(wxCommandEvent& event);
-
-    void OnExit(wxCommandEvent& event);
-    void OnAbout(wxCommandEvent& event);
-};
-
-class serverFrame : public wxFrame
-{
-public:
-    serverFrame();
-
-private:
-
-    void OnDetails(wxCommandEvent& event);
-
-    void OnExit(wxCommandEvent& event);
-    void OnAbout(wxCommandEvent& event);
-};
-
-enum//enums for the tabs and etc. ALSO about and Exit already exist!
-{
-    ID_Client = 1,
-    ID_Server = 2,
-    ID_String = 3,
-    ID_Number = 4,
-    ID_PNG = 5,
-    ID_JPG = 6,
-    ID_Details = 7
-};
-
-wxIMPLEMENT_APP(MyApp);
-
-bool MyApp::OnInit()//initiates the frame: frame, 
+bool MyApp::OnInit() //initiates the frame: frame, 
 {
     MyFrame* frame = new MyFrame();
     frame->Show(true);// MAKE SURE TO ALWAYS DO THIS OR YOU WILL BE GASLIT
@@ -195,19 +134,19 @@ void clientFrame::OnString(wxCommandEvent& event)
 
 void clientFrame::OnNumber(wxCommandEvent& event)
 {
-    long result = wxGetNumberFromUser("Enter a number:", "Number Entry", "Enter Number", 50, 0, MAXIMUM_ALLOWED);
-    // Check if the user pressed OK or canceled
-    if (result != -1)
-    {
-        // User pressed OK, 'result' contains the entered number
-        wxMessageBox("Sending '" + wxString::Format("%ld", result) + "' to the server", "Number Entry Result", wxOK | wxICON_INFORMATION);
-        //this is where I would send the number
-    }
-    else
-    {
-        // User pressed Cancel
-        wxMessageBox("You canceled the number entry.", "Number Entry Result", wxOK | wxICON_INFORMATION);
-    }
+    //long result = wxGetNumberFromUser("Enter a number:", "Number Entry", "Enter Number", 50, 0, MAXIMUM_ALLOWED);
+    //// Check if the user pressed OK or canceled
+    //if (result != -1)
+    //{
+    //    // User pressed OK, 'result' contains the entered number
+    //    wxMessageBox("Sending '" + wxString::Format("%ld", result) + "' to the server", "Number Entry Result", wxOK | wxICON_INFORMATION);
+    //    //this is where I would send the number
+    //}
+    //else
+    //{
+    //    // User pressed Cancel
+    //    wxMessageBox("You canceled the number entry.", "Number Entry Result", wxOK | wxICON_INFORMATION);
+    //}
 }
 
 void clientFrame::OnJPG(wxCommandEvent& event)
@@ -255,12 +194,10 @@ void serverFrame::OnExit(wxCommandEvent& event)
 
 void serverFrame::OnAbout(wxCommandEvent& event)
 {
-    wxMessageBox("You're in the Server software poggers!",
-        "About this Software", wxOK | wxICON_INFORMATION);
+    wxMessageBox("You're in the Server software poggers!", "About this Software", wxOK | wxICON_INFORMATION);
 }
 
 void serverFrame::OnDetails(wxCommandEvent& event)//Either in about or in here I want to put the server connection details, ip and port for example.
 {
-    wxMessageBox("Deez Nutz",
-        "About this Software", wxOK | wxICON_INFORMATION);
+    wxMessageBox("Deez Nutz", "About this Software", wxOK | wxICON_INFORMATION);
 }

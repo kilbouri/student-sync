@@ -10,7 +10,7 @@
 
 struct MonitorInfo {
 	RECT rect;
-	char name[CCHDEVICENAME];
+	TCHAR name[CCHDEVICENAME];
 };
 
 std::optional<std::vector<MonitorInfo>> GetMonitors() {

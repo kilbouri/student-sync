@@ -9,16 +9,18 @@ if (POLICY CMP0141)
   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
 
-project ("comp-4990-project")
+set(PROJECT_NAME "comp-4990-project")
+project(${PROJECT_NAME})
 
 # Add source to this project's executable.
-add_executable (comp-4990-project "main.cpp" "server/server.cpp" "server/server.h" "client/client.h" "client/client.cpp" "common/message/message.h" "common/message/message.cpp" "win32includes.h" "common/displaycapturer/displaycapturer.cpp" "common/displaycapturer/displaycapturer.h" "common/managedhandle/managedhandle.h" "GUI/GUI.h")
+add_executable (${PROJECT_NAME} WIN32 "main.cpp" "server/server.cpp" "server/server.h" "client/client.h" "client/client.cpp" "common/message/message.h" "common/message/message.cpp" "win32includes.h" "common/displaycapturer/displaycapturer.cpp" "common/displaycapturer/displaycapturer.h" "common/managedhandle/managedhandle.h" "GUI/GUI.h" "GUI/GUI.cpp")
+target_sources(${PROJECT_NAME} PRIVATE appManifest.manifest)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET comp-4990-project PROPERTY CXX_STANDARD 20)
+  set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
 endif()
 
 # TODO: Add tests and install targets if needed.
-set (wxSHARED OFF)
-add_subdirectory(lib/wxWidgets)
-target_link_libraries(comp-4990-project wx::net wx::core wx::base)
+set(wxBUILD_SHARED OFF)
+add_subdirectory(libs/wxWidgets)
+target_link_libraries(${PROJECT_NAME} wx::net wx::core wx::base)

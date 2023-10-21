@@ -5,53 +5,50 @@
 class MyApp : public wxApp
 {
 public:
-    virtual bool OnInit();
+	bool OnInit() override;
 };
 
 class MyFrame : public wxFrame
 {
 public:
-    MyFrame();
+	MyFrame();
 private:
-    void OnClient(wxCommandEvent& event);
-    void OnServer(wxCommandEvent& event);
-    void OnExit(wxCommandEvent& event);
-    void OnAbout(wxCommandEvent& event);
+	void OnClient(wxCommandEvent& event);
+	void OnServer(wxCommandEvent& event);
+	void OnExit(wxCommandEvent& event);
+	void OnAbout(wxCommandEvent& event);
 };
 
 class clientFrame : public wxFrame
 {
 public:
-    clientFrame();
+	clientFrame();
 private:
-    void OnString(wxCommandEvent& event);
-    void OnNumber(wxCommandEvent& event);
-    void OnPNG(wxCommandEvent& event);
-    void OnJPG(wxCommandEvent& event);
-    void OnExit(wxCommandEvent& event);
-    void OnAbout(wxCommandEvent& event);
+	void OnString(wxCommandEvent& event);
+	void OnNumber(wxCommandEvent& event);
+	void OnPNG(wxCommandEvent& event);
+	void OnJPG(wxCommandEvent& event);
+	void OnExit(wxCommandEvent& event);
+	void OnAbout(wxCommandEvent& event);
 };
 
 class serverFrame : public wxFrame
 {
 public:
-    serverFrame();
+	serverFrame();
 private:
-    void OnDetails(wxCommandEvent& event);
-    void OnExit(wxCommandEvent& event);
-    void OnAbout(wxCommandEvent& event);
+	void OnDetails(wxCommandEvent& event);
+	void OnExit(wxCommandEvent& event);
+	void OnAbout(wxCommandEvent& event);
 };
 
 enum
 {
-    ID_Client = 1,
-    ID_Server = 2,
-    ID_String = 3,
-    ID_Number = 4,
-    ID_PNG = 5,
-    ID_JPG = 6,
-    ID_Details = 7
+	ID_Client = 1,
+	ID_Server = 2,
+	ID_String = 3,
+	ID_Number = 4,
+	ID_PNG = 5,
+	ID_JPG = 6,
+	ID_Details = 7
 };
-
-wxIMPLEMENT_APP(MyApp);
-
