@@ -1,6 +1,11 @@
 // For compilers that support precompilation, includes "wx/wx.h".
 
 #include "GUI.h"
+#include "../client/client.h"
+#include "../libs/wxWidgets/interface/wx/numdlg.h"
+
+std::string serverAddress;
+long serverPort;
 
 bool MyApp::OnInit() //initiates the frame: frame, 
 {
@@ -51,18 +56,24 @@ void MyFrame::OnAbout(wxCommandEvent& event)
 
 void MyFrame::OnClient(wxCommandEvent& event)//opens up the client window when selected, hopefully
 {
+    serverAddress = wxGetTextFromUser("Enter your Server's Address:", "Server Address", "");
+    long serverPort = wxGetNumberFromUser("Enter the Server's Port:", "Server Port", "Enter Number", 50, 0, LONG_MAX);
+
     clientFrame* cFrame = new clientFrame();
     cFrame->Show(true);// always do this still.
+    Close(true);
 }
 
 void MyFrame::OnServer(wxCommandEvent& event)
 {
     serverFrame* sFrame = new serverFrame();
     sFrame->Show(true);
+    Close(true);
 }
 
 clientFrame::clientFrame() : wxFrame(NULL, wxID_ANY, "ClientWindow")
 {
+
     wxMenu* menuFile = new wxMenu;
 
     menuFile->Append(ID_String, "&Send A String...\tCtrl-S",
@@ -92,6 +103,8 @@ clientFrame::clientFrame() : wxFrame(NULL, wxID_ANY, "ClientWindow")
 
     SetMenuBar(menuBar);
 
+   
+
     CreateStatusBar();
     SetStatusText("Client!");
 
@@ -115,47 +128,42 @@ void clientFrame::OnAbout(wxCommandEvent& event)
         "About this Software", wxOK | wxICON_INFORMATION);
 }
 
-void clientFrame::OnString(wxCommandEvent& event)
-{
+Client client(serverAddress, serverPort);
+
+void clientFrame::OnString(wxCommandEvent& event) {
+
     wxString result = wxGetTextFromUser("Enter your text:", "Text Entry", "");
-    // Check if the user pressed OK or canceled
-    if (!result.empty())
-    {
-        // User pressed OK, 'result' contains the entered text
+    if (!result.empty()) {
+        std::string strToSend = result.ToStdString();
+        client.SendString(strToSend);
         wxMessageBox("Sending '" + result + "' to the server", "Text Entry Result", wxOK | wxICON_INFORMATION);
-        //send the message here later 
     }
-    else
-    {
-        // User pressed Cancel
+    else {
         wxMessageBox("You canceled the text entry.", "Text Entry Result", wxOK | wxICON_INFORMATION);
     }
 }
 
-void clientFrame::OnNumber(wxCommandEvent& event)
-{
-    //long result = wxGetNumberFromUser("Enter a number:", "Number Entry", "Enter Number", 50, 0, MAXIMUM_ALLOWED);
-    //// Check if the user pressed OK or canceled
-    //if (result != -1)
-    //{
-    //    // User pressed OK, 'result' contains the entered number
-    //    wxMessageBox("Sending '" + wxString::Format("%ld", result) + "' to the server", "Number Entry Result", wxOK | wxICON_INFORMATION);
-    //    //this is where I would send the number
-    //}
-    //else
-    //{
-    //    // User pressed Cancel
-    //    wxMessageBox("You canceled the number entry.", "Number Entry Result", wxOK | wxICON_INFORMATION);
-    //}
+void clientFrame::OnNumber(wxCommandEvent& event) {
+
+    long result = wxGetNumberFromUser("Enter a number:", "Number Entry", "Enter Number", 50, 0, LONG_MAX);
+    if (result != -1) {
+        client.SendNumber(result);
+        wxMessageBox("Sending '" + wxString::Format("%ld", result) + "' to the server", "Number Entry Result", wxOK | wxICON_INFORMATION);
+    }
+    else {
+        wxMessageBox("You canceled the number entry.", "Number Entry Result", wxOK | wxICON_INFORMATION);
+    }
 }
 
-void clientFrame::OnJPG(wxCommandEvent& event)
-{
+void clientFrame::OnJPG(wxCommandEvent& event) {
+
+    client.SendScreenshot(DisplayCapturer::Format::JPG);
     wxLogMessage("Sending JPG...");
 }
 
-void clientFrame::OnPNG(wxCommandEvent& event)
-{
+void clientFrame::OnPNG(wxCommandEvent& event) {
+
+    client.SendScreenshot(DisplayCapturer::Format::PNG);
     wxLogMessage("Sending PNG...");
 }
 

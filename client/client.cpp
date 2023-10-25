@@ -5,7 +5,6 @@
 #include <string>
 
 #include "../common/message/message.h"
-#include "../common/displaycapturer/displaycapturer.h"
 
 Client::Client(std::string_view serverHostname, int serverPort)
 	: hostname{ std::string(serverHostname) }, port{ std::to_string(serverPort) }, hints{},
@@ -44,6 +43,37 @@ std::optional<std::string> ReceiveMessage(SOCKET socket) {
 	Message message = messageOpt.value();
 	return std::string{ message.data.data() };
 }
+
+void Client::SendString(const std::string& str) {
+    std::unique_ptr<Message> messageToSend = std::make_unique<Message>(str);
+    int sendStatus = messageToSend->Send(serverSocket);
+    // Handle sendStatus as needed
+}
+
+void Client::SendNumber(int64_t number) {
+    std::unique_ptr<Message> messageToSend = std::make_unique<Message>(number);
+    int sendStatus = messageToSend->Send(serverSocket);
+    // Handle sendStatus as needed
+}
+
+void Client::SendScreenshot(const DisplayCapturer::Format format) {
+    auto captureResult = DisplayCapturer::CaptureScreen(format);
+    if (!captureResult) {
+        std::cerr << "Failed to capture screen\n";
+        return;
+    }
+
+    std::vector<char> captureData = std::move(*captureResult);
+    std::unique_ptr<Message> messageToSend = std::make_unique<Message>(
+        (format == DisplayCapturer::Format::JPG) ? Message::Type::IMAGE_JPG : Message::Type::IMAGE_PNG,
+        captureData
+    );
+
+    int sendStatus = messageToSend->Send(serverSocket);
+    // Handle sendStatus as needed
+}
+
+
 
 int Client::Connect() {
 	if (connect(serverSocket, serverAddress->ai_addr, (int)serverAddress->ai_addrlen) == SOCKET_ERROR) {
