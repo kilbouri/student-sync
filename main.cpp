@@ -4,10 +4,24 @@
 #include <iomanip>
 #include <unordered_map>
 #include <string>
-#include "GUI/GUI.h"
+
+#include "startupwindow/startupwindow.h"
 #include "win32includes.h"
 
-wxIMPLEMENT_APP(MyApp);
+class App : public wxApp
+{
+public:
+	bool OnInit() override;
+};
+
+bool App::OnInit() {
+	StartupWindow* frame = new StartupWindow();
+	frame->Show(true);
+
+	return true;
+}
+
+wxIMPLEMENT_APP(App);
 
 //constexpr auto MODE_SERVER = 1;
 //constexpr auto MODE_CLIENT = 2;
