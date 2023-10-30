@@ -72,32 +72,30 @@ std::optional<wxFrame*> DoServerStartup()
 		return std::nullopt;
 	}
 
-	std::vector<wxString> options = {};
-	std::unordered_map<int, std::string_view> indexToIPMap;
+	std::unordered_map<wxString, std::string> options;
+	auto makeLabel = [](std::wstring friendly, std::string ip) { return wxString(ip + " (" + friendly + ")"); };
 
-	int index = -1;
 	for (auto& adapter : *adapters) {
 		for (auto& address : adapter.ipAddresses) {
-			options.push_back(wxString(address + " (" + adapter.friendlyName + ")"));
-			indexToIPMap.insert_or_assign(++index, address);
+			options.insert_or_assign(makeLabel(adapter.friendlyName, address), address);
 		}
 	}
 
-	options.push_back(wxString("0.0.0.0 (All Interfaces)"));
-	indexToIPMap.insert_or_assign(++index, "0.0.0.0");
+	std::string allInterfacesIpAddress = "0.0.0.0";
+	wxString allInterfacesLabel = makeLabel(L"All Interfaces", allInterfacesIpAddress);
+	options.insert_or_assign(allInterfacesLabel, allInterfacesIpAddress);
 
-	int interfaceChoice = ComboBoxDialog(nullptr, wxID_ANY, title, prompt, index, options).ShowModal();
-	if (interfaceChoice == ComboBoxDialog::SELECTION_CANCELED) {
+	ComboBoxDialog interfaceDialog(nullptr, wxID_ANY, title, prompt, allInterfacesLabel, options);
+	if (interfaceDialog.ShowModal() != wxID_OK) {
 		return std::nullopt;
 	}
-
 
 	wxNumberEntryDialog portDialog(nullptr, "Enter server port:", "Server Port", "Enter Port", DEFAULT_PORT_NUMBER, 0, LONG_MAX);
 	if (portDialog.ShowModal() != wxID_OK) {
 		return std::nullopt;
 	}
 
-	return new ServerWindow(indexToIPMap.at(interfaceChoice), portDialog.GetValue());
+	return new ServerWindow(interfaceDialog.GetValue(), portDialog.GetValue());
 }
 
 // Retrieves information about all IPv4-compatible interfaces on the host.

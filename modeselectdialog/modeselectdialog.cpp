@@ -1,7 +1,7 @@
 #include "modeselectdialog.h"
 
 ModeSelectDialog::ModeSelectDialog(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style)
-	: wxDialog(parent, id, title, pos, size, style), choice{ NoChoice }
+	: wxDialog(parent, id, title, pos, size, parent == nullptr ? style | wxDIALOG_NO_PARENT : style), choice{ NoChoice }
 {
 	wxBoxSizer* contentBox = new wxBoxSizer(wxVERTICAL);
 	wxBoxSizer* buttonBox = new wxBoxSizer(wxHORIZONTAL);

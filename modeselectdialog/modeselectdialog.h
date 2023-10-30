@@ -21,7 +21,7 @@ public:
 		Client
 	};
 
-	ModeSelectDialog(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxT("StudentSync"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE | wxDIALOG_NO_PARENT);
+	ModeSelectDialog(wxWindow* parent = nullptr, wxWindowID id = wxID_ANY, const wxString& title = wxT("StudentSync"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE);
 	~ModeSelectDialog();
 
 	ModeSelectDialog::Result GetValue();
