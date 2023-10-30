@@ -3,7 +3,7 @@
 class ServerWindow : public wxFrame
 {
 public:
-	ServerWindow();
+	ServerWindow(std::string_view hostname, int port);
 
 private:
 	void OnExit(wxCommandEvent& event);

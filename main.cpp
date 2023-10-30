@@ -1,36 +1,86 @@
-﻿#include "server/server.h"
-#include "client/client.h"
-#include <optional>
-#include <iomanip>
-#include <unordered_map>
-#include <string>
+﻿#include <wx/numdlg.h>
 
-#include "modeselectdialog/modeselectdialog.h"
 #include "win32includes.h"
+#include "modeselectdialog/modeselectdialog.h"
+#include "clientwindow/clientwindow.h"
+#include "serverwindow/serverwindow.h"
+#include "comboboxdialog/comboboxdialog.h"
+
+constexpr int DEFAULT_PORT_NUMBER = 1000;
 
 class App : public wxApp {
 public:
 	bool OnInit() override;
 };
 
+typedef struct {
+	std::string name;
+	std::wstring friendlyName;
+	std::vector<std::string> ipAddresses;
+} SystemInterface;
+std::optional<std::vector<SystemInterface>> GetNetworkAdapters();
+
 bool App::OnInit() {
 	wxFrame* frame = nullptr;
 
-	ModeSelectDialog::Result result = static_cast<ModeSelectDialog::Result>(ModeSelectDialog(NULL).ShowModal());
+	ModeSelectDialog::Result result = static_cast<ModeSelectDialog::Result>(ModeSelectDialog(nullptr).ShowModal());
 	switch (result) {
-		case ModeSelectDialog::Result::Client:
-			// todo:
-			//frame = new ClientWindow();
-			break;
+		case ModeSelectDialog::Result::Client: {
+			// get hostname and port from popups
+			wxString serverAddress = wxGetTextFromUser("Enter your Server's Address:", "Server Address", "");
+			long serverPort = wxGetNumberFromUser("Enter server port:", "Server Port", "Enter Port", DEFAULT_PORT_NUMBER, 0, LONG_MAX);
 
-		case ModeSelectDialog::Result::Server:
-			// todo:
-			//frame = new ServerWindow();
+			frame = new ClientWindow(serverAddress.ToStdString(), serverPort);
 			break;
+		}
+
+		case ModeSelectDialog::Result::Server: {
+			// todo: this should be refactored to a function probably
+			// todo: there are failure points here. Some abort() (not nice), and others (relating to user not selecting things) don't stop execution.
+			wxString title = "Select Network Interface";
+			wxString prompt = "Select the network interface to bind to:";
+
+			auto adapters = GetNetworkAdapters();
+			if (!adapters) {
+				// todo: handle this better
+				wxLogFatalError("Unable to read network adapters");
+				return false;
+			}
+
+			std::vector<wxString> options = {};
+			std::unordered_map<int, std::string_view> indexToIPMap;
+
+			int index = 0;
+			for (auto& adapter : *adapters) {
+				for (auto& address : adapter.ipAddresses) {
+					options.push_back(wxString(address + " (" + adapter.friendlyName + ")"));
+					indexToIPMap.insert_or_assign(index++, address);
+				}
+			}
+
+			options.push_back(wxString("0.0.0.0 (All Interfaces)"));
+			indexToIPMap.insert_or_assign(index, "0.0.0.0");
+
+			int interfaceChoice = ComboBoxDialog(nullptr, wxID_ANY, title, prompt, index, options).ShowModal();
+			if (interfaceChoice == ComboBoxDialog::SELECTION_CANCELED) {
+				// todo: handle this better
+				wxLogFatalError("You did not make a choice");
+				return false;
+			}
+
+			long serverPort = wxGetNumberFromUser("Enter server port:", "Server Port", "Enter Port", DEFAULT_PORT_NUMBER, 0, LONG_MAX);
+
+			frame = new ServerWindow(indexToIPMap.at(interfaceChoice), serverPort);
+			break;
+		}
 
 		case ModeSelectDialog::Result::NoChoice:
 		default:
 			return false;
+	}
+
+	if (frame != nullptr) {
+		frame->Show();
 	}
 
 	return frame != nullptr; // true iff there is a top level frame (true indicates processing should continue, false indicates the process should halt)
@@ -38,19 +88,69 @@ bool App::OnInit() {
 
 wxIMPLEMENT_APP(App);
 
+// Retrieves information about all IPv4-compatible interfaces on the host.
+std::optional<std::vector<SystemInterface>> GetNetworkAdapters() {
+	ULONG family = AF_INET;
+	PIP_ADAPTER_ADDRESSES adapters = nullptr;
+	ULONG bufferSize = 0;
+
+	int flags = GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST;
+	if (GetAdaptersAddresses(family, flags, NULL, adapters, &bufferSize) == ERROR_BUFFER_OVERFLOW) {
+		adapters = (PIP_ADAPTER_ADDRESSES)std::malloc(bufferSize);
+
+		if (adapters == nullptr) {
+			return std::nullopt;
+		}
+
+		if (GetAdaptersAddresses(family, flags, nullptr, adapters, &bufferSize) != NOERROR) {
+			std::free(adapters);
+			return std::nullopt;
+		}
+	}
+
+	std::vector<SystemInterface> result;
+	for (PIP_ADAPTER_ADDRESSES currentAdapter = adapters; currentAdapter != nullptr; currentAdapter = currentAdapter->Next) {
+		SystemInterface thisInterface{};
+
+		if (!currentAdapter->FirstUnicastAddress) {
+			continue;
+		}
+
+		std::vector<std::string> addresses;
+		for (PIP_ADAPTER_UNICAST_ADDRESS unicastAddr = currentAdapter->FirstUnicastAddress; unicastAddr != nullptr; unicastAddr = unicastAddr->Next) {
+			struct sockaddr* socketAddress = unicastAddr->Address.lpSockaddr;
+			if (socketAddress->sa_family != AF_INET) {
+				continue; // not IPv4, skip
+			}
+
+			struct sockaddr_in* ipv4 = (struct sockaddr_in*)socketAddress;
+			char ipString[INET_ADDRSTRLEN];
+			inet_ntop(AF_INET, &(ipv4->sin_addr), ipString, sizeof(ipString));
+
+			addresses.push_back(std::string(ipString));
+		}
+
+		if (addresses.size() == 0) {
+			// ignore adapters with no assigned IP address
+			continue;
+		}
+
+		thisInterface.name = std::string(currentAdapter->AdapterName);
+		thisInterface.friendlyName = std::wstring(currentAdapter->FriendlyName);
+		thisInterface.ipAddresses = addresses;
+		result.push_back(thisInterface);
+	}
+
+	std::free(adapters);
+	return result;
+}
+
 //constexpr auto MODE_SERVER = 1;
 //constexpr auto MODE_CLIENT = 2;
 //constexpr auto INVALID_TRY_AGAIN = "Invalid, try again: ";
 //
 //int DoRunServer();
 //int DoRunClient();
-//
-//typedef struct {
-//	std::string name;
-//	std::wstring friendlyName;
-//	std::vector<std::string> ipAddresses;
-//} SystemInterface;
-//std::optional<std::vector<SystemInterface>> GetNetworkAdapters();
 //
 //int main() {
 //	// Initialize GDI+
@@ -194,59 +294,3 @@ wxIMPLEMENT_APP(App);
 //	return 0;
 //}
 //
-//// Retrieves information about all IPv4-compatible interfaces on the host.
-//std::optional<std::vector<SystemInterface>> GetNetworkAdapters() {
-//	ULONG family = AF_INET;
-//	PIP_ADAPTER_ADDRESSES adapters = nullptr;
-//	ULONG bufferSize = 0;
-//
-//	int flags = GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST;
-//	if (GetAdaptersAddresses(family, flags, NULL, adapters, &bufferSize) == ERROR_BUFFER_OVERFLOW) {
-//		adapters = (PIP_ADAPTER_ADDRESSES)std::malloc(bufferSize);
-//
-//		if (adapters == nullptr) {
-//			return std::nullopt;
-//		}
-//
-//		if (GetAdaptersAddresses(family, flags, nullptr, adapters, &bufferSize) != NOERROR) {
-//			std::free(adapters);
-//			return std::nullopt;
-//		}
-//	}
-//
-//	std::vector<SystemInterface> result;
-//	for (PIP_ADAPTER_ADDRESSES currentAdapter = adapters; currentAdapter != nullptr; currentAdapter = currentAdapter->Next) {
-//		SystemInterface thisInterface{};
-//
-//		if (!currentAdapter->FirstUnicastAddress) {
-//			continue;
-//		}
-//
-//		std::vector<std::string> addresses;
-//		for (PIP_ADAPTER_UNICAST_ADDRESS unicastAddr = currentAdapter->FirstUnicastAddress; unicastAddr != nullptr; unicastAddr = unicastAddr->Next) {
-//			struct sockaddr* socketAddress = unicastAddr->Address.lpSockaddr;
-//			if (socketAddress->sa_family != AF_INET) {
-//				continue; // not IPv4, skip
-//			}
-//
-//			struct sockaddr_in* ipv4 = (struct sockaddr_in*)socketAddress;
-//			char ipString[INET_ADDRSTRLEN];
-//			inet_ntop(AF_INET, &(ipv4->sin_addr), ipString, sizeof(ipString));
-//
-//			addresses.push_back(std::string(ipString));
-//		}
-//
-//		if (addresses.size() == 0) {
-//			// ignore adapters with no assigned IP address
-//			continue;
-//		}
-//
-//		thisInterface.name = std::string(currentAdapter->AdapterName);
-//		thisInterface.friendlyName = std::wstring(currentAdapter->FriendlyName);
-//		thisInterface.ipAddresses = addresses;
-//		result.push_back(thisInterface);
-//	}
-//
-//	std::free(adapters);
-//	return result;
-//}

@@ -24,7 +24,7 @@ ModeSelectDialog::ModeSelectDialog(wxWindow* parent, wxWindowID id, const wxStri
 
 	this->SetSizer(contentBox);
 	this->SetSizeHints(wxDefaultSize, wxDefaultSize);
-	this->Centre(wxBOTH);
+	this->Center(wxBOTH);
 
 	// Connect Events
 	this->Connect(wxEVT_CLOSE_WINDOW, wxCloseEventHandler(ModeSelectDialog::OnClosed));

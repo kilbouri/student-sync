@@ -3,8 +3,7 @@
 std::string serverAddress;
 long serverPort;
 
-ServerWindow::ServerWindow() : wxFrame(NULL, wxID_ANY, "ServerWindow")
-{
+ServerWindow::ServerWindow(std::string_view hostname, int port) : wxFrame(NULL, wxID_ANY, "ServerWindow") {
 	wxMenu* menuFile = new wxMenu;
 
 	menuFile->Append(ID_Details, "&Server details...\tCtrl-D", "Server Connection Details");
