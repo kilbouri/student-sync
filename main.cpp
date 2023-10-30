@@ -5,20 +5,35 @@
 #include <unordered_map>
 #include <string>
 
-#include "startupwindow/startupwindow.h"
+#include "modeselectdialog/modeselectdialog.h"
 #include "win32includes.h"
 
-class App : public wxApp
-{
+class App : public wxApp {
 public:
 	bool OnInit() override;
 };
 
 bool App::OnInit() {
-	StartupWindow* frame = new StartupWindow();
-	frame->Show(true);
+	wxFrame* frame = nullptr;
 
-	return true;
+	ModeSelectDialog::Result result = static_cast<ModeSelectDialog::Result>(ModeSelectDialog(NULL).ShowModal());
+	switch (result) {
+		case ModeSelectDialog::Result::Client:
+			// todo:
+			//frame = new ClientWindow();
+			break;
+
+		case ModeSelectDialog::Result::Server:
+			// todo:
+			//frame = new ServerWindow();
+			break;
+
+		case ModeSelectDialog::Result::NoChoice:
+		default:
+			return false;
+	}
+
+	return frame != nullptr; // true iff there is a top level frame (true indicates processing should continue, false indicates the process should halt)
 }
 
 wxIMPLEMENT_APP(App);

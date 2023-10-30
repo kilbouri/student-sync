@@ -32,7 +32,7 @@ int Server::GetPortNumber() {
 	}
 
 	// if the port is zero, and we are successfully bound, then the port is unknown and must be retrieved
-	
+
 	struct sockaddr_in socketInfo = {};
 	int socketInfoLength = sizeof(socketInfo);
 
