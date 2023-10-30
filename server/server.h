@@ -11,6 +11,7 @@ public:
 
 	std::string GetExternalAddress();
 	int GetPortNumber();
+	bool IsInitialized();
 
 	int Initialize();
 	int Start();

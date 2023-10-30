@@ -44,6 +44,10 @@ int Server::GetPortNumber() {
 	return portNumber;
 }
 
+bool Server::IsInitialized() {
+	return this->listenSocket != INVALID_SOCKET;
+}
+
 /**
  * Prepares the server to start listening for connections.
  */
@@ -63,10 +67,14 @@ int Server::Initialize() {
 
 	struct addrinfo* addressInfo;
 	if (getaddrinfo(ipAddress.c_str(), std::to_string(portNumber).c_str(), &hints, &addressInfo)) {
+		closesocket(listenSocket);
+		listenSocket = INVALID_SOCKET;
 		return 1;
 	}
 
 	if (bind(listenSocket, addressInfo->ai_addr, addressInfo->ai_addrlen) == SOCKET_ERROR) {
+		closesocket(listenSocket);
+		listenSocket = INVALID_SOCKET;
 		return 1;
 	}
 

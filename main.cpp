@@ -11,6 +11,10 @@ constexpr int DEFAULT_PORT_NUMBER = 1000;
 class App : public wxApp {
 public:
 	bool OnInit() override;
+	int OnExit() override;
+
+private:
+	ULONG_PTR gdiPlusToken;
 };
 
 typedef struct {
@@ -24,10 +28,33 @@ std::optional<wxFrame*> DoClientStartup();
 std::optional<wxFrame*> DoServerStartup();
 
 bool App::OnInit() {
+	// Initialize GDI+
+	if (GdiPlusStartup(&gdiPlusToken) != 0) {
+		wxLogFatalError("GDI+ startup failed");
+		return false;
+	}
+
+	// Initialize WinSock2
+	int winsockStartupCode = Winsock2Startup();
+	if (winsockStartupCode == 1) {
+		// we have to perform shutdown BEFORE we log fatal error, as wxLogFatalError does not return
+		GdiPlusShutdown(gdiPlusToken);
+		wxLogFatalError("Winsock2 version != 2.2");
+		return false;
+	}
+	else if (winsockStartupCode != 0) {
+		// we have to perform shutdown BEFORE we log fatal error, as wxLogFatalError does not return
+		GdiPlusShutdown(gdiPlusToken);
+		wxLogFatalError("Winsock2 startup failed");
+		return false;
+	}
+
+	// Determine main frame for this instance
 	std::optional<wxFrame*> mainFrame = std::nullopt;
 
 	ModeSelectDialog modeSelectDialog(nullptr);
 	if (modeSelectDialog.ShowModal() != wxID_OK) {
+		GdiPlusShutdown(gdiPlusToken);
 		return false;
 	}
 
@@ -38,11 +65,23 @@ bool App::OnInit() {
 	}
 
 	if (!mainFrame) {
+		Winsock2Shutdown();
+		GdiPlusShutdown(gdiPlusToken);
 		return false;
 	}
 
 	(*mainFrame)->Show();
 	return true;
+}
+
+int App::OnExit() {
+	// if you ever set breakpoints in this function, please be aware that
+	// they may not hit when you use the Server mode... I have no idea why.
+	// But if you add wxLogError("HIT!"); you will get a popup when you close.
+	Winsock2Shutdown();
+	GdiPlusShutdown(gdiPlusToken);
+
+	return wxApp::OnExit();
 }
 
 wxIMPLEMENT_APP(App);
@@ -90,12 +129,15 @@ std::optional<wxFrame*> DoServerStartup()
 		return std::nullopt;
 	}
 
-	wxNumberEntryDialog portDialog(nullptr, "Enter server port:", "Server Port", "Enter Port", DEFAULT_PORT_NUMBER, 0, LONG_MAX);
+	wxNumberEntryDialog portDialog(nullptr, "Enter server port:", "Server Port", "Enter Port", DEFAULT_PORT_NUMBER, 0, INT_MAX);
 	if (portDialog.ShowModal() != wxID_OK) {
 		return std::nullopt;
 	}
 
-	return new ServerWindow(interfaceDialog.GetValue(), portDialog.GetValue());
+	std::string address = interfaceDialog.GetValue();
+	int port = static_cast<int>(portDialog.GetValue());
+
+	return new ServerWindow(address, port);
 }
 
 // Retrieves information about all IPv4-compatible interfaces on the host.
@@ -163,31 +205,6 @@ std::optional<std::vector<SystemInterface>> GetNetworkAdapters() {
 //int DoRunClient();
 //
 //int main() {
-//	// Initialize GDI+
-//	ULONG_PTR gdiPlusToken;
-//	if (GdiPlusStartup(&gdiPlusToken) != 0) {
-//		std::cerr << "GDI+ startup failed\n";
-//		return 1;
-//	}
-//	else {
-//		std::cout << "GDI+ startup succeeded\n";
-//	}
-//
-//	// Initialize WinSock2
-//	int winsockStartupCode = Winsock2Startup();
-//	if (winsockStartupCode == 0) {
-//		std::cout << "Winsock2 startup succeeded\n";
-//	}
-//	else if (winsockStartupCode == 1) {
-//		std::cerr << "Winsock2 version != 2.2\n";
-//		GdiPlusShutdown(gdiPlusToken);
-//		return 1;
-//	}
-//	else {
-//		std::cerr << "Winsock2 startup failed\n";
-//		GdiPlusShutdown(gdiPlusToken);
-//		return 1;
-//	}
 //
 //	// A closure that performs pre-exit cleanup. Any exiting path should call this.
 //	// TODO: does a better way exist?
