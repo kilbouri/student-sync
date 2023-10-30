@@ -1,6 +1,8 @@
 #include "serverwindow.h"
 
-ServerWindow::ServerWindow(std::string& hostname, int port) : wxFrame(NULL, wxID_ANY, "ServerWindow"), server{ Server(hostname, port) } {
+ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
+	: wxFrame(NULL, wxID_ANY, title), server{ Server(hostname, port) }
+{
 	wxMenu* menuFile = new wxMenu;
 
 	menuFile->Append(ID_Details, "&Server details...\tCtrl+D", "Server Connection Details");
@@ -40,7 +42,6 @@ void ServerWindow::OnDetails(wxCommandEvent& event) {
 		std::string hostname = server.GetExternalAddress();
 
 		message = "Hostname: " + hostname + "\nPort: " + std::to_string(port);
-
 	}
 
 	wxMessageBox(message, "Server Details");

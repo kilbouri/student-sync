@@ -7,7 +7,7 @@
 class ClientWindow : public wxFrame
 {
 public:
-	ClientWindow(std::string_view serverHostname, int serverPort);
+	ClientWindow(wxString title, std::string_view serverHostname, int serverPort);
 
 private:
 	Client client;

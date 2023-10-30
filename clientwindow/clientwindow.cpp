@@ -2,8 +2,8 @@
 
 #include <wx/numdlg.h>
 
-ClientWindow::ClientWindow(std::string_view serverHostname, int serverPort)
-	: wxFrame(NULL, wxID_ANY, "ClientWindow"), client{ Client(serverHostname, serverPort) }
+ClientWindow::ClientWindow(wxString title, std::string_view serverHostname, int serverPort)
+	: wxFrame(NULL, wxID_ANY, title), client{ Client(serverHostname, serverPort) }
 {
 	wxMenu* menuFile = new wxMenu;
 	menuFile->Append(ID_String, "&Send A String...\tCtrl-S", "Send a String to the Server");

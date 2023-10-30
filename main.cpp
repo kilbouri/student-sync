@@ -92,12 +92,12 @@ std::optional<wxFrame*> DoClientStartup() {
 		return std::nullopt;
 	}
 
-	wxNumberEntryDialog portDialog(nullptr, "Enter server port:", "Server Port", "Enter Port", DEFAULT_PORT_NUMBER, 0, LONG_MAX);
+	wxNumberEntryDialog portDialog(nullptr, "Enter server port:", wxEmptyString, "Server Port", DEFAULT_PORT_NUMBER, 0, LONG_MAX);
 	if (portDialog.ShowModal() != wxID_OK) {
 		return std::nullopt;
 	}
 
-	return new ClientWindow(addressDialog.GetValue().ToStdString(), portDialog.GetValue());
+	return new ClientWindow("StudentSync - Client", addressDialog.GetValue().ToStdString(), portDialog.GetValue());
 }
 
 std::optional<wxFrame*> DoServerStartup()
@@ -129,7 +129,7 @@ std::optional<wxFrame*> DoServerStartup()
 		return std::nullopt;
 	}
 
-	wxNumberEntryDialog portDialog(nullptr, "Enter server port:", "Server Port", "Enter Port", DEFAULT_PORT_NUMBER, 0, INT_MAX);
+	wxNumberEntryDialog portDialog(nullptr, "Enter server port:", wxEmptyString, "Server Port", DEFAULT_PORT_NUMBER, 0, INT_MAX);
 	if (portDialog.ShowModal() != wxID_OK) {
 		return std::nullopt;
 	}
@@ -137,7 +137,7 @@ std::optional<wxFrame*> DoServerStartup()
 	std::string address = interfaceDialog.GetValue();
 	int port = static_cast<int>(portDialog.GetValue());
 
-	return new ServerWindow(address, port);
+	return new ServerWindow("StudentSync - Server", address, port);
 }
 
 // Retrieves information about all IPv4-compatible interfaces on the host.

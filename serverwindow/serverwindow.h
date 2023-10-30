@@ -4,7 +4,7 @@
 class ServerWindow : public wxFrame
 {
 public:
-	ServerWindow(std::string& hostname, int port);
+	ServerWindow(wxString title, std::string& hostname, int port);
 
 private:
 	Server server;
