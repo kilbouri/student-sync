@@ -85,7 +85,7 @@ std::optional<wxFrame*> DoServerStartup()
 	wxString allInterfacesLabel = makeLabel(L"All Interfaces", allInterfacesIpAddress);
 	options.insert_or_assign(allInterfacesLabel, allInterfacesIpAddress);
 
-	ComboBoxDialog interfaceDialog(nullptr, wxID_ANY, title, prompt, allInterfacesLabel, options);
+	ComboBoxDialog<std::string> interfaceDialog(nullptr, wxID_ANY, title, prompt, allInterfacesLabel, options);
 	if (interfaceDialog.ShowModal() != wxID_OK) {
 		return std::nullopt;
 	}
