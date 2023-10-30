@@ -1,17 +1,16 @@
 #include "modeselectdialog.h"
 
 ModeSelectDialog::ModeSelectDialog(wxWindow* parent, wxWindowID id, const wxString& title, const wxPoint& pos, const wxSize& size, long style)
-	: wxDialog(parent, id, title, pos, size, style)
+	: wxDialog(parent, id, title, pos, size, style), choice{ NoChoice }
 {
 	wxBoxSizer* contentBox = new wxBoxSizer(wxVERTICAL);
 	wxBoxSizer* buttonBox = new wxBoxSizer(wxHORIZONTAL);
 
-	instructions = new wxStaticText(this, wxID_ANY, wxT("Would you like to be a <b>client</b> or <b>server</b>?"), wxDefaultPosition, wxDefaultSize, 0);
+	instructions = new wxStaticText(this, wxID_ANY, wxT("Would you like to be a <b>client</b> or <b>server</b>?"), wxDefaultPosition, wxDefaultSize, wxALL);
 	instructions->SetLabelMarkup(wxT("Would you like to be a <b>client</b> or <b>server</b>?"));
 	instructions->Wrap(-1);
 
 	serverButton = new wxButton(this, wxID_ANY, wxT("Server"), wxDefaultPosition, wxDefaultSize, 0);
-
 	clientButton = new wxButton(this, wxID_ANY, wxT("Client"), wxDefaultPosition, wxDefaultSize, 0);
 	clientButton->SetDefault();
 
@@ -38,30 +37,21 @@ ModeSelectDialog::~ModeSelectDialog() {
 	serverButton->Disconnect(wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler(ModeSelectDialog::OnServerClicked), NULL, this);
 }
 
+ModeSelectDialog::Result ModeSelectDialog::GetValue() {
+	return choice;
+}
+
 void ModeSelectDialog::OnClientClicked(wxCommandEvent& event) {
-	EndModal(Result::Client);
+	choice = Result::Client;
+	EndModal(wxID_OK);
 }
 
 void ModeSelectDialog::OnServerClicked(wxCommandEvent& event) {
-	EndModal(Result::Server);
+	choice = Result::Server;
+	EndModal(wxID_OK);
 }
 
 void ModeSelectDialog::OnClosed(wxCloseEvent& event) {
-	EndModal(Result::NoChoice);
+	choice = Result::NoChoice;
+	EndModal(wxID_CLOSE);
 }
-
-//void ModeSelectDialog::OnClientClicked(wxCommandEvent& event) {
-//	wxString serverAddress = wxGetTextFromUser("Enter your Server's Address:", "Server Address", "");
-//	long serverPort = wxGetNumberFromUser("Enter the Server's Port:", "Server Port", "Enter Number", 50, 0, LONG_MAX);
-//
-//	ClientWindow* cFrame = new ClientWindow(serverAddress.ToStdString(), serverPort);
-//	cFrame->Show(true);
-//
-//	Close(true);
-//}
-//
-//void ModeSelectDialog::OnServerClicked(wxCommandEvent& event) {
-//	ServerWindow* sFrame = new ServerWindow();
-//	sFrame->Show(true);
-//	Close(true);
-//}

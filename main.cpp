@@ -20,73 +20,85 @@ typedef struct {
 } SystemInterface;
 std::optional<std::vector<SystemInterface>> GetNetworkAdapters();
 
+std::optional<wxFrame*> DoClientStartup();
+std::optional<wxFrame*> DoServerStartup();
+
 bool App::OnInit() {
-	wxFrame* frame = nullptr;
+	std::optional<wxFrame*> mainFrame = std::nullopt;
 
-	ModeSelectDialog::Result result = static_cast<ModeSelectDialog::Result>(ModeSelectDialog(nullptr).ShowModal());
-	switch (result) {
-		case ModeSelectDialog::Result::Client: {
-			// get hostname and port from popups
-			wxString serverAddress = wxGetTextFromUser("Enter your Server's Address:", "Server Address", "");
-			long serverPort = wxGetNumberFromUser("Enter server port:", "Server Port", "Enter Port", DEFAULT_PORT_NUMBER, 0, LONG_MAX);
-
-			frame = new ClientWindow(serverAddress.ToStdString(), serverPort);
-			break;
-		}
-
-		case ModeSelectDialog::Result::Server: {
-			// todo: this should be refactored to a function probably
-			// todo: there are failure points here. Some abort() (not nice), and others (relating to user not selecting things) don't stop execution.
-			wxString title = "Select Network Interface";
-			wxString prompt = "Select the network interface to bind to:";
-
-			auto adapters = GetNetworkAdapters();
-			if (!adapters) {
-				// todo: handle this better
-				wxLogFatalError("Unable to read network adapters");
-				return false;
-			}
-
-			std::vector<wxString> options = {};
-			std::unordered_map<int, std::string_view> indexToIPMap;
-
-			int index = -1;
-			for (auto& adapter : *adapters) {
-				for (auto& address : adapter.ipAddresses) {
-					options.push_back(wxString(address + " (" + adapter.friendlyName + ")"));
-					indexToIPMap.insert_or_assign(++index, address);
-				}
-			}
-
-			options.push_back(wxString("0.0.0.0 (All Interfaces)"));
-			indexToIPMap.insert_or_assign(++index, "0.0.0.0");
-
-			int interfaceChoice = ComboBoxDialog(nullptr, wxID_ANY, title, prompt, index, options).ShowModal();
-			if (interfaceChoice == ComboBoxDialog::SELECTION_CANCELED) {
-				// todo: handle this better
-				wxLogFatalError("You did not make a choice");
-				return false;
-			}
-
-			long serverPort = wxGetNumberFromUser("Enter server port:", "Server Port", "Enter Port", DEFAULT_PORT_NUMBER, 0, LONG_MAX);
-
-			frame = new ServerWindow(indexToIPMap.at(interfaceChoice), serverPort);
-			break;
-		}
-
-		case ModeSelectDialog::Result::NoChoice:
-		default:
-			return false;
+	ModeSelectDialog modeSelectDialog(nullptr);
+	if (modeSelectDialog.ShowModal() != wxID_OK) {
+		return false;
 	}
 
-	if (frame != nullptr) {
-		frame->Show();
+	switch (modeSelectDialog.GetValue()) {
+		case ModeSelectDialog::Result::Client: mainFrame = DoClientStartup(); break;
+		case ModeSelectDialog::Result::Server: mainFrame = DoServerStartup(); break;
+		default: mainFrame = std::nullopt; break;
 	}
 
-	return frame != nullptr; // true iff there is a top level frame (true indicates processing should continue, false indicates the process should halt)
+	if (!mainFrame) {
+		return false;
+	}
+
+	(*mainFrame)->Show();
+	return true;
 }
 
 wxIMPLEMENT_APP(App);
+
+std::optional<wxFrame*> DoClientStartup() {
+	wxTextEntryDialog addressDialog(nullptr, "Enter server address:", "Server Address", "localhost");
+	if (addressDialog.ShowModal() != wxID_OK) {
+		return std::nullopt;
+	}
+
+	wxNumberEntryDialog portDialog(nullptr, "Enter server port:", "Server Port", "Enter Port", DEFAULT_PORT_NUMBER, 0, LONG_MAX);
+	if (portDialog.ShowModal() != wxID_OK) {
+		return std::nullopt;
+	}
+
+	return new ClientWindow(addressDialog.GetValue().ToStdString(), portDialog.GetValue());
+}
+
+std::optional<wxFrame*> DoServerStartup()
+{
+	wxString title = "Select Network Interface";
+	wxString prompt = "Select the network interface to bind to:";
+
+	auto adapters = GetNetworkAdapters();
+	if (!adapters) {
+		wxMessageBox("Failed to enumerate network adapters.", "Server startup failed", wxICON_ERROR);
+		return std::nullopt;
+	}
+
+	std::vector<wxString> options = {};
+	std::unordered_map<int, std::string_view> indexToIPMap;
+
+	int index = -1;
+	for (auto& adapter : *adapters) {
+		for (auto& address : adapter.ipAddresses) {
+			options.push_back(wxString(address + " (" + adapter.friendlyName + ")"));
+			indexToIPMap.insert_or_assign(++index, address);
+		}
+	}
+
+	options.push_back(wxString("0.0.0.0 (All Interfaces)"));
+	indexToIPMap.insert_or_assign(++index, "0.0.0.0");
+
+	int interfaceChoice = ComboBoxDialog(nullptr, wxID_ANY, title, prompt, index, options).ShowModal();
+	if (interfaceChoice == ComboBoxDialog::SELECTION_CANCELED) {
+		return std::nullopt;
+	}
+
+
+	wxNumberEntryDialog portDialog(nullptr, "Enter server port:", "Server Port", "Enter Port", DEFAULT_PORT_NUMBER, 0, LONG_MAX);
+	if (portDialog.ShowModal() != wxID_OK) {
+		return std::nullopt;
+	}
+
+	return new ServerWindow(indexToIPMap.at(interfaceChoice), portDialog.GetValue());
+}
 
 // Retrieves information about all IPv4-compatible interfaces on the host.
 std::optional<std::vector<SystemInterface>> GetNetworkAdapters() {

@@ -1,28 +1,19 @@
 #pragma once
 
 #include <wx/wx.h>
-#include <wx/spinctrl.h>
 
 /// <summary>
 /// Displays a modal which asks the user whether they want the program to start
-/// as a client or a server.
+/// as a client or a server. The ModeSelectDialog::Result enum enumerates all
+/// possible results from this dialog.
 /// 
-/// You MUST use ShowModal() to display this dialog. Using Show() will cause all kinds of issues,
-/// including not blocking to wait for input. ShowModal() will return the result the user chose,
-/// which will be an int as enumerated in ModeSelectDialog::Result.
+/// It is safe to call GetValue() at any point in the dialog's lifecycle, however
+/// the only time it contains a meaningful value is after ShowModal() has returned
+/// wxID_OK.
 /// 
-/// Please also be aware that you are responsible for destroying any instances you create.
+/// Please be aware that you are responsible for destroying any instances you create.
 /// </summary>
 class ModeSelectDialog : public wxDialog {
-private:
-	wxStaticText* instructions;
-	wxButton* clientButton;
-	wxButton* serverButton;
-
-	void OnClientClicked(wxCommandEvent& event);
-	void OnServerClicked(wxCommandEvent& event);
-	void OnClosed(wxCloseEvent& event);
-
 public:
 	enum Result {
 		NoChoice,
@@ -32,4 +23,17 @@ public:
 
 	ModeSelectDialog(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxT("StudentSync"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxDEFAULT_DIALOG_STYLE | wxDIALOG_NO_PARENT);
 	~ModeSelectDialog();
+
+	ModeSelectDialog::Result GetValue();
+
+private:
+	wxStaticText* instructions;
+	wxButton* clientButton;
+	wxButton* serverButton;
+
+	ModeSelectDialog::Result choice;
+
+	void OnClientClicked(wxCommandEvent& event);
+	void OnServerClicked(wxCommandEvent& event);
+	void OnClosed(wxCloseEvent& event);
 };
