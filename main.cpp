@@ -50,16 +50,16 @@ bool App::OnInit() {
 			std::vector<wxString> options = {};
 			std::unordered_map<int, std::string_view> indexToIPMap;
 
-			int index = 0;
+			int index = -1;
 			for (auto& adapter : *adapters) {
 				for (auto& address : adapter.ipAddresses) {
 					options.push_back(wxString(address + " (" + adapter.friendlyName + ")"));
-					indexToIPMap.insert_or_assign(index++, address);
+					indexToIPMap.insert_or_assign(++index, address);
 				}
 			}
 
 			options.push_back(wxString("0.0.0.0 (All Interfaces)"));
-			indexToIPMap.insert_or_assign(index, "0.0.0.0");
+			indexToIPMap.insert_or_assign(++index, "0.0.0.0");
 
 			int interfaceChoice = ComboBoxDialog(nullptr, wxID_ANY, title, prompt, index, options).ShowModal();
 			if (interfaceChoice == ComboBoxDialog::SELECTION_CANCELED) {
