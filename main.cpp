@@ -4,7 +4,6 @@
 #include "modeselectdialog/modeselectdialog.h"
 #include "clientwindow/clientwindow.h"
 #include "serverwindow/serverwindow.h"
-#include "comboboxdialog/comboboxdialog.h"
 
 constexpr int DEFAULT_PORT_NUMBER = 1000;
 
@@ -111,20 +110,28 @@ std::optional<wxFrame*> DoServerStartup()
 		return std::nullopt;
 	}
 
-	std::unordered_map<wxString, std::string> options;
+	wxArrayString options;
+	std::unordered_map<wxString, std::string> optionToAddress;
 	auto makeLabel = [](std::wstring friendly, std::string ip) { return wxString(ip + " (" + friendly + ")"); };
+
+	// add "All Interfaces" as the first option, since its likely to be the user preference
+	std::string allInterfacesIpAddress = "0.0.0.0";
+	wxString allInterfacesLabel = makeLabel(L"All Interfaces", allInterfacesIpAddress);
+
+	options.push_back(allInterfacesLabel);
+	optionToAddress.insert_or_assign(allInterfacesLabel, allInterfacesIpAddress);
 
 	for (auto& adapter : *adapters) {
 		for (auto& address : adapter.ipAddresses) {
-			options.insert_or_assign(makeLabel(adapter.friendlyName, address), address);
+			wxString label = makeLabel(adapter.friendlyName, address);
+			options.push_back(label);
+			optionToAddress.insert_or_assign(label, address);
 		}
 	}
 
-	std::string allInterfacesIpAddress = "0.0.0.0";
-	wxString allInterfacesLabel = makeLabel(L"All Interfaces", allInterfacesIpAddress);
-	options.insert_or_assign(allInterfacesLabel, allInterfacesIpAddress);
+	wxSingleChoiceDialog interfaceDialog(nullptr, prompt, title, options);
+	interfaceDialog.SetSelection(0); // ensure 0.0.0.0 is default-selected
 
-	ComboBoxDialog<std::string> interfaceDialog(nullptr, wxID_ANY, title, prompt, allInterfacesLabel, options);
 	if (interfaceDialog.ShowModal() != wxID_OK) {
 		return std::nullopt;
 	}
@@ -134,7 +141,7 @@ std::optional<wxFrame*> DoServerStartup()
 		return std::nullopt;
 	}
 
-	std::string address = interfaceDialog.GetValue();
+	std::string address = optionToAddress.at(interfaceDialog.GetStringSelection());
 	int port = static_cast<int>(portDialog.GetValue());
 
 	return new ServerWindow("StudentSync - Server", address, port);

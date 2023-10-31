@@ -48,38 +48,49 @@ void ClientWindow::OnAbout(wxCommandEvent& event)
 }
 
 void ClientWindow::OnString(wxCommandEvent& event) {
+	wxTextEntryDialog stringDialog(this, "Enter a string:", "StudentSync - Client");
+	if (stringDialog.ShowModal() != wxID_OK) {
+		return;
+	}
 
-	wxString result = wxGetTextFromUser("Enter your text:", "Text Entry", "");
-	if (!result.empty()) {
-		std::string strToSend = result.ToStdString();
-		client.SendString(strToSend);
-		wxMessageBox("Sending '" + result + "' to the server", "Text Entry Result", wxOK | wxICON_INFORMATION);
+	wxString string = stringDialog.GetValue();
+	if (!client.SendString(string.ToStdString())) {
+		wxMessageBox("Failed to send '" + string.ToStdString() + "' to the server", "StudentSync - Client", wxOK | wxICON_WARNING);
 	}
 	else {
-		wxMessageBox("You canceled the text entry.", "Text Entry Result", wxOK | wxICON_INFORMATION);
+		wxMessageBox("Sent '" + string.ToStdString() + "' to the server", "StudentSync - Client", wxOK | wxICON_INFORMATION);
 	}
 }
 
 void ClientWindow::OnNumber(wxCommandEvent& event) {
+	wxNumberEntryDialog numberDialog(this, "Enter a number:", wxEmptyString, "StudentSync - Client", 0, LONG_MIN, LONG_MAX);
+	if (numberDialog.ShowModal() != wxID_OK) {
+		return;
+	}
 
-	long result = wxGetNumberFromUser("Enter a number:", "Number Entry", "Enter Number", 50, 0, LONG_MAX);
-	if (result != -1) {
-		client.SendNumber(result);
-		wxMessageBox("Sending '" + wxString::Format("%ld", result) + "' to the server", "Number Entry Result", wxOK | wxICON_INFORMATION);
+	long number = numberDialog.GetValue();
+	if (!client.SendNumber(number)) {
+		wxMessageBox("Failed to send '" + std::to_string(number) + "' to the server", "StudentSync - Client", wxOK | wxICON_WARNING);
 	}
 	else {
-		wxMessageBox("You canceled the number entry.", "Number Entry Result", wxOK | wxICON_INFORMATION);
+		wxMessageBox("Sent '" + std::to_string(number) + "' to the server", "StudentSync - Client", wxOK | wxICON_INFORMATION);
 	}
 }
 
 void ClientWindow::OnJPG(wxCommandEvent& event) {
-
-	client.SendScreenshot(DisplayCapturer::Format::JPG);
-	wxLogMessage("Sending JPG...");
+	if (!client.SendScreenshot(DisplayCapturer::Format::JPG)) {
+		wxMessageBox("Failed to send JPG screenshot to the server", "StudentSync - Client", wxOK | wxICON_WARNING);
+	}
+	else {
+		wxMessageBox("Sent JPG screenshot to the server", "StudentSync - Client", wxOK | wxICON_INFORMATION);
+	}
 }
 
 void ClientWindow::OnPNG(wxCommandEvent& event) {
-
-	client.SendScreenshot(DisplayCapturer::Format::PNG);
-	wxLogMessage("Sending PNG...");
+	if (!client.SendScreenshot(DisplayCapturer::Format::PNG)) {
+		wxMessageBox("Failed to send PNG screenshot to the server", "StudentSync - Client", wxOK | wxICON_WARNING);
+	}
+	else {
+		wxMessageBox("Sent PNG screenshot to the server", "StudentSync - Client", wxOK | wxICON_INFORMATION);
+	}
 }

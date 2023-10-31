@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../../win32includes.h"
 
 #include <vector>

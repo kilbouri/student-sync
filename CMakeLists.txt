@@ -13,8 +13,8 @@ set(PROJECT_NAME "comp-4990-project")
 project(${PROJECT_NAME})
 
 # Add source to this project's executable.
-set(PROJECT_HEADERS "client/client.h" "clientwindow/clientwindow.h" "common/displaycapturer/displaycapturer.h" "common/managedhandle/managedhandle.h" "common/message/message.h" "server/server.h" "modeselectdialog/modeselectdialog.h" "serverwindow/serverwindow.h" "comboboxdialog/comboboxdialog.h" "win32includes.h")
-set(PROJECT_SOURCES "client/client.cpp" "clientwindow/clientwindow.cpp" "common/displaycapturer/displaycapturer.cpp" "common/message/message.cpp" "main.cpp" "server/server.cpp" "modeselectdialog/modeselectdialog.cpp" "serverwindow/serverwindow.cpp" "comboboxdialog/comboboxdialog.cpp")
+set(PROJECT_HEADERS "win32includes.h" "client/client.h" "clientwindow/clientwindow.h" "common/displaycapturer/displaycapturer.h" "common/managedhandle/managedhandle.h" "common/message/message.h" "server/server.h" "modeselectdialog/modeselectdialog.h" "serverwindow/serverwindow.h")
+set(PROJECT_SOURCES "client/client.cpp" "clientwindow/clientwindow.cpp" "common/displaycapturer/displaycapturer.cpp" "common/message/message.cpp" "main.cpp" "server/server.cpp" "modeselectdialog/modeselectdialog.cpp" "serverwindow/serverwindow.cpp")
 add_executable (${PROJECT_NAME} WIN32 ${PROJECT_HEADERS} ${PROJECT_SOURCES})
 target_sources(${PROJECT_NAME} PRIVATE appManifest.manifest)
 

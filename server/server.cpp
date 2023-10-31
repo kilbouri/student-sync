@@ -1,19 +1,22 @@
 #include "server.h"
+#include "../common/message/message.h"
 
 #include <string>
 #include <optional>
 #include <fstream>
 
-#include "../common/message/message.h"
+#include <chrono>
+#include <iostream>
+#include <thread>
 
-void HandleConnection(SOCKET server, SOCKET client);
-
+#include <wx/wx.h>
 /**
  * Creates a server that will listen on the specified interface and port
  */
 Server::Server(std::string& ipAddress, int portNumber)
-	: ipAddress{ std::string(ipAddress) }, portNumber{ portNumber }, listenSocket{ INVALID_SOCKET }
+	: ipAddress{ std::string(ipAddress) }, portNumber{ portNumber }, listenSocket{ INVALID_SOCKET }, messageHandler{ std::nullopt }, flag{ 0 }
 {}
+
 
 std::string Server::GetExternalAddress() {
 	return std::string(ipAddress);
@@ -44,16 +47,9 @@ int Server::GetPortNumber() {
 	return portNumber;
 }
 
-bool Server::IsInitialized() {
-	return this->listenSocket != INVALID_SOCKET;
-}
-
-/**
- * Prepares the server to start listening for connections.
- */
-int Server::Initialize() {
+bool Server::Initialize() {
 	// while this should never be called multiple times, can't hurt to make sure the old socket gets cleaned
-	if (listenSocket != INVALID_SOCKET) {
+	if (IsInitialized()) {
 		closesocket(listenSocket);
 		listenSocket = INVALID_SOCKET;
 	}
@@ -62,122 +58,95 @@ int Server::Initialize() {
 	listenSocket = socket(hints.ai_family, hints.ai_socktype, hints.ai_protocol);
 
 	if (listenSocket == INVALID_SOCKET) {
-		return 1;
+		return false;
 	}
 
 	struct addrinfo* addressInfo;
 	if (getaddrinfo(ipAddress.c_str(), std::to_string(portNumber).c_str(), &hints, &addressInfo)) {
 		closesocket(listenSocket);
 		listenSocket = INVALID_SOCKET;
-		return 1;
+		return false;
 	}
 
 	if (bind(listenSocket, addressInfo->ai_addr, addressInfo->ai_addrlen) == SOCKET_ERROR) {
 		closesocket(listenSocket);
 		listenSocket = INVALID_SOCKET;
-		return 1;
+		return false;
 	}
 
 	freeaddrinfo(addressInfo);
 	addressInfo = nullptr;
-	return 0;
+	return true;
 }
 
-int Server::Start() {
+bool Server::IsInitialized() {
+	return this->listenSocket != INVALID_SOCKET;
+}
+
+bool Server::Start() {
 	if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR) {
-		return 1;
+		return false;
 	}
 
 	SOCKET clientSocket = INVALID_SOCKET;
-	while (true) {
-		clientSocket = accept(listenSocket, NULL, NULL);
+	while (!IsStopRequested()) {
+		using Type = Message::Type;
 
+		clientSocket = accept(listenSocket, NULL, NULL);
 		if (clientSocket == INVALID_SOCKET) {
 			continue;
 		}
 
-		HandleConnection(listenSocket, clientSocket);
-	}
-}
-
-void HandleConnection(SOCKET server, SOCKET client) {
-	shutdown(client, SD_SEND);
-	using Type = Message::Type;
-
-	// Receive all messages regardless of type, echo to screen. 
-	// Breaks when GOODBYE is received, or socket is closed
-	while (true) {
-		std::optional<Message> messageOpt = Message::TryReceive(client);
-		if (!messageOpt) {
-			std::cout << "Malformed/no message received\n";
-			break;
-		}
-
-		Message message = std::move(*messageOpt);
-		if (message.type == Type::GOODBYE) {
-			// goodbye message received, client is hecking off to god knows where else
-			std::cout << "Received GOODBYE\n";
-			break;
-		}
-
-		switch (message.type) {
-			case Type::NUMBER_64:
-				int64_t receivedNumber;
-				memcpy(&receivedNumber, message.data.data(), sizeof(int64_t));
-
-				// convert from network to host byte order
-				receivedNumber = ntohll(receivedNumber);
-				std::cout << "Received NUMBER_64: " << receivedNumber << "\n";
-				break;
-
-			case Type::STRING: {
-				std::string receivedString(message.data.data(), message.length);
-				std::cout << "Received STRING: " << receivedString << "\n";
+		while (!IsStopRequested()) {
+			std::optional<Message> messageOpt = Message::TryReceive(clientSocket);
+			if (!messageOpt) {
 				break;
 			}
 
-			case Type::IMAGE_PNG:
-			case Type::IMAGE_JPG: {
-				std::wstring extension = (message.type == Type::IMAGE_PNG) ? L".png" : L".jpg";
-				std::cout << "Received IMAGE_" << ((message.type == Type::IMAGE_PNG) ? "PNG" : "JPG") << "\n";
+			const Message message = std::move(*messageOpt);
 
-				LPWSTR picturesFolderPath = nullptr;
-				if (!SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Pictures, 0, nullptr, &picturesFolderPath))) {
-					std::cerr << "Failed to obtain user Pictures folder\n";
+			// Invoke message handler if set
+			if (messageHandler) {
+				try {
+					bool handlerResult = (*messageHandler)(clientSocket, message);
+
+					// handler can return false if they want to end the conversation
+					if (!handlerResult) {
+						break;
+					}
+				}
+				catch (...) {
+					// the callback threw an exception, this is not a good thing!
 					break;
 				}
 
-				std::wstring picturesPath(picturesFolderPath);
-				picturesPath = picturesPath + L"\\receivedImage" + extension;
-
-				std::ofstream outFile(picturesPath, std::ios::binary);
-				if (!outFile.is_open()) {
-					std::wcerr << "Failed to open " << picturesPath << "\n";
-				}
-				else {
-					outFile.write(message.data.data(), message.data.size());
-					std::wcout << "Wrote image to '" << picturesPath << "'\n";
-				}
-
-				CoTaskMemFree(picturesFolderPath);
-				break;
 			}
 
-			default:
-				std::cout << "Invalid message type received " << message.type << "\n";
+			if (message.type == Type::GOODBYE) {
 				break;
+			}
 		}
-	}
 
-	std::cout << "Connection closed\n";
-	shutdown(client, SD_RECEIVE);
-	closesocket(client);
+
+		shutdown(clientSocket, SD_BOTH);
+		closesocket(clientSocket);
+	}
+}
+
+void Server::Stop() {
+	closesocket(listenSocket); // kills any pending network operations
+	listenSocket = INVALID_SOCKET; // prevents the main loop from continuing
+}
+
+bool Server::IsStopRequested() {
+	return listenSocket == INVALID_SOCKET;
+}
+
+void Server::SetMessageHandler(std::function<bool(const SOCKET, const Message)> handler) {
+	messageHandler = handler;
 }
 
 Server::~Server() {
-	std::cout << "Destroying server!\n";
-
-	// clean up listen socket
 	if (listenSocket != INVALID_SOCKET) {
 		closesocket(listenSocket);
 		listenSocket = INVALID_SOCKET;

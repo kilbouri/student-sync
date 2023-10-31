@@ -10,12 +10,12 @@ class Client {
 public:
 	Client(std::string_view serverHostname, int serverPort);
 
-	void SendString(const std::string& str);
-	void SendNumber(int64_t number);
-	void SendScreenshot(const DisplayCapturer::Format format);
+	bool SendString(const std::string& str);
+	bool SendNumber(int64_t number);
+	bool SendScreenshot(const DisplayCapturer::Format format);
 
-	int Initialize();
-	int Connect();
+	bool Initialize();
+	bool Connect();
 
 	~Client();
 private:

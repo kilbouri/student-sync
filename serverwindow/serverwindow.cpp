@@ -1,48 +1,46 @@
+#include <functional>
+#include <thread>
+
 #include "serverwindow.h"
+#include "serverwindow.events.cpp"
+
 
 ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
-	: wxFrame(NULL, wxID_ANY, title), server{ Server(hostname, port) }
+	: wxFrame(NULL, wxID_ANY, title), server{ nullptr }
 {
+	// GUI Building
 	wxMenu* menuFile = new wxMenu;
-
-	menuFile->Append(ID_Details, "&Server details...\tCtrl+D", "Server Connection Details");
-	menuFile->AppendSeparator();
-	menuFile->Append(wxID_EXIT);
-
-	wxMenu* menuHelp = new wxMenu;
-	menuHelp->Append(wxID_ABOUT);
+	menuFile->Append(ID_Details, "Server &Details...\tCtrl+D", "Server Connection Details");
 
 	wxMenuBar* menuBar = new wxMenuBar;
 	menuBar->Append(menuFile, "&File");
-	menuBar->Append(menuHelp, "&Help");
 
 	SetMenuBar(menuBar);
 
+	// Window event bindings
+	Bind(wxEVT_CLOSE_WINDOW, &ServerWindow::OnClose, this);
 	Bind(wxEVT_MENU, &ServerWindow::OnDetails, this, ID_Details);
-	Bind(wxEVT_MENU, &ServerWindow::OnExit, this, wxID_EXIT);
 
-	if (server.Initialize() != 0) {
-		wxLogFatalError("Failed to create and initialize server");
+	// Server Startup
+	server = new Server(hostname, port);
+	if (server->Initialize() == false) {
+		wxLogFatalError("Failed to initialize server");
 	}
+
+	// set server callbacks
+	{
+		using namespace std::placeholders;
+		server->SetMessageHandler(std::bind(&ServerWindow::OnServerMessageReceived, this, _1, _2));
+	}
+
+	// start server on other thread
+	auto threadtask = std::bind_front(&Server::Start, server);
+	serverThread = std::jthread(threadtask);
+	serverThread.get_id();
 }
 
-void ServerWindow::OnExit(wxCommandEvent& event) {
-	Close(true);
-}
-
-void ServerWindow::OnDetails(wxCommandEvent& event) {
-	wxString message;
-
-	if (!server.IsInitialized()) {
-		message = "Server has not been created";
+ServerWindow::~ServerWindow() {
+	if (server != nullptr) {
+		delete server;
 	}
-	else {
-		// todo: port may be zero, we should really be getting this info from the stored Server instance (not the parameters to the window)
-		int port = server.GetPortNumber();
-		std::string hostname = server.GetExternalAddress();
-
-		message = "Hostname: " + hostname + "\nPort: " + std::to_string(port);
-	}
-
-	wxMessageBox(message, "Server Details");
 }
