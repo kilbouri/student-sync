@@ -12,8 +12,6 @@
 
 class Server {
 public:
-	volatile int flag;
-
 	Server(std::string& ipAddress, int portNumber);
 
 	std::string GetExternalAddress();

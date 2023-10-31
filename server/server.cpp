@@ -14,7 +14,7 @@
  * Creates a server that will listen on the specified interface and port
  */
 Server::Server(std::string& ipAddress, int portNumber)
-	: ipAddress{ std::string(ipAddress) }, portNumber{ portNumber }, listenSocket{ INVALID_SOCKET }, messageHandler{ std::nullopt }, flag{ 0 }
+	: ipAddress{ std::string(ipAddress) }, portNumber{ portNumber }, listenSocket{ INVALID_SOCKET }, messageHandler{ std::nullopt }
 {}
 
 
