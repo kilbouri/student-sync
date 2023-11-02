@@ -1,6 +1,14 @@
 #include "message.h"
 
-constexpr std::optional<Message::Type> Message::ToMessageType(int32_t t) {
+constexpr int64_t htonll_signed(int64_t value) {
+	return static_cast<int64_t>(htonll(static_cast<uint64_t>(value)));
+}
+
+constexpr int64_t ntohll_signed(int64_t value) {
+	return static_cast<int64_t>(ntohll(static_cast<uint64_t>(value)));
+}
+
+constexpr std::optional<Message::Type> Message::ToMessageType(RawType t) {
 	using Type = Message::Type;
 
 	switch (t) {
@@ -13,39 +21,40 @@ constexpr std::optional<Message::Type> Message::ToMessageType(int32_t t) {
 	}
 }
 
-Message::Message(Type dataType, std::vector<byte> data) : type{ dataType }, data{ data } { }
-Message::Message(std::string_view value) : Message(Type::String, std::vector<byte>(value.data(), value.data() + value.length())) {}
+Message::Message(Type dataType, Value data) : type{ dataType }, data{ data } {}
+Message::Message(std::string_view value) : Message(Type::String, Value(value.data(), value.data() + value.length())) {}
 Message::Message(int64_t value) : Message(Type::Number64, ([value]() {
 	// Well, C++, you forced my hand. I wanted this data vector to be const, but in doing so I (rightly) can't 
 	// memcpy to it. So you get to have this IIFE hack.
-	int64_t networkValue = htonll(value);
+	int64_t networkValue = htonll_signed(value);
 
-	std::vector<byte> newData(sizeof(value));
-	std::memcpy(newData.data(), &networkValue, sizeof(value));
+	Value newData(sizeof(networkValue));
+	std::memcpy(newData.data(), &networkValue, sizeof(networkValue));
+
 	return newData;
 })()) {}
 
 std::optional<Message> Message::TryReceive(Socket& socket) {
 
 	// Reading & parsing the Type segment
-	int32_t rawType;
+	RawType rawType;
 	byte typeData[sizeof(rawType)] = { 0 };
 	if (!socket.ReadAllBytes(typeData, sizeof(rawType))) {
 		int lastError = GetLastError();
 		return std::nullopt;
 	}
 
+	// no byte order conversion required for a single-byte type
 	std::memcpy(&rawType, typeData, sizeof(rawType));
-	rawType = ntohl(rawType);
 
 	std::optional<Type> messageType = ToMessageType(rawType);
-	if (!messageType) {
+	if (!messageType.has_value()) {
 		int lastError = GetLastError();
 		return std::nullopt;
 	}
 
 	// Reading & parsing the Length segment
-	int length;
+	Length length;
 	byte lengthData[sizeof(length)] = { 0 };
 	if (!socket.ReadAllBytes(lengthData, sizeof(length))) {
 		int lastError = GetLastError();
@@ -55,11 +64,7 @@ std::optional<Message> Message::TryReceive(Socket& socket) {
 	std::memcpy(&length, lengthData, sizeof(length));
 	length = ntohl(length);
 
-	// while a count constructor exists, it is more performant to call reserve(). The
-	// count constructor will default-initialize each element, which is pointless here
-	// as we are about to memcpy into it.
-	std::vector<byte> data(length);
-
+	Value data(length);
 	if (length == 0) {
 		return Message(*messageType, data);
 	}
@@ -74,13 +79,13 @@ std::optional<Message> Message::TryReceive(Socket& socket) {
 }
 
 bool Message::Send(Socket& socket) {
-	int32_t tag = htonl(this->type);
-	int length = htonl(this->data.size());
+	RawType tag = this->type; // no byte order conversion required
+	Length length = htonl(this->data.size());
 
 	// We eat the copy cost in order to create a single buffer. This allows us to give the
 	// socket the opportunity to be as efficient as possible by providing all the data at once.
 	int messageByteCount = sizeof(tag) + sizeof(length) + data.size();
-	std::vector<byte> networkData(messageByteCount);
+	Value networkData(messageByteCount);
 
 	byte* tagStart = networkData.data();
 	byte* lengthStart = tagStart + sizeof(tag);

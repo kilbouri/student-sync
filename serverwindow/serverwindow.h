@@ -2,33 +2,31 @@
 
 #include <wx/wx.h>
 #include <wx/scrolwin.h>
-#include <thread>
 
 #include "../server/server.h"
 #include "../common/socket/socket.h"
 
-class ServerWindow : public wxFrame {
+
+class ServerWindow : public wxFrame, public wxThreadHelper {
 public:
+	enum {
+		ID_Details
+	};
+
 	ServerWindow(wxString title, std::string& hostname, int port);
-	~ServerWindow();
 private:
-	Server* server;
-	std::jthread serverThread;
+	std::unique_ptr<Server> server;
 
 	// Window elements
 	wxScrolledWindow* logScroller;
 	wxBoxSizer* logContainer;
 
-	void AppendLog(wxString string);
-
 	// Window events (defined in serverwindow.events.cpp)
 	void OnClose(wxCloseEvent& event);
 	void OnDetails(wxCommandEvent& event);
 
-	// Server events (defined in serverwindow.events.cpp)
-	bool OnServerMessageReceived(TCPSocket& clientSocket, Message receivedMessage);
-};
-
-enum {
-	ID_Details,
+	// Server Thread elements (defined in serverwindow.thread.cpp)
+	bool StartServerThread(std::string& hostname, int port);
+	void* Entry() override; // Inherited via wxThreadHelper
+	bool OnServerMessageReceived(TCPSocket& socket, Message message);
 };

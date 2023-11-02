@@ -64,12 +64,14 @@ void Server::Start() {
 	}
 }
 
-void Server::Stop() {
+void Server::Stop(bool now) {
 	// prevent new connections
 	listenSocket.Close();
 
-	// kill current connection, if there is any
-	currentClient.Close();
+	if (now) {
+		// kill current connection, if there is any
+		currentClient.Close();
+	}
 }
 
 bool Server::IsStopRequested() {
@@ -85,7 +87,7 @@ std::optional<int> Server::GetPort() {
 	return listenSocket.GetBoundPort();
 }
 
-void Server::SetMessageHandler(std::function<bool(TCPSocket& client, const Message message)> handler) {
+void Server::SetMessageReceivedHandler(std::function<bool(TCPSocket& client, const Message message)> handler) {
 	messageHandler = handler;
 }
 

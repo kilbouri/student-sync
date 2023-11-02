@@ -6,7 +6,7 @@
 #include "serverwindow.events.cpp"
 
 ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
-	: wxFrame(NULL, wxID_ANY, title), server{ nullptr }, serverThread{}
+	: wxFrame(NULL, wxID_ANY, title), server{ }
 {
 	// GUI Building
 	wxMenu* menuFile = new wxMenu;
@@ -35,29 +35,28 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 	Bind(wxEVT_CLOSE_WINDOW, &ServerWindow::OnClose, this);
 	Bind(wxEVT_MENU, &ServerWindow::OnDetails, this, ID_Details);
 
-	// Server Startup
-	server = new Server();
-	if (server->BindAndListen(hostname, port) == false) {
-		wxLogFatalError("Failed to initialize server");
+	// Start server
+	if (!StartServerThread(hostname, port)) {
+		wxLogFatalError("Failed to start server");
 	}
-
-	// set server callbacks
-	{
-		using namespace std::placeholders;
-		server->SetMessageHandler(std::bind(&ServerWindow::OnServerMessageReceived, this, _1, _2));
-	}
-	// start server on other thread
-	auto threadtask = std::bind_front(&Server::Start, server);
-	serverThread = std::jthread(threadtask);
 }
 
-void ServerWindow::AppendLog(wxString string) {
-	wxStaticText* message = new wxStaticText(logScroller, wxID_ANY, string);
-	logContainer->Add(message);
-}
-
-ServerWindow::~ServerWindow() {
-	if (server != nullptr) {
-		delete server;
+bool ServerWindow::StartServerThread(std::string& hostname, int port) {
+	// create a thread for the server to run on
+	if (CreateThread(wxTHREAD_JOINABLE) != wxTHREAD_NO_ERROR) {
+		return false; // failed to create thread
 	}
+
+	// We have a thread, lets make sure we have a valid Server instance for it to use
+	server = std::make_unique<Server>();
+	if (!server->BindAndListen(hostname, port)) {
+		return false; // unable to bind or listen (could be port is already bound)
+	}
+
+	// All preconditions satisfied, SMASH THAT GO BUTTON!
+	if (GetThread()->Run() != wxTHREAD_NO_ERROR) {
+		return false; // button smashed too hard, thread failed to start
+	}
+
+	return true;
 }

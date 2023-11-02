@@ -16,13 +16,13 @@ public:
 
 	bool BindAndListen(std::string& ipAddress, int portNumber);
 	void Start();
-	void Stop();
+	void Stop(bool now = false);
 	bool IsStopRequested();
 
 	std::optional<std::string> GetHostname();
 	std::optional<int> GetPort();
 
-	void SetMessageHandler(std::function<bool(TCPSocket& client, const Message message)> handler);
+	void SetMessageReceivedHandler(std::function<bool(TCPSocket& client, const Message message)> handler);
 
 	~Server();
 
