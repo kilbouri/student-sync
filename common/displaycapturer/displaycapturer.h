@@ -15,6 +15,6 @@ public:
 		TIF = 4
 	};
 
-	static std::optional<std::vector<char>> CaptureScreen(Format format);
+	static std::optional<std::vector<byte>> CaptureScreen(Format format);
 
 };

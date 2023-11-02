@@ -22,8 +22,8 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 	Bind(wxEVT_MENU, &ServerWindow::OnDetails, this, ID_Details);
 
 	// Server Startup
-	server = new Server(hostname, port);
-	if (server->Initialize() == false) {
+	server = new Server();
+	if (server->BindAndListen(hostname, port) == false) {
 		wxLogFatalError("Failed to initialize server");
 	}
 
@@ -36,7 +36,6 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 	// start server on other thread
 	auto threadtask = std::bind_front(&Server::Start, server);
 	serverThread = std::jthread(threadtask);
-	serverThread.get_id();
 }
 
 ServerWindow::~ServerWindow() {

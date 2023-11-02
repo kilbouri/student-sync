@@ -12,28 +12,23 @@
 
 class Server {
 public:
-	Server(std::string& ipAddress, int portNumber);
+	Server();
 
-	std::string GetExternalAddress();
-	int GetPortNumber();
-
-	bool Initialize();
-	bool IsInitialized();
-
-	bool Start();
-
+	bool BindAndListen(std::string& ipAddress, int portNumber);
+	void Start();
 	void Stop();
 	bool IsStopRequested();
 
-	void SetMessageHandler(std::function<bool(const SOCKET, const Message)> handler);
+	std::optional<std::string> GetHostname();
+	std::optional<int> GetPort();
+
+	void SetMessageHandler(std::function<bool(TCPSocket& client, const Message message)> handler);
 
 	~Server();
 
 private:
-	const std::string ipAddress;
-	int portNumber;
+	TCPSocket listenSocket;
+	TCPSocket currentClient;
 
-	volatile SOCKET listenSocket;
-	std::optional<std::function<bool(const SOCKET, const Message)>> messageHandler;
-
+	std::optional<std::function<bool(TCPSocket&, const Message)>> messageHandler;
 };

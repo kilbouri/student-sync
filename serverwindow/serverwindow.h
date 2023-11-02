@@ -4,6 +4,7 @@
 #include <thread>
 
 #include "../server/server.h"
+#include "../common/socket/socket.h"
 
 class ServerWindow : public wxFrame {
 public:
@@ -13,12 +14,12 @@ private:
 	Server* server;
 	std::jthread serverThread;
 
-	// Window events
+	// Window events (defined in serverwindow.events.cpp)
 	void OnClose(wxCloseEvent& event);
 	void OnDetails(wxCommandEvent& event);
 
-	// Server events
-	bool OnServerMessageReceived(SOCKET clientSocket, Message receivedMessage);
+	// Server events (defined in serverwindow.events.cpp)
+	bool OnServerMessageReceived(TCPSocket& clientSocket, Message receivedMessage);
 };
 
 enum {

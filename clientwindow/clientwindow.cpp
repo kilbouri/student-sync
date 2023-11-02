@@ -3,7 +3,7 @@
 #include <wx/numdlg.h>
 
 ClientWindow::ClientWindow(wxString title, std::string_view serverHostname, int serverPort)
-	: wxFrame(NULL, wxID_ANY, title), client{ Client(serverHostname, serverPort) }
+	: wxFrame(NULL, wxID_ANY, title), client{ Client{} }
 {
 	wxMenu* menuFile = new wxMenu;
 	menuFile->Append(ID_String, "&Send A String...\tCtrl-S", "Send a String to the Server");
@@ -35,6 +35,9 @@ ClientWindow::ClientWindow(wxString title, std::string_view serverHostname, int 
 	Bind(wxEVT_MENU, &ClientWindow::OnAbout, this, wxID_ABOUT);
 	Bind(wxEVT_MENU, &ClientWindow::OnExit, this, wxID_EXIT);
 
+	if (!client.Connect(serverHostname, serverPort)) {
+		wxLogFatalError("Failed to connect to server");
+	}
 }
 void ClientWindow::OnExit(wxCommandEvent& event)
 {
@@ -53,12 +56,12 @@ void ClientWindow::OnString(wxCommandEvent& event) {
 		return;
 	}
 
-	wxString string = stringDialog.GetValue();
-	if (!client.SendString(string.ToStdString())) {
-		wxMessageBox("Failed to send '" + string.ToStdString() + "' to the server", "StudentSync - Client", wxOK | wxICON_WARNING);
+	std::string string = stringDialog.GetValue().ToStdString();
+	if (!client.SendString(string)) {
+		wxMessageBox("Failed to send '" + string + "' to the server", "StudentSync - Client", wxOK | wxICON_WARNING);
 	}
 	else {
-		wxMessageBox("Sent '" + string.ToStdString() + "' to the server", "StudentSync - Client", wxOK | wxICON_INFORMATION);
+		wxMessageBox("Sent '" + string + "' to the server", "StudentSync - Client", wxOK | wxICON_INFORMATION);
 	}
 }
 

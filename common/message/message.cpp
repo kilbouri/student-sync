@@ -1,114 +1,95 @@
 #include "message.h"
 
-int recvBytesSafe(SOCKET socket, char* dataBuffer, int numBytes);
-int sendBytesSafe(SOCKET socket, char* dataBuffer, int numBytes);
+constexpr std::optional<Message::Type> Message::ToMessageType(int32_t t) {
+	using Type = Message::Type;
 
-Message::Message(std::string_view value)
-	: type{ Type::STRING }, length{ (int)value.length() }
-{
-	// assumes value is NON-UNICODE! Network byte order MAY mismatch and screw up
-	// Unicode strings.
-	this->data = std::vector<char>(value.data(), value.data() + value.length());
+	switch (t) {
+		case Type::String: return Type::String;
+		case Type::Number64: return Type::Number64;
+		case Type::ImagePNG: return Type::ImagePNG;
+		case Type::ImageJPG: return Type::ImageJPG;
+		case Type::Goodbye: return Type::Goodbye;
+		default: return std::nullopt;
+	}
 }
 
-Message::Message(int64_t value)
-	: type{ Type::NUMBER_64 }, length{ sizeof(value) }
-{
-	this->data = std::vector<char>(sizeof(value));
-
+Message::Message(Type dataType, std::vector<byte> data) : type{ dataType }, data{ data } { }
+Message::Message(std::string_view value) : Message(Type::String, std::vector<byte>(value.data(), value.data() + value.length())) {}
+Message::Message(int64_t value) : Message(Type::Number64, ([value]() {
+	// Well, C++, you forced my hand. I wanted this data vector to be const, but in doing so I (rightly) can't 
+	// memcpy to it. So you get to have this IIFE hack.
 	int64_t networkValue = htonll(value);
-	std::memcpy(this->data.data(), &networkValue, sizeof(value));
-}
 
-Message::Message(Type dataType, std::vector<char> data)
-	: type{ dataType }, length{ (int)data.size() }, data{ data } { }
+	std::vector<byte> newData(sizeof(value));
+	std::memcpy(newData.data(), &networkValue, sizeof(value));
+	return newData;
+})()) {}
 
-Message Message::Goodbye() {
-	return Message(Type::GOODBYE, std::vector<char>(0));
-}
+std::optional<Message> Message::TryReceive(Socket& socket) {
 
-std::optional<Message> Message::TryReceive(SOCKET socket) {
-	int32_t type;
+	// Reading & parsing the Type segment
+	int32_t rawType;
+	byte typeData[sizeof(rawType)] = { 0 };
+	if (!socket.ReadAllBytes(typeData, sizeof(rawType))) {
+		int lastError = GetLastError();
+		return std::nullopt;
+	}
+
+	std::memcpy(&rawType, typeData, sizeof(rawType));
+	rawType = ntohl(rawType);
+
+	std::optional<Type> messageType = ToMessageType(rawType);
+	if (!messageType) {
+		int lastError = GetLastError();
+		return std::nullopt;
+	}
+
+	// Reading & parsing the Length segment
 	int length;
-
-	char typeData[sizeof(type)] = { 0 };
-	char lengthData[sizeof(length)] = { 0 };
-
-	if (recvBytesSafe(socket, typeData, sizeof(type))) {
+	byte lengthData[sizeof(length)] = { 0 };
+	if (!socket.ReadAllBytes(lengthData, sizeof(length))) {
+		int lastError = GetLastError();
 		return std::nullopt;
 	}
 
-	if (recvBytesSafe(socket, lengthData, sizeof(length))) {
-		return std::nullopt;
-	}
-
-	// these will be in network byte order
-	std::memcpy(&type, typeData, sizeof(type));
 	std::memcpy(&length, lengthData, sizeof(length));
-
-	// now they are in host order (which is probably the same but better to be safe)
-	type = ntohl(type);
 	length = ntohl(length);
 
-	std::vector<char> data(length);
+	// while a count constructor exists, it is more performant to call reserve(). The
+	// count constructor will default-initialize each element, which is pointless here
+	// as we are about to memcpy into it.
+	std::vector<byte> data;
+	data.reserve(length);
 
-	// the length check here prevents us from trying to receive data when
-	// there is 0 bytes of data to be received (such as in the case of GOODBYE)
-	if (length != 0 && recvBytesSafe(socket, data.data(), length)) {
+	if (length == 0) {
+		return Message(*messageType, data);
+	}
+
+	// there is data to be read from the socket to populate the buffer
+	if (!socket.ReadAllBytes(data.data(), length)) {
+		int lastError = GetLastError();
 		return std::nullopt;
 	}
 
-	return Message((Type)type, data);
+	return Message(*messageType, data);
 }
 
-int Message::Send(SOCKET socket) {
-	int32_t networkTag = htonl(this->type);
-	int networkLength = htonl(this->length);
+bool Message::Send(Socket& socket) {
+	int32_t tag = htonl(this->type);
+	int length = htonl(this->data.size());
 
-	int dataSize = sizeof(networkTag) + sizeof(networkLength) + this->length;
-	std::vector<char> networkValue(dataSize);
+	// We eat the copy cost in order to create a single buffer. This allows us to give the
+	// socket the opportunity to be as efficient as possible by providing all the data at once.
+	int messageByteCount = sizeof(tag) + sizeof(length) + data.size();
+	std::vector<byte> networkData(messageByteCount);
 
-	char* tagStart = networkValue.data();
-	char* lengthStart = tagStart + sizeof(networkTag);
-	char* dataStart = lengthStart + sizeof(networkLength);
+	byte* tagStart = networkData.data();
+	byte* lengthStart = tagStart + sizeof(tag);
+	byte* dataStart = lengthStart + sizeof(length);
 
-	std::memcpy(tagStart, &networkTag, sizeof(networkTag));
-	std::memcpy(lengthStart, &networkLength, sizeof(networkLength));
-	std::memcpy(dataStart, this->data.data(), this->length);
+	std::memcpy(tagStart, &tag, sizeof(tag));
+	std::memcpy(lengthStart, &length, sizeof(length));
+	std::memcpy(dataStart, data.data(), data.size());
 
-	if (sendBytesSafe(socket, networkValue.data(), dataSize)) {
-		return 1;
-	}
-
-	return 0;
-}
-
-// Returns 0 if all numBytes bytes were received, otherwise 1
-int recvBytesSafe(SOCKET socket, char* dataBuffer, int numBytes) {
-	int bytesRead = 0;
-	do {
-		int read = recv(socket, dataBuffer + bytesRead, numBytes - bytesRead, 0);
-		if (read <= 0) {
-			return 1;
-		}
-
-		bytesRead += read;
-	} while (bytesRead < numBytes);
-
-	return 0;
-}
-
-// Returns 0 if all numBytes were sent, otherwise 1
-int sendBytesSafe(SOCKET socket, char* dataBuffer, int numBytes) {
-	int bytesSent = 0;
-	do {
-		int sent = send(socket, dataBuffer + bytesSent, numBytes - bytesSent, 0);
-		if (sent == SOCKET_ERROR || sent < 0) {
-			return 1;
-		}
-
-		bytesSent += sent;
-	} while (bytesSent < numBytes);
-
-	return 0;
+	return socket.WriteAllBytes(networkData.data(), messageByteCount);
 }
