@@ -29,7 +29,6 @@ bool ServerWindow::OnServerMessageReceived(TCPSocket& clientSocket, Message rece
 		case Message::Type::Number64: {
 			int64_t number;
 			std::memcpy(&number, receivedMessage.data.data(), std::min(receivedMessage.data.size(), sizeof(number)));
-
 			message = "Number64: " + std::to_string(ntohll(number));
 			break;
 		}
@@ -37,6 +36,6 @@ bool ServerWindow::OnServerMessageReceived(TCPSocket& clientSocket, Message rece
 		default: message = "Unhandled message type: " + std::to_string(receivedMessage.type);
 	}
 
-	wxLogInfo("Received message of type " + wxString(std::to_string(receivedMessage.type)));
+	AppendLog(wxString(message));
 	return true;
 }

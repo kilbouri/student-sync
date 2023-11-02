@@ -1,6 +1,7 @@
 #pragma once
 
 #include <wx/wx.h>
+#include <wx/scrolwin.h>
 #include <thread>
 
 #include "../server/server.h"
@@ -13,6 +14,12 @@ public:
 private:
 	Server* server;
 	std::jthread serverThread;
+
+	// Window elements
+	wxScrolledWindow* logScroller;
+	wxBoxSizer* logContainer;
+
+	void AppendLog(wxString string);
 
 	// Window events (defined in serverwindow.events.cpp)
 	void OnClose(wxCloseEvent& event);

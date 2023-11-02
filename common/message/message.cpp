@@ -58,8 +58,7 @@ std::optional<Message> Message::TryReceive(Socket& socket) {
 	// while a count constructor exists, it is more performant to call reserve(). The
 	// count constructor will default-initialize each element, which is pointless here
 	// as we are about to memcpy into it.
-	std::vector<byte> data;
-	data.reserve(length);
+	std::vector<byte> data(length);
 
 	if (length == 0) {
 		return Message(*messageType, data);

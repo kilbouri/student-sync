@@ -24,9 +24,6 @@ ClientWindow::ClientWindow(wxString title, std::string_view serverHostname, int 
 
 	SetMenuBar(menuBar);
 
-	CreateStatusBar();
-	SetStatusText("Client!");
-
 	Bind(wxEVT_MENU, &ClientWindow::OnString, this, ID_String);
 	Bind(wxEVT_MENU, &ClientWindow::OnNumber, this, ID_Number);
 	Bind(wxEVT_MENU, &ClientWindow::OnJPG, this, ID_JPG);
