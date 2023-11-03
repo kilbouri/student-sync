@@ -1,8 +1,10 @@
 #include <functional>
 #include <thread>
 #include <queue>
+#include <optional>
 
 #include "serverwindow.h"
+#include "serverwindow.thread.cpp"
 #include "serverwindow.events.cpp"
 
 ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
@@ -34,7 +36,12 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 	// Window event bindings
 	Bind(wxEVT_MENU, &ServerWindow::OnDetails, this, ID_Details);
 	Bind(wxEVT_CLOSE_WINDOW, &ServerWindow::OnClose, this);
-	Bind(EVT_SERVER_PUSH_LOG, &ServerWindow::OnServerPushLog, this);
+
+	Bind(SERVER_EVT_PUSH_LOG, &ServerWindow::OnServerPushLog, this);
+	Bind(SERVER_EVT_CLIENT_STARTING_STREAM, &ServerWindow::OnClientStartStream, this);
+	Bind(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED, &ServerWindow::OnClientStreamFrameReceived, this);
+	Bind(SERVER_EVT_CLIENT_ENDING_STREAM, &ServerWindow::OnClientEndStream, this);
+
 
 	// Start server
 	if (!StartServerThread(hostname, port)) {
@@ -50,8 +57,9 @@ bool ServerWindow::StartServerThread(std::string& hostname, int port) {
 
 	// We have a thread, lets make sure we have a valid Server instance for it to use
 	server = std::make_unique<Server>();
+
 	if (!server->BindAndListen(hostname, port)) {
-		return false; // unable to bind or listen (could be port is already bound)
+		return false; // can't bind and listen, maybe already taken?
 	}
 
 	// All preconditions satisfied, SMASH THAT GO BUTTON!

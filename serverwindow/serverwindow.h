@@ -2,13 +2,16 @@
 
 #include <wx/wx.h>
 #include <wx/scrolwin.h>
+#include <wx/mstream.h>
 
 #include "../server/server.h"
 #include "../common/socket/socket.h"
+#include "../videostreamwindow/videostreamwindow.h"
 
-wxDECLARE_EVENT(EVT_SERVER_PUSH_LOG, wxThreadEvent);
-wxDECLARE_EVENT(EVT_SERVER_RECEIVE_IMAGE_JPG, wxThreadEvent);
-wxDECLARE_EVENT(EVT_SERVER_RECEIVE_IMAGE_PNG, wxThreadEvent);
+wxDECLARE_EVENT(SERVER_EVT_PUSH_LOG, wxThreadEvent);
+wxDECLARE_EVENT(SERVER_EVT_CLIENT_STARTING_STREAM, wxThreadEvent);
+wxDECLARE_EVENT(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED, wxThreadEvent);
+wxDECLARE_EVENT(SERVER_EVT_CLIENT_ENDING_STREAM, wxThreadEvent);
 
 class ServerWindow : public wxFrame, public wxThreadHelper {
 public:
@@ -19,6 +22,7 @@ public:
 	ServerWindow(wxString title, std::string& hostname, int port);
 protected:
 	std::unique_ptr<Server> server;
+	VideoStreamWindow* streamWindow;
 
 	// Window elements
 	wxScrolledWindow* logScroller;
@@ -28,6 +32,9 @@ protected:
 	void OnClose(wxCloseEvent& event);
 	void OnDetails(wxCommandEvent& event);
 	void OnServerPushLog(wxThreadEvent& event);
+	void OnClientStartStream(wxThreadEvent& event);
+	void OnClientStreamFrameReceived(wxThreadEvent& event);
+	void OnClientEndStream(wxThreadEvent& event);
 
 	// Server Thread elements (defined in serverwindow.thread.cpp)
 	bool StartServerThread(std::string& hostname, int port);
@@ -36,4 +43,9 @@ protected:
 	void OnClientConnect(TCPSocket& socket);
 	bool OnServerMessageReceived(TCPSocket& socket, Message message);
 	void OnClientDisconnect(TCPSocket& socket);
+
+	bool DefaultMessageHandler(TCPSocket& client, Message& message);
+	bool StartVideoStreamMessageHandler(TCPSocket& client, Message& message);
+	bool VideoFramePNGMessageHandler(TCPSocket& client, Message& message);
+	bool EndVideoStreamMessageHandler(TCPSocket& client, Message& message);
 };

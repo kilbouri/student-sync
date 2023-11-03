@@ -29,7 +29,6 @@ void Server::Start() {
 		}
 
 		currentClient = *acceptResult;
-
 		if (connectHandler) {
 			try {
 				(*connectHandler)(currentClient);
@@ -61,10 +60,6 @@ void Server::Start() {
 					// the callback threw an exception, this is not a good thing!
 					break;
 				}
-			}
-
-			if (message.type == Type::Goodbye) {
-				break;
 			}
 		}
 

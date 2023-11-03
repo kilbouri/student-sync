@@ -16,7 +16,10 @@ public:
 
 	bool SendString(const std::string& str);
 	bool SendNumber(int64_t number);
-	bool SendScreenshot(const DisplayCapturer::Format format);
+
+	bool StartVideoStream();
+	bool SendVideoFrame();
+	bool EndVideoStream();
 
 	~Client();
 private:

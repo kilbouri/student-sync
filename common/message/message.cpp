@@ -11,14 +11,19 @@ int64_t ntohll_signed(int64_t value) {
 constexpr std::optional<Message::Type> Message::ToMessageType(RawType t) {
 	using Type = Message::Type;
 
+#define MESSAGE_TYPE(type) case Type::type: return type
 	switch (t) {
-		case Type::String: return Type::String;
-		case Type::Number64: return Type::Number64;
-		case Type::ImagePNG: return Type::ImagePNG;
-		case Type::ImageJPG: return Type::ImageJPG;
-		case Type::Goodbye: return Type::Goodbye;
+		MESSAGE_TYPE(String);
+		MESSAGE_TYPE(Number64);
+
+		MESSAGE_TYPE(StartVideoStream);
+		MESSAGE_TYPE(VideoFramePNG);
+		MESSAGE_TYPE(EndVideoStream);
+
+		MESSAGE_TYPE(Goodbye);
 		default: return std::nullopt;
 	}
+#undef MESSAGE_TYPE
 }
 
 Message::Message(Type dataType, Value data) : type{ dataType }, data{ data } {}

@@ -20,8 +20,11 @@ public:
 	enum Type : uint8_t {
 		String = 0, // An ASCII string. No null terminator is included.
 		Number64 = 1, // A 64-bit signed integer.
-		ImageJPG = 2, // a JPEG-encoded image
-		ImagePNG = 3, // a PNG-encoded image
+
+		StartVideoStream = 127, // indicates a video stream is starting. Contains the first frame.
+		VideoFramePNG = 128, // contains a subsequent video frame
+		EndVideoStream = 129, // indicates the video stream is ending. Has no payload.
+
 		Goodbye = 255 // A special type, indicating the conversation is over.
 	};
 

@@ -25,23 +25,28 @@ bool Client::SendNumber(int64_t number) {
 	return Message(number).Send(socket);
 }
 
-bool Client::SendScreenshot(const DisplayCapturer::Format format) {
-	using Type = Message::Type;
-	using Format = DisplayCapturer::Format;
-
-	Type messageType;
-	switch (format) {
-		case Format::PNG: messageType = Type::ImagePNG; break;
-		case Format::JPG: messageType = Type::ImageJPG; break;
-		default: return false;
-	}
-
-	std::optional<std::vector<byte>> captureData = DisplayCapturer::CaptureScreen(format);
-	if (!captureData) {
+bool Client::StartVideoStream() {
+	// video frames are required to be in PNG format. Maybe in the future we will swap over to BMP to perform temporal compression
+	std::optional<std::vector<byte>> firstFrame = DisplayCapturer::CaptureScreen(DisplayCapturer::Format::PNG);
+	if (!firstFrame) {
 		return false;
 	}
 
-	return Message(messageType, std::move(*captureData)).Send(socket);
+	return Message(Message::Type::StartVideoStream, std::move(*firstFrame)).Send(socket);
+}
+
+bool Client::SendVideoFrame() {
+	// video frames are required to be in PNG format. Maybe in the future we will swap over to BMP to perform temporal compression
+	std::optional<std::vector<byte>> firstFrame = DisplayCapturer::CaptureScreen(DisplayCapturer::Format::PNG);
+	if (!firstFrame) {
+		return false;
+	}
+
+	return Message(Message::Type::VideoFramePNG, std::move(*firstFrame)).Send(socket);
+}
+
+bool Client::EndVideoStream() {
+	return Message(Message::Type::EndVideoStream).Send(socket);
 }
 
 Client::~Client() {

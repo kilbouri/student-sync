@@ -1,5 +1,8 @@
 // this file provides event callbacks for ServerWindow. It is #included in serverwindow.cpp
+#pragma once
 #include "serverwindow.h"
+
+wxBitmap BitmapFromByteVector(std::vector<byte> data);
 
 void ServerWindow::OnClose(wxCloseEvent& event) {
 	// we MUST wait for the thread to stop. The thread assumes this object
@@ -28,4 +31,39 @@ void ServerWindow::OnServerPushLog(wxThreadEvent& event) {
 
 	logContainer->Add(new wxStaticText(logScroller, wxID_ANY, message));
 	logContainer->Layout();
+}
+
+void ServerWindow::OnClientStartStream(wxThreadEvent& event) {
+
+	// todo: use a critical section to guard access to streamWindow
+	wxBitmap firstFrame = BitmapFromByteVector(event.GetPayload<std::vector<byte>>());
+	streamWindow = new VideoStreamWindow(this, "StudentSync - Remote Screen", firstFrame);
+	streamWindow->Show();
+}
+
+void ServerWindow::OnClientStreamFrameReceived(wxThreadEvent& event) {
+	// todo: use a critical section to guard access to streamWindow
+	if (!streamWindow) {
+		return;
+	}
+
+	wxBitmap nextFrame = BitmapFromByteVector(event.GetPayload<std::vector<byte>>());
+	streamWindow->SetFrame(nextFrame);
+}
+
+void ServerWindow::OnClientEndStream(wxThreadEvent& event) {
+	// todo: use a critical section to guard access to streamWindow
+	if (streamWindow) {
+		streamWindow->StreamEnded();
+	}
+}
+
+
+wxBitmap BitmapFromByteVector(std::vector<byte> data) {
+	wxMemoryInputStream imageDataStream(data.data(), data.size());
+
+	wxImage image;
+	image.LoadFile(imageDataStream, wxBITMAP_TYPE_PNG);
+
+	return wxBitmap(image);
 }

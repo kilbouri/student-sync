@@ -11,6 +11,7 @@
 #include <WinSock2.h>
 #include <iphlpapi.h> // this must be after WinSock2.h
 #include <WS2tcpip.h>
+#include <mstcpip.h>
 #include <Windows.h>
 #include <gdiplus.h>
 #include <KnownFolders.h>

@@ -1,4 +1,5 @@
 #include "socket.h"
+#include "../../win32includes.h"
 
 // Constructor for creation from a platform socket
 Socket::Socket(SOCKET s) : underlyingSocket{ new SOCKET(s) }, referenceCount{ new size_t(1) } {}

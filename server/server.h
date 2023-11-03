@@ -15,6 +15,7 @@ public:
 	Server();
 
 	bool BindAndListen(std::string& ipAddress, int portNumber);
+
 	void Start();
 	void Stop(bool now = false);
 	bool IsStopRequested();
