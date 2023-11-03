@@ -14,9 +14,11 @@ private:
 
 	void OnString(wxCommandEvent& event);
 	void OnNumber(wxCommandEvent& event);
+
 	void OnStartStream(wxCommandEvent& event);
 	void OnSendNextFrame(wxCommandEvent& event);
 	void OnEndStream(wxCommandEvent& event);
+
 	void OnExit(wxCommandEvent& event);
 	void OnAbout(wxCommandEvent& event);
 };
