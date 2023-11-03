@@ -21,11 +21,11 @@ public:
 	bool Shutdown(SocketDirection direction);
 	bool Close();
 
-	std::optional<int> WriteBytes(const byte* buffer, int nBytes);
-	std::optional<int> ReadBytes(byte* buffer, int nBytes);
+	std::optional<size_t> WriteBytes(const byte* buffer, size_t nBytes);
+	std::optional<size_t> ReadBytes(byte* buffer, size_t nBytes);
 
-	bool WriteAllBytes(const byte* buffer, int nBytes);
-	bool ReadAllBytes(byte* buffer, int nBytes);
+	bool WriteAllBytes(const byte* buffer, size_t nBytes);
+	bool ReadAllBytes(byte* buffer, size_t nBytes);
 
 	Socket(const Socket& other); // Copy constructor
 	Socket(Socket&& other) noexcept; // Move constructor

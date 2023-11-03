@@ -22,3 +22,10 @@ void ServerWindow::OnDetails(wxCommandEvent& event) {
 
 	wxMessageBox("Hostname: " + hostname + "\nPort: " + port, "Server Details");
 }
+
+void ServerWindow::OnServerPushLog(wxThreadEvent& event) {
+	wxString message = event.GetPayload<wxString>(); // eheh, I love this type system... not... WHY CAN I NOT DEFINE A TYPE FOR THE PAYLOAD OF THE EVENT WTF
+
+	logContainer->Add(new wxStaticText(logScroller, wxID_ANY, message));
+	logContainer->Layout();
+}

@@ -1,5 +1,7 @@
 #include "serverwindow.h"
 
+wxDEFINE_EVENT(EVT_SERVER_PUSH_LOG, wxThreadEvent);
+
 
 // Despite the name of this function, it is defining the entry for the server thread.
 void* ServerWindow::Entry() {
@@ -20,7 +22,7 @@ void* ServerWindow::Entry() {
 }
 
 bool ServerWindow::OnServerMessageReceived(TCPSocket& clientSocket, Message receivedMessage) {
-	std::string message = "No data";
+	wxString message = "No data";
 	switch (receivedMessage.type) {
 		case Message::Type::String: {
 			std::string receivedString = std::string(reinterpret_cast<const char*>(receivedMessage.data.data()), receivedMessage.data.size());
@@ -37,8 +39,9 @@ bool ServerWindow::OnServerMessageReceived(TCPSocket& clientSocket, Message rece
 		default: message = "Unhandled message type: " + std::to_string(receivedMessage.type);
 	}
 
-	wxMessageBox(message);
+	wxThreadEvent* event = new wxThreadEvent(EVT_SERVER_PUSH_LOG);
+	event->SetPayload(message.Clone());
 
-	//AppendLog(wxString(message));
+	wxQueueEvent(this, event);
 	return true;
 }

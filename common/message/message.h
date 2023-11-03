@@ -9,8 +9,8 @@
 #include "../../win32includes.h"
 #include "../../common/socket/socket.h"
 
-constexpr int64_t htonll_signed(int64_t value);
-constexpr int64_t ntohll_signed(int64_t value);
+int64_t htonll_signed(int64_t value);
+int64_t ntohll_signed(int64_t value);
 
 // Represents a Type-Length-Value encoded message that
 // may be transmitted over a socket.
@@ -22,7 +22,7 @@ public:
 		Number64 = 1, // A 64-bit signed integer.
 		ImageJPG = 2, // a JPEG-encoded image
 		ImagePNG = 3, // a PNG-encoded image
-		Goodbye = std::numeric_limits<uint8_t>::max() // A special type, indicating the conversation is over.
+		Goodbye = std::numeric_limits<std::underlying_type_t<Type>>::max() // A special type, indicating the conversation is over.
 	};
 
 	typedef size_t Length;

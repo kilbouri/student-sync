@@ -6,6 +6,7 @@
 #include "../server/server.h"
 #include "../common/socket/socket.h"
 
+wxDECLARE_EVENT(EVT_SERVER_PUSH_LOG, wxThreadEvent);
 
 class ServerWindow : public wxFrame, public wxThreadHelper {
 public:
@@ -14,7 +15,7 @@ public:
 	};
 
 	ServerWindow(wxString title, std::string& hostname, int port);
-private:
+protected:
 	std::unique_ptr<Server> server;
 
 	// Window elements
@@ -24,6 +25,7 @@ private:
 	// Window events (defined in serverwindow.events.cpp)
 	void OnClose(wxCloseEvent& event);
 	void OnDetails(wxCommandEvent& event);
+	void OnServerPushLog(wxThreadEvent& event);
 
 	// Server Thread elements (defined in serverwindow.thread.cpp)
 	bool StartServerThread(std::string& hostname, int port);

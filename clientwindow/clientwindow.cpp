@@ -63,12 +63,17 @@ void ClientWindow::OnString(wxCommandEvent& event) {
 }
 
 void ClientWindow::OnNumber(wxCommandEvent& event) {
-	wxNumberEntryDialog numberDialog(this, "Enter a number:", wxEmptyString, "StudentSync - Client", 0, LONG_MIN, LONG_MAX);
-	if (numberDialog.ShowModal() != wxID_OK) {
+	wxTextEntryDialog stringDialog(this, "Enter a number:", "StudentSync - Client");
+	if (stringDialog.ShowModal() != wxID_OK) {
 		return;
 	}
 
-	long number = numberDialog.GetValue();
+	int64_t number = 0;
+	if (!stringDialog.GetValue().ToLongLong(&number)) {
+		wxMessageBox("Invalid number entered");
+		return;
+	}
+
 	if (!client.SendNumber(number)) {
 		wxMessageBox("Failed to send '" + std::to_string(number) + "' to the server", "StudentSync - Client", wxOK | wxICON_WARNING);
 	}

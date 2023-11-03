@@ -107,12 +107,15 @@ bool Socket::Close() {
 	return rc != SOCKET_ERROR;
 }
 
-std::optional<int> Socket::WriteBytes(const byte* buffer, int nBytes) {
+std::optional<size_t> Socket::WriteBytes(const byte* buffer, size_t nBytes) {
 	if (!IsValid()) {
 		return std::nullopt;
 	}
 
-	int rc = send(*underlyingSocket, reinterpret_cast<const char*>(buffer), nBytes, 0);
+	// just because we accept a size_t, does not mean we can write that many bytes.
+	// We take the smaller of nBytes and the max value for an int.
+	int bytesToWrite = static_cast<int>(std::min(nBytes, static_cast<size_t>(std::numeric_limits<int>::max())));
+	int rc = send(*underlyingSocket, reinterpret_cast<const char*>(buffer), bytesToWrite, 0);
 	if (rc == SOCKET_ERROR) {
 		return std::nullopt;
 	}
@@ -120,12 +123,15 @@ std::optional<int> Socket::WriteBytes(const byte* buffer, int nBytes) {
 	return rc;
 }
 
-std::optional<int> Socket::ReadBytes(byte* buffer, int nBytes) {
+std::optional<size_t> Socket::ReadBytes(byte* buffer, size_t nBytes) {
 	if (!IsValid()) {
 		return std::nullopt;
 	}
 
-	int rc = recv(*underlyingSocket, reinterpret_cast<char*>(buffer), nBytes, 0);
+	// just because we accept a size_t, does not mean we can read that many bytes.
+	// We take the smaller of nBytes and the max value for an int.
+	int bytesToRead = static_cast<int>(std::min(nBytes, static_cast<size_t>(std::numeric_limits<int>::max())));
+	int rc = recv(*underlyingSocket, reinterpret_cast<char*>(buffer), bytesToRead, 0);
 	if (rc == SOCKET_ERROR) {
 		return std::nullopt;
 	}
@@ -133,8 +139,8 @@ std::optional<int> Socket::ReadBytes(byte* buffer, int nBytes) {
 	return rc;
 }
 
-bool Socket::WriteAllBytes(const byte* buffer, int nBytes) {
-	int bytesSent = 0;
+bool Socket::WriteAllBytes(const byte* buffer, size_t nBytes) {
+	size_t bytesSent = 0;
 	do {
 		std::optional<int> writeResult = WriteBytes(buffer + bytesSent, nBytes - bytesSent);
 		if (!writeResult) {
@@ -148,8 +154,8 @@ bool Socket::WriteAllBytes(const byte* buffer, int nBytes) {
 	return true;
 }
 
-bool Socket::ReadAllBytes(byte* buffer, int nBytes) {
-	int bytesRead = 0;
+bool Socket::ReadAllBytes(byte* buffer, size_t nBytes) {
+	size_t bytesRead = 0;
 	do {
 		std::optional<int> readResult = ReadBytes(buffer + bytesRead, nBytes - bytesRead);
 		if (!readResult) {
@@ -204,7 +210,7 @@ bool TCPSocket::Bind(std::string_view hostname, int portNumber) {
 	}
 
 	// try to bind to the found address
-	int bindResult = bind(*underlyingSocket, addressOptions->ai_addr, addressOptions->ai_addrlen);
+	int bindResult = bind(*underlyingSocket, addressOptions->ai_addr, static_cast<int>(addressOptions->ai_addrlen));
 
 	freeaddrinfo(addressOptions);
 	addressOptions = nullptr;
@@ -267,7 +273,7 @@ bool TCPSocket::Connect(std::string_view hostname, int portNumber) {
 		return false;
 	}
 
-	int connectResult = connect(*underlyingSocket, foundAddress->ai_addr, foundAddress->ai_addrlen);
+	int connectResult = connect(*underlyingSocket, foundAddress->ai_addr, static_cast<int>(foundAddress->ai_addrlen));
 
 	freeaddrinfo(addressOptions);
 	addressOptions = nullptr;

@@ -1,10 +1,10 @@
 #include "message.h"
 
-constexpr int64_t htonll_signed(int64_t value) {
+int64_t htonll_signed(int64_t value) {
 	return static_cast<int64_t>(htonll(static_cast<uint64_t>(value)));
 }
 
-constexpr int64_t ntohll_signed(int64_t value) {
+int64_t ntohll_signed(int64_t value) {
 	return static_cast<int64_t>(ntohll(static_cast<uint64_t>(value)));
 }
 
@@ -62,7 +62,7 @@ std::optional<Message> Message::TryReceive(Socket& socket) {
 	}
 
 	std::memcpy(&length, lengthData, sizeof(length));
-	length = ntohl(length);
+	length = ntohll(length);
 
 	Value data(length);
 	if (length == 0) {
@@ -80,11 +80,11 @@ std::optional<Message> Message::TryReceive(Socket& socket) {
 
 bool Message::Send(Socket& socket) {
 	RawType tag = this->type; // no byte order conversion required
-	Length length = htonl(this->data.size());
+	Length length = htonll(this->data.size());
 
 	// We eat the copy cost in order to create a single buffer. This allows us to give the
 	// socket the opportunity to be as efficient as possible by providing all the data at once.
-	int messageByteCount = sizeof(tag) + sizeof(length) + data.size();
+	size_t messageByteCount = sizeof(tag) + sizeof(length) + data.size();
 	Value networkData(messageByteCount);
 
 	byte* tagStart = networkData.data();

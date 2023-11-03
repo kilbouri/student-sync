@@ -25,15 +25,16 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 	logScroller->SetSizer(logContainer);
 
 	logContainer->Fit(logScroller);
-	contentSizer->Add(logScroller, 1, wxEXPAND | wxALL, 5);
+	contentSizer->Add(logScroller, 1, wxEXPAND);
 
 	this->SetSizeHints(wxDefaultSize, wxDefaultSize);
 	this->SetSizer(contentSizer);
 	this->Centre(wxBOTH);
 
 	// Window event bindings
-	Bind(wxEVT_CLOSE_WINDOW, &ServerWindow::OnClose, this);
 	Bind(wxEVT_MENU, &ServerWindow::OnDetails, this, ID_Details);
+	Bind(wxEVT_CLOSE_WINDOW, &ServerWindow::OnClose, this);
+	Bind(EVT_SERVER_PUSH_LOG, &ServerWindow::OnServerPushLog, this);
 
 	// Start server
 	if (!StartServerThread(hostname, port)) {
