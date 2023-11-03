@@ -27,15 +27,15 @@ ClientWindow::ClientWindow(wxString title, std::string_view serverHostname, int 
 
 	SetMenuBar(menuBar);
 
-	Bind(wxEVT_MENU, &ClientWindow::OnString, this, ID_String);
-	Bind(wxEVT_MENU, &ClientWindow::OnNumber, this, ID_Number);
+	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnString, this, ID_String);
+	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnNumber, this, ID_Number);
 
-	Bind(wxEVT_MENU, &ClientWindow::OnStartStream, this, ID_StartStream);
-	Bind(wxEVT_MENU, &ClientWindow::OnSendNextFrame, this, ID_NextFrame);
-	Bind(wxEVT_MENU, &ClientWindow::OnEndStream, this, ID_EndStream);
+	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnStartStream, this, ID_StartStream);
+	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnSendNextFrame, this, ID_NextFrame);
+	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnEndStream, this, ID_EndStream);
 
-	Bind(wxEVT_MENU, &ClientWindow::OnAbout, this, wxID_ABOUT);
-	Bind(wxEVT_MENU, &ClientWindow::OnExit, this, wxID_EXIT);
+	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnAbout, this, wxID_ABOUT);
+	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnExit, this, wxID_EXIT);
 
 	if (!client.Connect(serverHostname, serverPort)) {
 		wxLogFatalError("Failed to connect to server");

@@ -8,6 +8,10 @@ void ClientWindow::OnAbout(wxCommandEvent& event) {
 	wxMessageBox("You're in the client software poggers!", "About this Software", wxOK | wxICON_INFORMATION);
 }
 
+void ClientWindow::Notify() {
+	client.SendVideoFrame();
+}
+
 void ClientWindow::OnString(wxCommandEvent& event) {
 	wxTextEntryDialog stringDialog(this, "Enter a string:", "StudentSync - Client");
 	if (stringDialog.ShowModal() != wxID_OK) {
@@ -46,7 +50,11 @@ void ClientWindow::OnNumber(wxCommandEvent& event) {
 void ClientWindow::OnStartStream(wxCommandEvent& event) {
 	if (!client.StartVideoStream()) {
 		wxMessageBox("Failed to start stream", "StudentSync - Client", wxICON_WARNING | wxOK);
+		return;
 	}
+
+	constexpr int targetFrameRate = 10;
+	wxTimer::Start(1000 / targetFrameRate);
 }
 
 void ClientWindow::OnSendNextFrame(wxCommandEvent& event) {
@@ -56,7 +64,9 @@ void ClientWindow::OnSendNextFrame(wxCommandEvent& event) {
 }
 
 void ClientWindow::OnEndStream(wxCommandEvent& event) {
+	wxTimer::Stop();
 	if (!client.EndVideoStream()) {
 		wxMessageBox("Failed to end stream", "StudentSync - Client", wxICON_WARNING | wxOK);
+		return;
 	}
 }

@@ -4,7 +4,7 @@
 
 #include "../client/client.h"
 
-class ClientWindow : public wxFrame
+class ClientWindow : public wxFrame, public wxTimer
 {
 public:
 	ClientWindow(wxString title, std::string_view serverHostname, int serverPort);
@@ -21,6 +21,8 @@ private:
 
 	void OnExit(wxCommandEvent& event);
 	void OnAbout(wxCommandEvent& event);
+
+	virtual void Notify();
 };
 
 enum {
