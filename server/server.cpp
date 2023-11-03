@@ -30,6 +30,15 @@ void Server::Start() {
 
 		currentClient = *acceptResult;
 
+		if (connectHandler) {
+			try {
+				(*connectHandler)(currentClient);
+			}
+			catch (...) {
+				// threw exception, not good!
+			}
+		}
+
 		while (!IsStopRequested()) {
 			std::optional<Message> messageOpt = Message::TryReceive(currentClient);
 			if (!messageOpt) {
@@ -56,6 +65,15 @@ void Server::Start() {
 
 			if (message.type == Type::Goodbye) {
 				break;
+			}
+		}
+
+		if (disconnectHandler) {
+			try {
+				(*disconnectHandler)(currentClient);
+			}
+			catch (...) {
+				// threw exception, not good!
 			}
 		}
 
@@ -87,8 +105,16 @@ std::optional<int> Server::GetPort() {
 	return listenSocket.GetBoundPort();
 }
 
+void Server::SetClientConnectedHandler(std::function<void(TCPSocket& client)> handler) {
+	connectHandler = handler;
+}
+
 void Server::SetMessageReceivedHandler(std::function<bool(TCPSocket& client, const Message message)> handler) {
 	messageHandler = handler;
+}
+
+void Server::SetClientDisconnectedHandler(std::function<void(TCPSocket& client)> handler) {
+	disconnectHandler = handler;
 }
 
 Server::~Server() {

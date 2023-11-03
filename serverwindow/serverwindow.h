@@ -7,6 +7,8 @@
 #include "../common/socket/socket.h"
 
 wxDECLARE_EVENT(EVT_SERVER_PUSH_LOG, wxThreadEvent);
+wxDECLARE_EVENT(EVT_SERVER_RECEIVE_IMAGE_JPG, wxThreadEvent);
+wxDECLARE_EVENT(EVT_SERVER_RECEIVE_IMAGE_PNG, wxThreadEvent);
 
 class ServerWindow : public wxFrame, public wxThreadHelper {
 public:
@@ -30,5 +32,8 @@ protected:
 	// Server Thread elements (defined in serverwindow.thread.cpp)
 	bool StartServerThread(std::string& hostname, int port);
 	void* Entry() override; // Inherited via wxThreadHelper
+
+	void OnClientConnect(TCPSocket& socket);
 	bool OnServerMessageReceived(TCPSocket& socket, Message message);
+	void OnClientDisconnect(TCPSocket& socket);
 };

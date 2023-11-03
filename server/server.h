@@ -22,7 +22,9 @@ public:
 	std::optional<std::string> GetHostname();
 	std::optional<int> GetPort();
 
+	void SetClientConnectedHandler(std::function<void(TCPSocket& client)> handler);
 	void SetMessageReceivedHandler(std::function<bool(TCPSocket& client, const Message message)> handler);
+	void SetClientDisconnectedHandler(std::function<void(TCPSocket& client)> handler);
 
 	~Server();
 
@@ -30,5 +32,7 @@ private:
 	TCPSocket listenSocket;
 	TCPSocket currentClient;
 
+	std::optional<std::function<void(TCPSocket&)>> connectHandler;
 	std::optional<std::function<bool(TCPSocket&, const Message)>> messageHandler;
+	std::optional<std::function<void(TCPSocket&)>> disconnectHandler;
 };

@@ -22,7 +22,7 @@ public:
 		Number64 = 1, // A 64-bit signed integer.
 		ImageJPG = 2, // a JPEG-encoded image
 		ImagePNG = 3, // a PNG-encoded image
-		Goodbye = std::numeric_limits<std::underlying_type_t<Type>>::max() // A special type, indicating the conversation is over.
+		Goodbye = 255 // A special type, indicating the conversation is over.
 	};
 
 	typedef size_t Length;
