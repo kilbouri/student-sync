@@ -49,6 +49,32 @@ bool Client::EndVideoStream() {
 	return Message(Message::Type::EndVideoStream).Send(socket);
 }
 
+bool Client::RequestVideoStream() {
+	return Message::CreateRequestVideoStream().Send(socket);
+}
+/*
+bool Client::HandleVideoStreamResponse() {
+
+	if (!response.TryReceive(socket)) {
+		// Failed to receive response
+		return false;
+	}
+
+	if (response.IsAcceptVideoStream()) {
+		// Server accepted the video stream request
+		return true;
+	}
+	else if (response.IsDenyVideoStream()) {
+		// Server denied the video stream request
+		return false;
+	}
+	else {
+		// Unexpected response type
+		return false;
+	}
+}
+*/
+
 Client::~Client() {
 	socket.Close();
 }

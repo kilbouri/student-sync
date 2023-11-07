@@ -25,8 +25,32 @@ public:
 		VideoFramePNG = 128, // contains a subsequent video frame
 		EndVideoStream = 129, // indicates the video stream is ending. Has no payload.
 
+		RequestVideoStream = 130,// Indicates a client is requesting to start a video stream
+		AcceptVideoStream = 131,// indicates to the client that the server is ready to recieve their stream
+		DenyVideoStream = 132,//indicates to the client that the server is NOT ready to recieve the stream
+
 		Goodbye = 255 // A special type, indicating the conversation is over.
 	};
+
+	enum class MessageType  {//MessageTypes for the client-server protocol
+		TextMessage,
+		NumberMessage,
+		RequestVideoStream,
+		AcceptVideoStream,
+		DenyVideoStream,
+		VideoFramePNG,
+		EndVideoStream,
+		ErrorMessage,
+		// Add more as needed
+	};
+
+	static Message CreateRequestVideoStream();
+	static Message CreateAcceptVideoStream();
+	static Message CreateDenyVideoStream();
+
+	bool IsVideoStreamRequest() const;
+	bool IsAcceptVideoStream() const;
+	bool IsDenyVideoStream() const;
 
 	typedef size_t Length;
 	typedef std::vector<byte> Value;

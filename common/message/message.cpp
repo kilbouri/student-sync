@@ -102,3 +102,26 @@ bool Message::Send(Socket& socket) {
 
 	return socket.WriteAllBytes(networkData.data(), messageByteCount);
 }
+Message Message::CreateRequestVideoStream() {
+    return Message(Type::RequestVideoStream);
+}
+
+Message Message::CreateAcceptVideoStream() {
+    return Message(Type::AcceptVideoStream);
+}
+
+Message Message::CreateDenyVideoStream() {
+    return Message(Type::DenyVideoStream);
+}
+
+bool Message::IsVideoStreamRequest() const {
+    return type == Type::RequestVideoStream;
+}
+
+bool Message::IsAcceptVideoStream() const {
+    return type == Type::AcceptVideoStream;
+}
+
+bool Message::IsDenyVideoStream() const {
+    return type == Type::DenyVideoStream;
+}

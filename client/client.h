@@ -17,6 +17,10 @@ public:
 	bool SendString(const std::string& str);
 	bool SendNumber(int64_t number);
 
+	// Updated methods for handling video stream requests and responses
+	bool RequestVideoStream();
+	bool HandleVideoStreamResponse();
+
 	bool StartVideoStream();
 	bool SendVideoFrame();
 	bool EndVideoStream();
