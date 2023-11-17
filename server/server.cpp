@@ -1,5 +1,5 @@
 #include "server.h"
-#include "../common/message/message.h"
+#include "../common/networkmessage/networkmessage.h"
 
 #include <string>
 #include <optional>
@@ -21,8 +21,6 @@ bool Server::BindAndListen(std::string& ipAddress, int portNumber) {
 
 void Server::Start() {
 	while (!IsStopRequested()) {
-		using Type = Message::Type;
-
 		std::optional<TCPSocket> acceptResult = listenSocket.Accept();
 		if (!acceptResult) {
 			continue;
@@ -39,12 +37,12 @@ void Server::Start() {
 		}
 
 		while (!IsStopRequested()) {
-			std::optional<Message> messageOpt = Message::TryReceive(currentClient);
+			std::optional<NetworkMessage> messageOpt = NetworkMessage::TryReceive(currentClient);
 			if (!messageOpt) {
 				break;
 			}
 
-			const Message message = std::move(*messageOpt);
+			const NetworkMessage message = std::move(*messageOpt);
 
 			// Invoke message handler if set
 			if (messageHandler) {
@@ -104,7 +102,7 @@ void Server::SetClientConnectedHandler(std::function<void(TCPSocket& client)> ha
 	connectHandler = handler;
 }
 
-void Server::SetMessageReceivedHandler(std::function<bool(TCPSocket& client, const Message message)> handler) {
+void Server::SetMessageReceivedHandler(std::function<bool(TCPSocket& client, const NetworkMessage message)> handler) {
 	messageHandler = handler;
 }
 

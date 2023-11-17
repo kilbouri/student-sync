@@ -1,6 +1,8 @@
 // This file defines the background thread for ServerWindow. It is #included in serverwindow.cpp
 #pragma once
 #include "serverwindow.h"
+#include "../common/messages/stringmessage.h"
+#include "../common/messages/number64message.h"
 
 wxDEFINE_EVENT(SERVER_EVT_PUSH_LOG, wxThreadEvent);
 wxDEFINE_EVENT(SERVER_EVT_CLIENT_STARTING_STREAM, wxThreadEvent);
@@ -14,7 +16,7 @@ event->SetPayload(wxString(message));							\
 wxQueueEvent(this, event);										\
 }
 
-wxString CreateLogMessage(Message& receivedMessage);
+wxString CreateLogMessage(NetworkMessage& receivedMessage);
 
 // Despite the name of this function, it is defining the entry for the server thread.
 void* ServerWindow::Entry() {
@@ -46,18 +48,18 @@ void ServerWindow::OnClientConnect(TCPSocket& socket) {
 	PUSH_LOG_MESSAGE(hostname + ":" + port + " connected");
 }
 
-bool ServerWindow::OnServerMessageReceived(TCPSocket& clientSocket, Message receivedMessage) {
-	using Type = Message::Type;
+bool ServerWindow::OnServerMessageReceived(TCPSocket& clientSocket, NetworkMessage receivedMessage) {
+	using Tag = NetworkMessage::Tag;
 
 	PUSH_LOG_MESSAGE(CreateLogMessage(receivedMessage));
 
 #define SERVER_MESSAGE_HANDLER(type, handlerFunc) case type: return handlerFunc(clientSocket, receivedMessage)
-	switch (receivedMessage.type) {
-		SERVER_MESSAGE_HANDLER(Type::String, DefaultMessageHandler);
-		SERVER_MESSAGE_HANDLER(Type::Number64, DefaultMessageHandler);
-		SERVER_MESSAGE_HANDLER(Type::StartVideoStream, StartVideoStreamMessageHandler);
-		SERVER_MESSAGE_HANDLER(Type::VideoFramePNG, VideoFramePNGMessageHandler);
-		SERVER_MESSAGE_HANDLER(Type::EndVideoStream, EndVideoStreamMessageHandler);
+	switch (receivedMessage.tag) {
+		SERVER_MESSAGE_HANDLER(Tag::String, NoOpMessageHandler);
+		SERVER_MESSAGE_HANDLER(Tag::Number64, NoOpMessageHandler);
+		SERVER_MESSAGE_HANDLER(Tag::StartStream, StartVideoStreamMessageHandler);
+		//SERVER_MESSAGE_HANDLER(Tag::VideoFramePNG, VideoFramePNGMessageHandler);
+		SERVER_MESSAGE_HANDLER(Tag::EndStream, EndVideoStreamMessageHandler);
 		default: return false;
 	}
 #undef SERVER_MESSAGE_HANDLER
@@ -73,34 +75,39 @@ void ServerWindow::OnClientDisconnect(TCPSocket& socket) {
 	PUSH_LOG_MESSAGE(hostname + ":" + port + " disconnected");
 }
 
-wxString CreateLogMessage(Message& receivedMessage) {
-	using Type = Message::Type;
+wxString CreateLogMessage(NetworkMessage& receivedMessage) {
+	using Tag = NetworkMessage::Tag;
 
-	switch (receivedMessage.type) {
-		case Type::String: {
-			std::string receivedString = std::string(reinterpret_cast<const char*>(receivedMessage.data.data()), receivedMessage.data.size());
-			return "Received String: '" + receivedString + "'";
+	switch (receivedMessage.tag) {
+		case Tag::String: {
+			std::optional<StringMessage> stringMessage = StringMessage::FromNetworkMessage(receivedMessage);
+			if (!stringMessage) {
+				return "Received malformed String message";
+			}
+
+			return "Received String: '" + (*stringMessage).string + "'";
 		}
-		case Type::Number64: {
-			int64_t number = 0;
-			std::memcpy(&number, receivedMessage.data.data(), std::min(receivedMessage.data.size(), sizeof(number)));
-			return "Received Number64: " + std::to_string(ntohll_signed(number));
+
+		case Tag::Number64: {
+			std::optional<Number64Message> n64Message = Number64Message::FromNetworkMessage(receivedMessage);
+			if (!n64Message) {
+				return "Received malformed Number64 message";
+			}
+
+			return "Received Number64: " + std::to_string((*n64Message).number);
 		}
 
-		case Type::StartVideoStream: return "Received StartVideoStream";
-		case Type::EndVideoStream: return "Received EndVideoStream";
-		case Type::VideoFramePNG: return "Received VideoFramePNG";
-		case Type::Goodbye: return "Received Goodbye";
-
-		default: return "Unhandled message type: " + std::to_string(receivedMessage.type);
+		case Tag::StartStream: return "Received StartVideoStream";
+		case Tag::EndStream: return "Received EndVideoStream";
+		default: return "Unhandled message type: " + std::to_string(static_cast<NetworkMessage::TagType>(receivedMessage.tag));
 	}
 }
 
-bool ServerWindow::DefaultMessageHandler(TCPSocket& client, Message& message) {
+bool ServerWindow::NoOpMessageHandler(TCPSocket& client, NetworkMessage& message) {
 	return true;
 }
 
-bool ServerWindow::StartVideoStreamMessageHandler(TCPSocket& client, Message& message) {
+bool ServerWindow::StartVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message) {
 	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_STARTING_STREAM);
 	event->SetPayload(message.data);
 
@@ -108,7 +115,7 @@ bool ServerWindow::StartVideoStreamMessageHandler(TCPSocket& client, Message& me
 	return true;
 }
 
-bool ServerWindow::VideoFramePNGMessageHandler(TCPSocket& client, Message& message) {
+bool ServerWindow::VideoFramePNGMessageHandler(TCPSocket& client, NetworkMessage& message) {
 	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED);
 	event->SetPayload(message.data);
 
@@ -116,7 +123,7 @@ bool ServerWindow::VideoFramePNGMessageHandler(TCPSocket& client, Message& messa
 	return true;
 }
 
-bool ServerWindow::EndVideoStreamMessageHandler(TCPSocket& client, Message& message) {
+bool ServerWindow::EndVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message) {
 	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_ENDING_STREAM);
 	wxQueueEvent(this, event);
 	return true;

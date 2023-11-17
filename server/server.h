@@ -4,7 +4,7 @@
 #include <functional>
 #include <vector>
 
-#include "../common/message/message.h"
+#include "../common/networkmessage/networkmessage.h"
 #include "../win32includes.h"
 
 // todo: use threads to handle each connection so we can have concurrent connections
@@ -24,7 +24,7 @@ public:
 	std::optional<int> GetPort();
 
 	void SetClientConnectedHandler(std::function<void(TCPSocket& client)> handler);
-	void SetMessageReceivedHandler(std::function<bool(TCPSocket& client, const Message message)> handler);
+	void SetMessageReceivedHandler(std::function<bool(TCPSocket& client, const NetworkMessage message)> handler);
 	void SetClientDisconnectedHandler(std::function<void(TCPSocket& client)> handler);
 
 	~Server();
@@ -34,6 +34,6 @@ private:
 	TCPSocket currentClient;
 
 	std::optional<std::function<void(TCPSocket&)>> connectHandler;
-	std::optional<std::function<bool(TCPSocket&, const Message)>> messageHandler;
+	std::optional<std::function<bool(TCPSocket&, const NetworkMessage)>> messageHandler;
 	std::optional<std::function<void(TCPSocket&)>> disconnectHandler;
 };

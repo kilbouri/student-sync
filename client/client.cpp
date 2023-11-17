@@ -5,7 +5,9 @@
 #include <string>
 
 #include "../common/socket/socket.h"
-#include "../common/message/message.h"
+#include "../common/networkmessage/networkmessage.h"
+#include "../common/messages/stringmessage.h"
+#include "../common/messages/number64message.h"
 
 Client::Client() : socket(TCPSocket{}) {}
 
@@ -18,11 +20,11 @@ bool Client::Disconnect() {
 }
 
 bool Client::SendString(const std::string& str) {
-	return Message(str).Send(socket);
+	return StringMessage(str).ToNetworkMessage().Send(socket);
 }
 
 bool Client::SendNumber(int64_t number) {
-	return Message(number).Send(socket);
+	return Number64Message(number).ToNetworkMessage().Send(socket);
 }
 
 bool Client::StartVideoStream() {
@@ -32,25 +34,28 @@ bool Client::StartVideoStream() {
 		return false;
 	}
 
-	return Message(Message::Type::StartVideoStream, std::move(*firstFrame)).Send(socket);
+	return NetworkMessage(NetworkMessage::Tag::StartStream, std::move(*firstFrame)).Send(socket);
 }
 
 bool Client::SendVideoFrame() {
 	// video frames are required to be in PNG format. Maybe in the future we will swap over to BMP to perform temporal compression
-	std::optional<std::vector<byte>> firstFrame = DisplayCapturer::CaptureScreen(DisplayCapturer::Format::PNG);
-	if (!firstFrame) {
+	std::optional<std::vector<byte>> frame = DisplayCapturer::CaptureScreen(DisplayCapturer::Format::PNG);
+	if (!frame) {
 		return false;
 	}
 
-	return Message(Message::Type::VideoFramePNG, std::move(*firstFrame)).Send(socket);
+	return true;
+	//return NetworkMessage(NetworkMessage::Tag::VideoFramePNG, std::move(*firstFrame)).Send(socket);
 }
 
 bool Client::EndVideoStream() {
-	return Message(Message::Type::EndVideoStream).Send(socket);
+	return true;
+	//return NetworkMessage(NetworkMessage::Tag::EndStream).Send(socket);
 }
 
 bool Client::RequestVideoStream() {
-	return Message::CreateRequestVideoStream().Send(socket);
+	return true;
+	//return NetworkMessage::CreateRequestVideoStream().Send(socket);
 }
 /*
 bool Client::HandleVideoStreamResponse() {
