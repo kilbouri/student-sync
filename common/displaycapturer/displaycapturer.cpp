@@ -77,7 +77,7 @@ constexpr int HeightOfRect(RECT r) {
 	return r.bottom - r.top;
 }
 
-std::optional<std::vector<char>> DisplayCapturer::CaptureScreen(DisplayCapturer::Format format) {
+std::optional<std::vector<byte>> DisplayCapturer::CaptureScreen(DisplayCapturer::Format format) {
 	std::vector<MonitorInfo> monitors;
 	auto maybeMonitors = GetMonitors();
 	if (!maybeMonitors || (monitors = std::move(*maybeMonitors)).size() == 0) {
@@ -140,7 +140,7 @@ std::optional<std::vector<char>> DisplayCapturer::CaptureScreen(DisplayCapturer:
 	}
 
 	size_t numEncodedBytes = GlobalSize(encodeStreamHG);
-	std::vector<char> imageData(numEncodedBytes);
+	std::vector<byte> imageData(numEncodedBytes);
 	std::memcpy(imageData.data(), encodedData, numEncodedBytes);
 
 	// unlock and free stream

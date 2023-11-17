@@ -1,114 +1,123 @@
 #include "message.h"
 
-int recvBytesSafe(SOCKET socket, char* dataBuffer, int numBytes);
-int sendBytesSafe(SOCKET socket, char* dataBuffer, int numBytes);
-
-Message::Message(std::string_view value)
-	: type{ Type::STRING }, length{ (int)value.length() }
-{
-	// assumes value is NON-UNICODE! Network byte order MAY mismatch and screw up
-	// Unicode strings.
-	this->data = std::vector<char>(value.data(), value.data() + value.length());
+int64_t htonll_signed(int64_t value) {
+	return static_cast<int64_t>(htonll(static_cast<uint64_t>(value)));
 }
 
-Message::Message(int64_t value)
-	: type{ Type::NUMBER_64 }, length{ sizeof(value) }
-{
-	this->data = std::vector<char>(sizeof(value));
-
-	int64_t networkValue = htonll(value);
-	std::memcpy(this->data.data(), &networkValue, sizeof(value));
+int64_t ntohll_signed(int64_t value) {
+	return static_cast<int64_t>(ntohll(static_cast<uint64_t>(value)));
 }
 
-Message::Message(Type dataType, std::vector<char> data)
-	: type{ dataType }, length{ (int)data.size() }, data{ data } { }
+constexpr std::optional<Message::Type> Message::ToMessageType(RawType t) {
+	using Type = Message::Type;
 
-Message Message::Goodbye() {
-	return Message(Type::GOODBYE, std::vector<char>(0));
+#define MESSAGE_TYPE(type) case Type::type: return type
+	switch (t) {
+		MESSAGE_TYPE(String);
+		MESSAGE_TYPE(Number64);
+
+		MESSAGE_TYPE(StartVideoStream);
+		MESSAGE_TYPE(VideoFramePNG);
+		MESSAGE_TYPE(EndVideoStream);
+
+		MESSAGE_TYPE(Goodbye);
+		default: return std::nullopt;
+	}
+#undef MESSAGE_TYPE
 }
 
-std::optional<Message> Message::TryReceive(SOCKET socket) {
-	int32_t type;
-	int length;
+Message::Message(Type dataType, Value data) : type{ dataType }, data{ data } {}
+Message::Message(std::string_view value) : Message(Type::String, Value(value.data(), value.data() + value.length())) {}
+Message::Message(int64_t value) : Message(Type::Number64, ([value]() {
+	// Well, C++, you forced my hand. I wanted this data vector to be const, but in doing so I (rightly) can't 
+	// memcpy to it. So you get to have this IIFE hack.
+	int64_t networkValue = htonll_signed(value);
 
-	char typeData[sizeof(type)] = { 0 };
-	char lengthData[sizeof(length)] = { 0 };
+	Value newData(sizeof(networkValue));
+	std::memcpy(newData.data(), &networkValue, sizeof(networkValue));
 
-	if (recvBytesSafe(socket, typeData, sizeof(type))) {
+	return newData;
+})()) {}
+
+std::optional<Message> Message::TryReceive(Socket& socket) {
+	using IOResult = Socket::IOResult;
+	// Reading & parsing the Type segment
+	RawType rawType;
+	byte typeData[sizeof(rawType)] = { 0 };
+	if (socket.ReadAllBytes(typeData, sizeof(rawType)) != IOResult::Success) {
 		return std::nullopt;
 	}
 
-	if (recvBytesSafe(socket, lengthData, sizeof(length))) {
+	// no byte order conversion required for a single-byte type
+	std::memcpy(&rawType, typeData, sizeof(rawType));
+
+	std::optional<Type> messageType = ToMessageType(rawType);
+	if (!messageType) {
 		return std::nullopt;
 	}
 
-	// these will be in network byte order
-	std::memcpy(&type, typeData, sizeof(type));
+	// Reading & parsing the Length segment
+	Length length;
+	byte lengthData[sizeof(length)] = { 0 };
+	if (socket.ReadAllBytes(lengthData, sizeof(length)) != IOResult::Success) {
+		return std::nullopt;
+	}
+
 	std::memcpy(&length, lengthData, sizeof(length));
+	length = ntohll(length);
 
-	// now they are in host order (which is probably the same but better to be safe)
-	type = ntohl(type);
-	length = ntohl(length);
+	Value data(length);
+	if (length == 0) {
+		return Message(*messageType, data);
+	}
 
-	std::vector<char> data(length);
-
-	// the length check here prevents us from trying to receive data when
-	// there is 0 bytes of data to be received (such as in the case of GOODBYE)
-	if (length != 0 && recvBytesSafe(socket, data.data(), length)) {
+	// there is data to be read from the socket to populate the buffer
+	if (socket.ReadAllBytes(data.data(), length) != IOResult::Success) {
 		return std::nullopt;
 	}
 
-	return Message((Type)type, data);
+	return Message(*messageType, data);
 }
 
-int Message::Send(SOCKET socket) {
-	int32_t networkTag = htonl(this->type);
-	int networkLength = htonl(this->length);
+bool Message::Send(Socket& socket) {
+	RawType tag = this->type; // no byte order conversion required as long as this is one byte
+	Length length = htonll(this->data.size());
 
-	int dataSize = sizeof(networkTag) + sizeof(networkLength) + this->length;
-	std::vector<char> networkValue(dataSize);
+	// We eat the copy cost in order to create a single buffer. This allows us to give the
+	// socket the opportunity to be as efficient as possible by providing all the data at once.
+	size_t messageByteCount = sizeof(tag) + sizeof(length) + data.size();
+	Value networkData(messageByteCount);
 
-	char* tagStart = networkValue.data();
-	char* lengthStart = tagStart + sizeof(networkTag);
-	char* dataStart = lengthStart + sizeof(networkLength);
+	byte* tagStart = networkData.data();
+	byte* lengthStart = tagStart + sizeof(tag);
+	byte* dataStart = lengthStart + sizeof(length);
 
-	std::memcpy(tagStart, &networkTag, sizeof(networkTag));
-	std::memcpy(lengthStart, &networkLength, sizeof(networkLength));
-	std::memcpy(dataStart, this->data.data(), this->length);
+	std::memcpy(tagStart, &tag, sizeof(tag));
+	std::memcpy(lengthStart, &length, sizeof(length));
+	std::memcpy(dataStart, data.data(), data.size());
 
-	if (sendBytesSafe(socket, networkValue.data(), dataSize)) {
-		return 1;
-	}
-
-	return 0;
+	return socket.WriteAllBytes(networkData.data(), messageByteCount) == Socket::IOResult::Success;
+}
+Message Message::CreateRequestVideoStream() {
+	return Message(Type::RequestVideoStream);
 }
 
-// Returns 0 if all numBytes bytes were received, otherwise 1
-int recvBytesSafe(SOCKET socket, char* dataBuffer, int numBytes) {
-	int bytesRead = 0;
-	do {
-		int read = recv(socket, dataBuffer + bytesRead, numBytes - bytesRead, 0);
-		if (read <= 0) {
-			return 1;
-		}
-
-		bytesRead += read;
-	} while (bytesRead < numBytes);
-
-	return 0;
+Message Message::CreateAcceptVideoStream() {
+	return Message(Type::AcceptVideoStream);
 }
 
-// Returns 0 if all numBytes were sent, otherwise 1
-int sendBytesSafe(SOCKET socket, char* dataBuffer, int numBytes) {
-	int bytesSent = 0;
-	do {
-		int sent = send(socket, dataBuffer + bytesSent, numBytes - bytesSent, 0);
-		if (sent == SOCKET_ERROR || sent < 0) {
-			return 1;
-		}
+Message Message::CreateDenyVideoStream() {
+	return Message(Type::DenyVideoStream);
+}
 
-		bytesSent += sent;
-	} while (bytesSent < numBytes);
+bool Message::IsVideoStreamRequest() const {
+	return type == Type::RequestVideoStream;
+}
 
-	return 0;
+bool Message::IsAcceptVideoStream() const {
+	return type == Type::AcceptVideoStream;
+}
+
+bool Message::IsDenyVideoStream() const {
+	return type == Type::DenyVideoStream;
 }

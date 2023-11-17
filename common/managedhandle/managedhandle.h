@@ -1,3 +1,5 @@
+#pragma once
+
 #include <functional>
 
 // Provides a mechanism to manage unmanaged objects/handles with
@@ -5,11 +7,11 @@
 template<typename TValue>
 struct ManagedHandle {
 public:
-	using DeleterFuncVoid = std::function<void (TValue)>;
+	using DeleterFuncVoid = std::function<void(TValue)>;
 
-	ManagedHandle(TValue value, DeleterFuncVoid deleter) : value{value}, deleter{deleter} {}
+	ManagedHandle(TValue value, DeleterFuncVoid deleter) : value{ value }, deleter{ deleter } {}
 	~ManagedHandle() { deleter(this->value); }
-	
+
 	operator TValue() { return this->value; }
 
 private:

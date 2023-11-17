@@ -13,7 +13,9 @@ set(PROJECT_NAME "comp-4990-project")
 project(${PROJECT_NAME})
 
 # Add source to this project's executable.
-add_executable (${PROJECT_NAME} WIN32 "main.cpp" "server/server.cpp" "server/server.h" "client/client.h" "client/client.cpp" "common/message/message.h" "common/message/message.cpp" "win32includes.h" "common/displaycapturer/displaycapturer.cpp" "common/displaycapturer/displaycapturer.h" "common/managedhandle/managedhandle.h" "GUI/GUI.h" "GUI/GUI.cpp")
+set(PROJECT_HEADERS "win32includes.h" "client/client.h" "clientwindow/clientwindow.h" "common/displaycapturer/displaycapturer.h" "common/managedhandle/managedhandle.h" "common/message/message.h" "server/server.h" "modeselectdialog/modeselectdialog.h" "serverwindow/serverwindow.h" "common/socket/socket.h" "videostreamwindow/videostreamwindow.h")
+set(PROJECT_SOURCES "client/client.cpp" "clientwindow/clientwindow.cpp" "common/displaycapturer/displaycapturer.cpp" "common/message/message.cpp" "main.cpp" "server/server.cpp" "modeselectdialog/modeselectdialog.cpp" "serverwindow/serverwindow.cpp" "common/socket/socket.cpp" "videostreamwindow/videostreamwindow.cpp")
+add_executable (${PROJECT_NAME} WIN32 ${PROJECT_HEADERS} ${PROJECT_SOURCES})
 target_sources(${PROJECT_NAME} PRIVATE appManifest.manifest)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)

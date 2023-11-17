@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -5,37 +7,70 @@
 #include <optional>
 
 #include "../../win32includes.h"
+#include "../../common/socket/socket.h"
+
+int64_t htonll_signed(int64_t value);
+int64_t ntohll_signed(int64_t value);
 
 // Represents a Type-Length-Value encoded message that
 // may be transmitted over a socket.
 class Message {
 public:
-
 	// An enumeration of Types that may be sent
-	enum Type : int32_t {
-		STRING = 0, // An ASCII string. No null terminator is included.
-		NUMBER_64 = 1, // A 64-bit signed integer.
-		IMAGE_JPG = 2, // a JPEG-encoded image
-		IMAGE_PNG = 3, // a PNG-encoded image
-		GOODBYE = ~0 // A special type, indicating the conversation is over.
+	enum Type : uint8_t {
+		String = 0, // An ASCII string. No null terminator is included.
+		Number64 = 1, // A 64-bit signed integer.
+
+		StartVideoStream = 127, // indicates a video stream is starting. Contains the first frame.
+		VideoFramePNG = 128, // contains a subsequent video frame
+		EndVideoStream = 129, // indicates the video stream is ending. Has no payload.
+
+		RequestVideoStream = 130,// Indicates a client is requesting to start a video stream
+		AcceptVideoStream = 131,// indicates to the client that the server is ready to recieve their stream
+		DenyVideoStream = 132,//indicates to the client that the server is NOT ready to recieve the stream
+
+		Goodbye = 255 // A special type, indicating the conversation is over.
 	};
 
-	const Type type;
-	const int length;
-	std::vector<char> data;
+	enum class MessageType  {//MessageTypes for the client-server protocol
+		TextMessage,
+		NumberMessage,
+		RequestVideoStream,
+		AcceptVideoStream,
+		DenyVideoStream,
+		VideoFramePNG,
+		EndVideoStream,
+		ErrorMessage,
+		// Add more as needed
+	};
 
+	static Message CreateRequestVideoStream();
+	static Message CreateAcceptVideoStream();
+	static Message CreateDenyVideoStream();
+
+	bool IsVideoStreamRequest() const;
+	bool IsAcceptVideoStream() const;
+	bool IsDenyVideoStream() const;
+
+	typedef size_t Length;
+	typedef std::vector<byte> Value;
+	typedef std::underlying_type_t<Message::Type> RawType;
+
+	static constexpr std::optional<Message::Type> ToMessageType(RawType t);
+
+	const Type type;
+	const Value data;
+
+	Message(Type, Value = Value(0));
 	Message(std::string_view);
 	Message(int64_t);
-	Message(Type, std::vector<char>);
-
-	static Message Goodbye();
 
 	// Tries to receive a message from the specified socket.
 	// Returns std::nullopt if an error occurs, or the message is
 	// malformed, otherwise the received message.
-	static std::optional<Message> TryReceive(SOCKET socket);
+	static std::optional<Message> TryReceive(Socket& socket);
 
 	// Sends the message on the specified socket.
-	// Returns 1 if an error occurs, otherwise 0.
-	int Send(SOCKET socket);
+	bool Send(Socket& socket);
+
 };
