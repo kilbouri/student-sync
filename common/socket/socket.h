@@ -11,21 +11,27 @@
 /// </summary>
 class Socket {
 public:
-	enum SocketDirection {
+	enum class Direction {
 		Send,
 		Receive,
 		Both
 	};
 
+	enum class IOResult {
+		Success,
+		ConnectionClosed,
+		Error
+	};
+
 	bool IsValid();
-	bool Shutdown(SocketDirection direction);
+	bool Shutdown(Direction direction);
 	bool Close();
 
-	std::optional<size_t> WriteBytes(const byte* buffer, size_t nBytes);
-	std::optional<size_t> ReadBytes(byte* buffer, size_t nBytes);
+	int WriteBytes(const byte* buffer, int nBytes);
+	int ReadBytes(byte* buffer, int nBytes);
 
-	bool WriteAllBytes(const byte* buffer, size_t nBytes);
-	bool ReadAllBytes(byte* buffer, size_t nBytes);
+	IOResult WriteAllBytes(const byte* buffer, size_t nBytes);
+	IOResult ReadAllBytes(byte* buffer, size_t nBytes);
 
 	Socket(const Socket& other); // Copy constructor
 	Socket(Socket&& other) noexcept; // Move constructor

@@ -78,16 +78,16 @@ Socket::~Socket() {
 	}
 }
 
-bool Socket::Shutdown(SocketDirection direction) {
+bool Socket::Shutdown(Direction direction) {
 	if (!IsValid()) {
 		return false;
 	}
 
 	int how;
 	switch (direction) {
-		case SocketDirection::Both: how = SD_BOTH; break;
-		case SocketDirection::Send: how = SD_SEND; break;
-		case SocketDirection::Receive: how = SD_RECEIVE; break;
+		case Direction::Both: how = SD_BOTH; break;
+		case Direction::Send: how = SD_SEND; break;
+		case Direction::Receive: how = SD_RECEIVE; break;
 		default: return false;
 	}
 
@@ -108,65 +108,54 @@ bool Socket::Close() {
 	return rc != SOCKET_ERROR;
 }
 
-std::optional<size_t> Socket::WriteBytes(const byte* buffer, size_t nBytes) {
-	if (!IsValid()) {
-		return std::nullopt;
-	}
-
-	// just because we accept a size_t, does not mean we can write that many bytes.
+int Socket::WriteBytes(const byte* buffer, int nBytes) {
+	// just because we accept a int, does not mean we can read that many bytes.
 	// We take the smaller of nBytes and the max value for an int.
-	int bytesToWrite = static_cast<int>(std::min(nBytes, static_cast<size_t>(std::numeric_limits<int>::max())));
-	int rc = send(*underlyingSocket, reinterpret_cast<const char*>(buffer), bytesToWrite, 0);
-	if (rc == SOCKET_ERROR) {
-		return std::nullopt;
-	}
-
-	return rc;
+	return send(*underlyingSocket, reinterpret_cast<const char*>(buffer), nBytes, 0);
 }
 
-std::optional<size_t> Socket::ReadBytes(byte* buffer, size_t nBytes) {
-	if (!IsValid()) {
-		return std::nullopt;
-	}
-
-	// just because we accept a size_t, does not mean we can read that many bytes.
+int Socket::ReadBytes(byte* buffer, int nBytes) {
+	// just because we accept a int, does not mean we can read that many bytes.
 	// We take the smaller of nBytes and the max value for an int.
-	int bytesToRead = static_cast<int>(std::min(nBytes, static_cast<size_t>(std::numeric_limits<int>::max())));
-	int rc = recv(*underlyingSocket, reinterpret_cast<char*>(buffer), bytesToRead, 0);
-	if (rc == SOCKET_ERROR) {
-		return std::nullopt;
-	}
-
-	return rc;
+	return recv(*underlyingSocket, reinterpret_cast<char*>(buffer), nBytes, 0);
 }
 
-bool Socket::WriteAllBytes(const byte* buffer, size_t nBytes) {
+Socket::IOResult Socket::WriteAllBytes(const byte* buffer, size_t nBytes) {
 	size_t bytesSent = 0;
+
 	do {
-		std::optional<int> writeResult = WriteBytes(buffer + bytesSent, nBytes - bytesSent);
-		if (!writeResult) {
-			int errorCode = GetLastError();
-			return false;
+		int writeResult = WriteBytes(buffer + bytesSent, nBytes - bytesSent);
+		if (writeResult == SOCKET_ERROR) {
+			switch (GetLastError()) {
+				case WSAECONNRESET:
+				case WSAESHUTDOWN:
+				case WSAECONNABORTED:
+					return IOResult::ConnectionClosed;
+
+				default:
+					return IOResult::Error;
+			}
 		}
 
-		bytesSent += *writeResult;
+		bytesSent += writeResult;
 	} while (bytesSent < nBytes);
 
-	return true;
+	return IOResult::Success;
 }
 
-bool Socket::ReadAllBytes(byte* buffer, size_t nBytes) {
+Socket::IOResult Socket::ReadAllBytes(byte* buffer, size_t nBytes) {
 	size_t bytesRead = 0;
-	do {
-		std::optional<int> readResult = ReadBytes(buffer + bytesRead, nBytes - bytesRead);
-		if (!readResult) {
-			return false;
-		}
 
-		bytesRead += *readResult;
+	do {
+		int readResult = ReadBytes(buffer + bytesRead, nBytes - bytesRead);
+		switch (readResult) {
+			case SOCKET_ERROR: return IOResult::Error;
+			case 0: return IOResult::ConnectionClosed;
+			default: bytesRead += readResult; break;
+		}
 	} while (bytesRead < nBytes);
 
-	return true;
+	return IOResult::Success;
 }
 
 bool Socket::IsValid() {

@@ -40,12 +40,11 @@ Message::Message(int64_t value) : Message(Type::Number64, ([value]() {
 })()) {}
 
 std::optional<Message> Message::TryReceive(Socket& socket) {
-
+	using IOResult = Socket::IOResult;
 	// Reading & parsing the Type segment
 	RawType rawType;
 	byte typeData[sizeof(rawType)] = { 0 };
-	if (!socket.ReadAllBytes(typeData, sizeof(rawType))) {
-		int lastError = GetLastError();
+	if (socket.ReadAllBytes(typeData, sizeof(rawType)) != IOResult::Success) {
 		return std::nullopt;
 	}
 
@@ -53,16 +52,14 @@ std::optional<Message> Message::TryReceive(Socket& socket) {
 	std::memcpy(&rawType, typeData, sizeof(rawType));
 
 	std::optional<Type> messageType = ToMessageType(rawType);
-	if (!messageType.has_value()) {
-		int lastError = GetLastError();
+	if (!messageType) {
 		return std::nullopt;
 	}
 
 	// Reading & parsing the Length segment
 	Length length;
 	byte lengthData[sizeof(length)] = { 0 };
-	if (!socket.ReadAllBytes(lengthData, sizeof(length))) {
-		int lastError = GetLastError();
+	if (socket.ReadAllBytes(lengthData, sizeof(length)) != IOResult::Success) {
 		return std::nullopt;
 	}
 
@@ -75,8 +72,7 @@ std::optional<Message> Message::TryReceive(Socket& socket) {
 	}
 
 	// there is data to be read from the socket to populate the buffer
-	if (!socket.ReadAllBytes(data.data(), length)) {
-		int lastError = GetLastError();
+	if (socket.ReadAllBytes(data.data(), length) != IOResult::Success) {
 		return std::nullopt;
 	}
 
@@ -84,7 +80,7 @@ std::optional<Message> Message::TryReceive(Socket& socket) {
 }
 
 bool Message::Send(Socket& socket) {
-	RawType tag = this->type; // no byte order conversion required
+	RawType tag = this->type; // no byte order conversion required as long as this is one byte
 	Length length = htonll(this->data.size());
 
 	// We eat the copy cost in order to create a single buffer. This allows us to give the
@@ -100,28 +96,28 @@ bool Message::Send(Socket& socket) {
 	std::memcpy(lengthStart, &length, sizeof(length));
 	std::memcpy(dataStart, data.data(), data.size());
 
-	return socket.WriteAllBytes(networkData.data(), messageByteCount);
+	return socket.WriteAllBytes(networkData.data(), messageByteCount) == Socket::IOResult::Success;
 }
 Message Message::CreateRequestVideoStream() {
-    return Message(Type::RequestVideoStream);
+	return Message(Type::RequestVideoStream);
 }
 
 Message Message::CreateAcceptVideoStream() {
-    return Message(Type::AcceptVideoStream);
+	return Message(Type::AcceptVideoStream);
 }
 
 Message Message::CreateDenyVideoStream() {
-    return Message(Type::DenyVideoStream);
+	return Message(Type::DenyVideoStream);
 }
 
 bool Message::IsVideoStreamRequest() const {
-    return type == Type::RequestVideoStream;
+	return type == Type::RequestVideoStream;
 }
 
 bool Message::IsAcceptVideoStream() const {
-    return type == Type::AcceptVideoStream;
+	return type == Type::AcceptVideoStream;
 }
 
 bool Message::IsDenyVideoStream() const {
-    return type == Type::DenyVideoStream;
+	return type == Type::DenyVideoStream;
 }
