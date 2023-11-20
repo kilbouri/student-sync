@@ -41,11 +41,11 @@ protected:
 	void* Entry() override; // Inherited via wxThreadHelper
 
 	void OnClientConnect(TCPSocket& socket);
-	bool OnServerMessageReceived(TCPSocket& socket, Message message);
+	bool OnServerMessageReceived(TCPSocket& socket, NetworkMessage message);
 	void OnClientDisconnect(TCPSocket& socket);
 
-	bool DefaultMessageHandler(TCPSocket& client, Message& message);
-	bool StartVideoStreamMessageHandler(TCPSocket& client, Message& message);
-	bool VideoFramePNGMessageHandler(TCPSocket& client, Message& message);
-	bool EndVideoStreamMessageHandler(TCPSocket& client, Message& message);
+	bool NoOpMessageHandler(TCPSocket& client, NetworkMessage& message);
+	bool StartVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message);
+	bool VideoFramePNGMessageHandler(TCPSocket& client, NetworkMessage& message);
+	bool EndVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message);
 };

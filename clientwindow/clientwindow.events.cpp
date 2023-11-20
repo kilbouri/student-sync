@@ -8,6 +8,7 @@ void ClientWindow::OnAbout(wxCommandEvent& event) {
 	wxMessageBox("You're in the client software poggers!", "About this Software", wxOK | wxICON_INFORMATION);
 }
 
+// wxTimer::Notify
 void ClientWindow::Notify() {
 	client.SendVideoFrame();
 }
