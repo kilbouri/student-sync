@@ -27,14 +27,14 @@ void ServerWindow::OnDetails(wxCommandEvent& event) {
 }
 
 void ServerWindow::OnServerPushLog(wxThreadEvent& event) {
-	wxString message = event.GetPayload<wxString>(); // eheh, I love this type system... not... WHY CAN I NOT DEFINE A TYPE FOR THE PAYLOAD OF THE EVENT WTF
+	// eheh, I love this type system... not... WHY CAN I NOT FORCE A TYPE FOR THE PAYLOAD OF THE EVENT WTF
+	wxString message = event.GetPayload<wxString>();
 
 	logContainer->Add(new wxStaticText(logScroller, wxID_ANY, message));
 	logContainer->Layout();
 }
 
 void ServerWindow::OnClientStartStream(wxThreadEvent& event) {
-
 	// todo: use a critical section to guard access to streamWindow
 	wxBitmap firstFrame = BitmapFromByteVector(event.GetPayload<std::vector<byte>>());
 	streamWindow = new VideoStreamWindow(this, "StudentSync - Remote Screen", firstFrame);

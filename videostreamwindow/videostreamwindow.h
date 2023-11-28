@@ -1,7 +1,7 @@
 #pragma once
 
 #include <wx/wx.h>
-#include <wx/generic/statbmpg.h>
+#include "videoframebitmap.h"
 
 class VideoStreamWindow : public wxFrame {
 public:

@@ -46,6 +46,6 @@ protected:
 
 	bool NoOpMessageHandler(TCPSocket& client, NetworkMessage& message);
 	bool StartVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message);
-	bool VideoFramePNGMessageHandler(TCPSocket& client, NetworkMessage& message);
+	bool StreamFrameMessageHandler(TCPSocket& client, NetworkMessage& message);
 	bool EndVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message);
 };

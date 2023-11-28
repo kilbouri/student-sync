@@ -9,20 +9,12 @@ int64_t ntohll_signed(int64_t value) {
 }
 
 constexpr bool NetworkMessage::IsValidTag(TagType tag) {
-#define ENUM_VALUE(_type) case static_cast<TagType>(_type): return true
-
+#define CreateSwitch(name) case static_cast<TagType>(NetworkMessage::Tag::name): return true;
 	switch (tag) {
-		ENUM_VALUE(Tag::Hello);
-		ENUM_VALUE(Tag::Ok);
-		ENUM_VALUE(Tag::StartStream);
-		ENUM_VALUE(Tag::EndStream);
-		ENUM_VALUE(Tag::String);
-		ENUM_VALUE(Tag::Number64);
+		TagValues(CreateSwitch)
 		default: return false;
 	}
-	return false;
-
-#undef ENUM_VALUE
+#undef CreateSwitch
 }
 
 NetworkMessage::NetworkMessage(Tag dataType, Value data) : tag{ dataType }, data{ data } {}

@@ -8,6 +8,7 @@
 #include "../common/networkmessage/networkmessage.h"
 #include "../common/messages/stringmessage.h"
 #include "../common/messages/number64message.h"
+#include "../common/messages/streamframemessage.h"
 
 Client::Client() : socket(TCPSocket{}) {}
 
@@ -44,13 +45,17 @@ bool Client::SendVideoFrame() {
 		return false;
 	}
 
-	return true;
-	//return NetworkMessage(NetworkMessage::Tag::VideoFramePNG, std::move(*firstFrame)).Send(socket);
+	std::optional<StreamFrameMessage> message = StreamFrameMessage::FromDisplay(DisplayCapturer::Format::PNG);
+	if (!message) {
+		return false;
+	}
+
+	return std::move(*message).ToNetworkMessage().Send(socket);
 }
 
 bool Client::EndVideoStream() {
 	return true;
-	//return NetworkMessage(NetworkMessage::Tag::EndStream).Send(socket);
+	//return NetworkMessage(NetworkMessage::Tag::StopStream).Send(socket);
 }
 
 bool Client::RequestVideoStream() {

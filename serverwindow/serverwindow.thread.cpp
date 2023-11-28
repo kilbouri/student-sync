@@ -3,6 +3,7 @@
 #include "serverwindow.h"
 #include "../common/messages/stringmessage.h"
 #include "../common/messages/number64message.h"
+#include "../common/messages/streamframemessage.h"
 
 wxDEFINE_EVENT(SERVER_EVT_PUSH_LOG, wxThreadEvent);
 wxDEFINE_EVENT(SERVER_EVT_CLIENT_STARTING_STREAM, wxThreadEvent);
@@ -58,8 +59,8 @@ bool ServerWindow::OnServerMessageReceived(TCPSocket& clientSocket, NetworkMessa
 		SERVER_MESSAGE_HANDLER(Tag::String, NoOpMessageHandler);
 		SERVER_MESSAGE_HANDLER(Tag::Number64, NoOpMessageHandler);
 		SERVER_MESSAGE_HANDLER(Tag::StartStream, StartVideoStreamMessageHandler);
-		//SERVER_MESSAGE_HANDLER(Tag::VideoFramePNG, VideoFramePNGMessageHandler);
-		SERVER_MESSAGE_HANDLER(Tag::EndStream, EndVideoStreamMessageHandler);
+		SERVER_MESSAGE_HANDLER(Tag::StreamFrame, StreamFrameMessageHandler);
+		SERVER_MESSAGE_HANDLER(Tag::StopStream, EndVideoStreamMessageHandler);
 		default: return false;
 	}
 #undef SERVER_MESSAGE_HANDLER
@@ -98,7 +99,8 @@ wxString CreateLogMessage(NetworkMessage& receivedMessage) {
 		}
 
 		case Tag::StartStream: return "Received StartVideoStream";
-		case Tag::EndStream: return "Received EndVideoStream";
+		case Tag::StopStream: return "Received EndVideoStream";
+		case Tag::StreamFrame: return "Received StreamFrame";
 		default: return "Unhandled message type: " + std::to_string(static_cast<NetworkMessage::TagType>(receivedMessage.tag));
 	}
 }
@@ -115,9 +117,14 @@ bool ServerWindow::StartVideoStreamMessageHandler(TCPSocket& client, NetworkMess
 	return true;
 }
 
-bool ServerWindow::VideoFramePNGMessageHandler(TCPSocket& client, NetworkMessage& message) {
+bool ServerWindow::StreamFrameMessageHandler(TCPSocket& client, NetworkMessage& message) {
+	std::optional<StreamFrameMessage> streamFrameMessage = StreamFrameMessage::FromNetworkMessage(message);
+	if (!streamFrameMessage) {
+		return true;
+	}
+
 	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED);
-	event->SetPayload(message.data);
+	event->SetPayload(std::move(*streamFrameMessage).imageData);
 
 	wxQueueEvent(this, event);
 	return true;

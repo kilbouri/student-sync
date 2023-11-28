@@ -7,7 +7,7 @@ VideoStreamWindow::VideoStreamWindow(wxFrame* parent, wxString title, wxBitmap f
 
 	videoFrame = new wxGenericStaticBitmap(this, wxID_ANY, firstFrame);
 	videoFrame->SetBackgroundColour(wxColor(12, 12, 12));
-	videoFrame->SetScaleMode(wxGenericStaticBitmap::ScaleMode::Scale_AspectFit);
+	videoFrame->SetScaleMode(VideoFrameBitmap::ScaleMode::Scale_AspectFit);
 
 	wxBoxSizer* contentSizer = new wxBoxSizer(wxVERTICAL);
 	contentSizer->Add(videoFrame, wxEXPAND);

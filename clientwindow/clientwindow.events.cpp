@@ -68,6 +68,5 @@ void ClientWindow::OnEndStream(wxCommandEvent& event) {
 	wxTimer::Stop();
 	if (!client.EndVideoStream()) {
 		wxMessageBox("Failed to end stream", "StudentSync - Client", wxICON_WARNING | wxOK);
-		return;
 	}
 }

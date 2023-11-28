@@ -16,15 +16,18 @@ int64_t ntohll_signed(int64_t value);
 // may be transmitted over a socket.
 class NetworkMessage {
 public:
-	enum class Tag : uint8_t {
-		Hello,
-		Ok,
-		StartStream,
-		EndStream,
 
-		String,
-		Number64
-	};
+#define TagValues(x) \
+		x(Hello)         \
+		x(Ok)            \
+		x(StartStream)   \
+		x(StreamFrame)   \
+		x(StopStream)    \
+		x(String)        \
+		x(Number64)
+#define CreateEnum(name) name,
+
+	enum class Tag : uint8_t { TagValues(CreateEnum) };
 
 	// HERE BE DRAGONS!
 	// If you change these to a type of different width, you NEED to change TryReceive and Send to use

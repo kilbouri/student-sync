@@ -7,7 +7,7 @@
 
 class DisplayCapturer {
 public:
-	enum Format {
+	enum Format : int8_t {
 		BMP = 0,
 		PNG = 1,
 		JPG = 2,
