@@ -40,11 +40,6 @@ bool Client::StartVideoStream() {
 
 bool Client::SendVideoFrame() {
 	// video frames are required to be in PNG format. Maybe in the future we will swap over to BMP to perform temporal compression
-	std::optional<std::vector<byte>> frame = DisplayCapturer::CaptureScreen(DisplayCapturer::Format::PNG);
-	if (!frame) {
-		return false;
-	}
-
 	std::optional<StreamFrameMessage> message = StreamFrameMessage::FromDisplay(DisplayCapturer::Format::PNG);
 	if (!message) {
 		return false;
