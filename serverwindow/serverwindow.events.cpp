@@ -20,10 +20,17 @@ void ServerWindow::OnDetails(wxCommandEvent& event) {
 	auto hostResult = server.get()->GetHostname();
 	auto portResult = server.get()->GetPort();
 
-	std::string hostname = hostResult.value_or("Unknown");
-	std::string port = portResult.has_value() ? std::to_string(*portResult) : "Unknown";
+	std::string message = "";
 
-	wxMessageBox("Hostname: " + hostname + "\nPort: " + port, "Server Details");
+	std::string hostname = hostResult.value_or("Unknown");
+	message += "Hostname: " + hostname + "\n";
+
+	std::string port = portResult.has_value() ? std::to_string(*portResult) : "Unknown";
+	message += "Port: " + port + "\n";
+
+	message += "wxWidgets: " wxVERSION_NUM_DOT_STRING;
+
+	wxMessageBox(message);
 }
 
 void ServerWindow::OnServerPushLog(wxThreadEvent& event) {
