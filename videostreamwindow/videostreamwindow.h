@@ -10,6 +10,6 @@ public:
 	void StreamEnded();
 
 protected:
-	wxGenericStaticBitmap* videoFrame;
+	VideoFrameBitmap* videoFrame;
 	void OnResizeMonkeyPatch(wxSizeEvent&);
 };

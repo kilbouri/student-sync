@@ -30,19 +30,18 @@ public:
 		m_bitmapBundle = bitmap;
 		InvalidateBestSize();
 		SetSize(GetBestSize());
-		Refresh();
+		Refresh(false);
 	}
 
 	virtual void SetScaleMode(ScaleMode scaleMode) wxOVERRIDE
 	{
 		m_scaleMode = scaleMode;
-		Refresh();
+		Refresh(false);
 	}
 
 	virtual ScaleMode GetScaleMode() const wxOVERRIDE { return m_scaleMode; }
 
 private:
 	ScaleMode m_scaleMode;
-
 	void OnPaint(wxPaintEvent& event);
 };

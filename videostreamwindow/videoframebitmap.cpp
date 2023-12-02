@@ -1,5 +1,6 @@
 #include "videoframebitmap.h"
 
+#include <wx/dcbuffer.h>
 #if wxUSE_GRAPHICS_CONTEXT
 #include "wx/graphics.h"
 #include "wx/scopedptr.h"
@@ -8,16 +9,10 @@
 #include "wx/math.h"
 #endif
 
-bool VideoFrameBitmap::Create(wxWindow* parent, wxWindowID id,
-								   const wxBitmapBundle& bitmap,
-								   const wxPoint& pos, const wxSize& size,
-								   long style, const wxString& name)
-{
+bool VideoFrameBitmap::Create(wxWindow* parent, wxWindowID id, const wxBitmapBundle& bitmap, const wxPoint& pos, const wxSize& size, long style, const wxString& name) {
 	if (!wxControl::Create(parent, id, pos, size, style, wxDefaultValidator, name)) {
 		return false;
 	}
-
-	m_scaleMode = Scale_AspectFit;
 
 	// Don't call SetBitmap() here, as it changes the size and refreshes the
 	// window unnecessarily, when we don't need either of these side effects
@@ -25,22 +20,31 @@ bool VideoFrameBitmap::Create(wxWindow* parent, wxWindowID id,
 	m_bitmapBundle = bitmap;
 	SetInitialSize(size);
 
+	// This is recommended by wxAutoBufferingPaintDC used in OnPaint.
+	// Prevents the screen from being cleared before we draw ourselves.
+	this->SetBackgroundStyle(wxBG_STYLE_PAINT);
+
 	Bind(wxEVT_PAINT, &VideoFrameBitmap::OnPaint, this);
 	return true;
 }
 
-void VideoFrameBitmap::OnPaint(wxPaintEvent& WXUNUSED(event))
-{
+void VideoFrameBitmap::OnPaint(wxPaintEvent& WXUNUSED(event)) {
+	wxAutoBufferedPaintDC dc(this);
+
 	if (!m_bitmapBundle.IsOk()) {
 		return;
 	}
 
-	wxPaintDC dc(this);
 	const wxSize drawSize = GetClientSize();
 	if (!drawSize.x || !drawSize.y) {
 		return;
 	}
 
+	// Paint background first
+	// TODO: we don't always need to do this. Perhaps a clear flag + SetBitmap check?
+	dc.Clear();
+
+	// Paint scaled bitmap
 	wxBitmap bitmap = GetBitmap();
 	const wxSize bmpSize = bitmap.GetSize();
 
@@ -49,13 +53,7 @@ void VideoFrameBitmap::OnPaint(wxPaintEvent& WXUNUSED(event))
 
 	switch (m_scaleMode) {
 		case Scale_None: {
-			// The commented out code here is UNTESTED.
-			//#if wxUSE_GRAPHICS_CONTEXT
-			//			wxScopedPtr<wxGraphicsContext> const gc(wxGraphicsRenderer::GetDefaultRenderer()->CreateContext(dc));
-			//			gc->DrawBitmap(bitmap, 0, 0, w, h);
-			//#else
 			dc.DrawBitmap(bitmap, 0, 0, true);
-			//#endif
 			return;
 		}
 		case Scale_Fill:
