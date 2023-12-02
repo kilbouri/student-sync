@@ -44,7 +44,7 @@ void VideoFrameBitmap::OnPaint(wxPaintEvent& WXUNUSED(event)) {
 	// TODO: we don't always need to do this. Perhaps a clear flag + SetBitmap check?
 	dc.Clear();
 
-	// Paint scaled bitmap
+	// Paint scaled bitmap (scaling logic stolen from wxGenericStaticBitmap, because I'm not reinventing the wheel)
 	wxBitmap bitmap = GetBitmap();
 	const wxSize bmpSize = bitmap.GetSize();
 
