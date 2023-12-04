@@ -2,8 +2,6 @@
 #pragma once
 #include "serverwindow.h"
 
-wxBitmap BitmapFromByteVector(std::vector<byte> data);
-
 void ServerWindow::OnClose(wxCloseEvent& event) {
 	// we MUST wait for the thread to stop. The thread assumes this object
 	// has not been destroyed while it is running.
@@ -40,29 +38,14 @@ void ServerWindow::OnServerPushLog(wxThreadEvent& event) {
 }
 
 void ServerWindow::OnClientStartStream(wxThreadEvent& event) {
-	wxBitmap firstFrame = BitmapFromByteVector(event.GetPayload<std::vector<byte>>());
-
-	// TODO: we will eventually not be receiving a bitmap on stream start
-	// TODO: StreamInitialize is a better name for this. idk where to put that but this is where I thought it. -IK
-	this->streamView->SetBitmap(firstFrame);
+	this->streamView->ClearBitmap();
 }
 
 void ServerWindow::OnClientStreamFrameReceived(wxThreadEvent& event) {
-	wxBitmap nextFrame = BitmapFromByteVector(event.GetPayload<std::vector<byte>>());
+	wxBitmap nextFrame = event.GetPayload<wxBitmap>();
 	this->streamView->SetBitmap(nextFrame);
 }
 
 void ServerWindow::OnClientEndStream(wxThreadEvent& event) {
 	this->streamView->ClearBitmap();
-}
-
-// TODO: could this be handled on another thread then moved over the thread boundary?
-// Would sure improve window performance...
-wxBitmap BitmapFromByteVector(std::vector<byte> data) {
-	wxMemoryInputStream imageDataStream(data.data(), data.size());
-
-	wxImage image;
-	image.LoadFile(imageDataStream);
-
-	return wxBitmap(image);
 }

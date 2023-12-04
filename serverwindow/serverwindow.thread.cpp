@@ -18,6 +18,7 @@ wxQueueEvent(this, event);										\
 }
 
 wxString CreateLogMessage(NetworkMessage& receivedMessage);
+wxBitmap BitmapFromByteVector(std::vector<byte> data);
 
 // Despite the name of this function, it is defining the entry for the server thread.
 void* ServerWindow::Entry() {
@@ -76,6 +77,37 @@ void ServerWindow::OnClientDisconnect(TCPSocket& socket) {
 	PUSH_LOG_MESSAGE(hostname + ":" + port + " disconnected");
 }
 
+bool ServerWindow::NoOpMessageHandler(TCPSocket& client, NetworkMessage& message) {
+	return true;
+}
+
+bool ServerWindow::StartVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message) {
+	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_STARTING_STREAM);
+	wxQueueEvent(this, event);
+	return true;
+}
+
+bool ServerWindow::StreamFrameMessageHandler(TCPSocket& client, NetworkMessage& message) {
+	std::optional<StreamFrameMessage> streamFrameMessage = StreamFrameMessage::FromNetworkMessage(message);
+	if (!streamFrameMessage) {
+		return true;
+	}
+
+	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED);
+
+	wxBitmap imagePayload = BitmapFromByteVector(streamFrameMessage->imageData);
+	event->SetPayload(imagePayload);
+
+	wxQueueEvent(this, event);
+	return true;
+}
+
+bool ServerWindow::EndVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message) {
+	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_ENDING_STREAM);
+	wxQueueEvent(this, event);
+	return true;
+}
+
 wxString CreateLogMessage(NetworkMessage& receivedMessage) {
 	using Tag = NetworkMessage::Tag;
 
@@ -105,33 +137,13 @@ wxString CreateLogMessage(NetworkMessage& receivedMessage) {
 	}
 }
 
-bool ServerWindow::NoOpMessageHandler(TCPSocket& client, NetworkMessage& message) {
-	return true;
-}
+// TODO: could this be handled on another thread then moved over the thread boundary?
+// Would sure improve window performance...
+wxBitmap BitmapFromByteVector(std::vector<byte> data) {
+	wxMemoryInputStream imageDataStream(data.data(), data.size());
 
-bool ServerWindow::StartVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message) {
-	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_STARTING_STREAM);
-	event->SetPayload(message.data);
+	wxImage image;
+	image.LoadFile(imageDataStream);
 
-	wxQueueEvent(this, event);
-	return true;
-}
-
-bool ServerWindow::StreamFrameMessageHandler(TCPSocket& client, NetworkMessage& message) {
-	std::optional<StreamFrameMessage> streamFrameMessage = StreamFrameMessage::FromNetworkMessage(message);
-	if (!streamFrameMessage) {
-		return true;
-	}
-
-	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED);
-	event->SetPayload(std::move(*streamFrameMessage).imageData);
-
-	wxQueueEvent(this, event);
-	return true;
-}
-
-bool ServerWindow::EndVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message) {
-	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_ENDING_STREAM);
-	wxQueueEvent(this, event);
-	return true;
+	return wxBitmap(image);
 }
