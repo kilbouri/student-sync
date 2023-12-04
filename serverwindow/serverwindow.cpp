@@ -8,8 +8,10 @@
 #include "serverwindow.events.cpp"
 
 ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
-	: wxFrame(NULL, wxID_ANY, title), server{ }
+	: wxFrame(NULL, wxID_ANY, title), server{ nullptr }
 {
+	this->SetSize(this->FromDIP(wxSize{ 500, 400 }));
+
 	// GUI Building
 	wxMenu* menuFile = new wxMenu;
 	menuFile->Append(ID_Details, "Server &Details...\tCtrl+D", "Server Connection Details");
@@ -24,7 +26,6 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 	wxBoxSizer* rootSizer = new wxBoxSizer(wxVERTICAL);
 
 	splitter = new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSP_3D | wxSP_LIVE_UPDATE);
-	splitter->SetSashGravity(0.33);
 	splitter->SetMinimumPaneSize(std::max(1, this->GetCharWidth() * 12));
 
 	sidebar = new wxScrolledWindow(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHSCROLL | wxVSCROLL);
@@ -34,8 +35,11 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 	wxBoxSizer* sidebarItemsSizer = new wxBoxSizer(wxVERTICAL);
 
 	// add sidebar items here...
+	wxStaticText* placeholder = new wxStaticText(sidebar, wxID_ANY, "Clients will appear here in the future.");
+	placeholder->SetMinSize(wxSize{ 5 * this->GetCharWidth(), placeholder->GetMinHeight() });
+	sidebarItemsSizer->Add(placeholder, 1, wxEXPAND);
 
-	sidebar->SetSizerAndFit(sidebarItemsSizer);
+	sidebar->SetSizer(sidebarItemsSizer);
 	sidebar->Layout();
 
 	mainContentPanel = new wxPanel(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxBORDER_NONE);
@@ -48,14 +52,16 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 
 	mainContentSizer->Add(streamView, 1, wxEXPAND);
 
-	mainContentPanel->SetSizerAndFit(mainContentSizer);
+	mainContentPanel->SetSizer(mainContentSizer);
 	mainContentPanel->Layout();
 
-	splitter->SplitVertically(sidebar, mainContentPanel);
+	constexpr double defaultSidebarProportion = 0.33;
+	const int defaultSidebarPosition = wxRound(defaultSidebarProportion * this->GetClientSize().GetWidth());
+	splitter->SplitVertically(sidebar, mainContentPanel, defaultSidebarPosition);
+
 	rootSizer->Add(splitter, 1, wxEXPAND);
 
-
-	this->SetSizerAndFit(rootSizer);
+	this->SetSizer(rootSizer);
 	this->Layout();
 	this->Centre(wxBOTH);
 
