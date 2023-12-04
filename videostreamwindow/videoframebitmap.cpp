@@ -137,6 +137,8 @@ void VideoFrameBitmap::SetBitmap(const wxBitmapBundle& bitmap) {
 void VideoFrameBitmap::ClearBitmap() {
 	this->hasBitmap = false;
 	this->m_bitmapBundle = wxNullBitmap;
+
+	this->GetContainingSizer()->Layout();
 	this->Refresh();
 }
 

@@ -49,8 +49,7 @@ bool Client::SendVideoFrame() {
 }
 
 bool Client::EndVideoStream() {
-	return true;
-	//return NetworkMessage(NetworkMessage::Tag::StopStream).Send(socket);
+	return NetworkMessage(NetworkMessage::Tag::StopStream).Send(socket);
 }
 
 bool Client::RequestVideoStream() {
