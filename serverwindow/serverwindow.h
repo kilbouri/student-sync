@@ -55,4 +55,5 @@ protected:
 	wxScrolledWindow* sidebar;
 	wxPanel* mainContentPanel;
 	VideoFrameBitmap* streamView;
+	wxStatusBar* statusBar;
 };

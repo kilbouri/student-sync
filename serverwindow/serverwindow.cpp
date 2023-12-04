@@ -12,6 +12,11 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 {
 	this->SetSize(this->FromDIP(wxSize{ 500, 400 }));
 
+	statusBar = new wxStatusBar(this);
+	statusBar->SetStatusText("Nothing happening...");
+
+	this->SetStatusBar(statusBar);
+
 	// GUI Building
 	wxMenu* menuFile = new wxMenu;
 	menuFile->Append(ID_Details, "Server &Details...\tCtrl+D", "Server Connection Details");

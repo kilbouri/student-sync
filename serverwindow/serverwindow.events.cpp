@@ -36,11 +36,7 @@ void ServerWindow::OnDetails(wxCommandEvent& event) {
 void ServerWindow::OnServerPushLog(wxThreadEvent& event) {
 	// eheh, I love this type system... not... WHY CAN I NOT FORCE A TYPE FOR THE PAYLOAD OF THE EVENT WTF
 	wxString message = event.GetPayload<wxString>();
-
-	wxStatusBar* statusBar = this->GetStatusBar();
-	if (statusBar) {
-		statusBar->SetStatusText(message);
-	}
+	statusBar->SetStatusText(message);
 }
 
 void ServerWindow::OnClientStartStream(wxThreadEvent& event) {
