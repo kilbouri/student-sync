@@ -54,7 +54,7 @@ void ClientWindow::OnStartStream(wxCommandEvent& event) {
 		return;
 	}
 
-	constexpr int targetFrameRate = 5;
+	constexpr int targetFrameRate = 2;
 	wxTimer::Start(1000 / targetFrameRate);
 }
 

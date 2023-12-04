@@ -3,6 +3,7 @@
 #include <wx/wx.h>
 #include <wx/scrolwin.h>
 #include <wx/mstream.h>
+#include <wx/splitter.h>
 
 #include "../server/server.h"
 #include "../common/socket/socket.h"
@@ -48,4 +49,10 @@ protected:
 	bool StartVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message);
 	bool StreamFrameMessageHandler(TCPSocket& client, NetworkMessage& message);
 	bool EndVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message);
+
+protected:
+	wxSplitterWindow* splitter;
+	wxScrolledWindow* sidebar;
+	wxPanel* mainContentPanel;
+	VideoFrameBitmap* streamView;
 };

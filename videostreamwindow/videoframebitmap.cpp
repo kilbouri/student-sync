@@ -1,15 +1,18 @@
 #include "videoframebitmap.h"
 
 #include <wx/dcbuffer.h>
-#if wxUSE_GRAPHICS_CONTEXT
-#include "wx/graphics.h"
-#include "wx/scopedptr.h"
-#else
-#include "wx/image.h"
-#include "wx/math.h"
-#endif
+#include <wx/graphics.h>
+#include <wx/scopedptr.h>
 
-bool VideoFrameBitmap::Create(wxWindow* parent, wxWindowID id, const wxBitmapBundle& bitmap, const wxPoint& pos, const wxSize& size, long style, const wxString& name) {
+VideoFrameBitmap::VideoFrameBitmap(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name)
+	: hasBitmap{ false }, scaleMode{ ScaleMode::Scale_None }
+{
+	Create(parent, id, pos, size, style, name);
+}
+
+bool VideoFrameBitmap::Create(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size, long style, const wxString& name) {
+	style |= wxFULL_REPAINT_ON_RESIZE; // otherwise you'll get partial repaints which take fucking ages to debug (-IK, 4 hours debugging)
+
 	if (!wxControl::Create(parent, id, pos, size, style, wxDefaultValidator, name)) {
 		return false;
 	}
@@ -17,7 +20,7 @@ bool VideoFrameBitmap::Create(wxWindow* parent, wxWindowID id, const wxBitmapBun
 	// Don't call SetBitmap() here, as it changes the size and refreshes the
 	// window unnecessarily, when we don't need either of these side effects
 	// here.
-	m_bitmapBundle = bitmap;
+	m_bitmapBundle = wxNullBitmap;
 	SetInitialSize(size);
 
 	// This is recommended by wxAutoBufferingPaintDC used in OnPaint.
@@ -28,66 +31,120 @@ bool VideoFrameBitmap::Create(wxWindow* parent, wxWindowID id, const wxBitmapBun
 	return true;
 }
 
-void VideoFrameBitmap::OnPaint(wxPaintEvent& WXUNUSED(event)) {
+wxSize VideoFrameBitmap::DoGetBestClientSize() const {
+	if (this->hasBitmap && this->GetBitmap().IsOk()) {
+		return this->GetBitmap().GetSize();
+	}
+
+	return wxDefaultSize;
+}
+
+void VideoFrameBitmap::OnPaint(wxPaintEvent& event) {
 	wxAutoBufferedPaintDC dc(this);
+	wxBitmap bitmap = GetBitmap();
 
-	if (!m_bitmapBundle.IsOk()) {
+	// skip repaint if the bitmap we have is bad
+	if (hasBitmap && !bitmap.IsOk()) {
 		return;
 	}
 
-	const wxSize drawSize = GetClientSize();
-	if (!drawSize.x || !drawSize.y) {
-		return;
-	}
-
-	// Paint background first
-	// TODO: we don't always need to do this. Perhaps a clear flag + SetBitmap check?
 	dc.Clear();
 
-	// Paint scaled bitmap (scaling logic stolen from wxGenericStaticBitmap, because I'm not reinventing the wheel)
-	wxBitmap bitmap = GetBitmap();
-	const wxSize bmpSize = bitmap.GetSize();
+	// if we don't have a bitmap, all we need to do is clear
+	if (!hasBitmap) {
+		return;
+	}
 
-	wxDouble w = 0;
-	wxDouble h = 0;
+	wxSize clientSize = this->GetClientSize();
+	if (!clientSize.x || !clientSize.y) {
+		return;
+	}
 
-	switch (m_scaleMode) {
-		case Scale_None: {
-			dc.DrawBitmap(bitmap, 0, 0, true);
-			return;
-		}
-		case Scale_Fill:
-			w = drawSize.x;
-			h = drawSize.y;
+	const wxSize bitmapSize = bitmap.GetSize();
+	if (!bitmapSize.x || !bitmapSize.y) {
+		return;
+	}
+
+	wxDouble drawWidth = 0;
+	wxDouble drawHeight = 0;
+
+	switch (scaleMode) {
+		// No rescaling
+		case Scale_None:
+			drawWidth = bitmapSize.GetWidth();
+			drawHeight = bitmapSize.GetHeight();
 			break;
+
+		// Non-aspect-preserving stretch to fill client area
+		case Scale_Fill:
+			drawWidth = clientSize.x;
+			drawHeight = clientSize.y;
+			break;
+
+		// Aspect-preserving fill/fit
 		case Scale_AspectFill:
 		case Scale_AspectFit: {
-			wxDouble scaleFactor;
-			wxDouble scaleX = (wxDouble)drawSize.x / (wxDouble)bmpSize.x;
-			wxDouble scaleY = (wxDouble)drawSize.y / (wxDouble)bmpSize.y;
-			if ((m_scaleMode == Scale_AspectFit && scaleY < scaleX) ||
-				 (m_scaleMode == Scale_AspectFill && scaleY > scaleX))
-				scaleFactor = scaleY;
-			else
-				scaleFactor = scaleX;
+			double xFactor = (double)clientSize.x / bitmapSize.x; /* UK television is great */
+			double yFactor = (double)clientSize.y / bitmapSize.y;
 
-			w = bmpSize.x * scaleFactor;
-			h = bmpSize.y * scaleFactor;
+			double fitFactor = (xFactor > yFactor) ? yFactor : xFactor; // fit takes the smaller factor
+			double fillFactor = (xFactor > yFactor) ? xFactor : yFactor; // fill takes the larger factor
 
+			double factor = (scaleMode == Scale_AspectFit) ? fitFactor : fillFactor;
+
+			drawWidth = factor * bitmapSize.GetWidth();
+			drawHeight = factor * bitmapSize.GetHeight();
 			break;
 		}
+
 		default:
 			wxFAIL_MSG("Unknown scale mode");
 	}
 
-	wxDouble x = (drawSize.x - w) / 2;
-	wxDouble y = (drawSize.y - h) / 2;
+	wxDouble drawX = (clientSize.x - drawWidth) / 2;
+	wxDouble drawY = (clientSize.y - drawHeight) / 2;
 
-#if wxUSE_GRAPHICS_CONTEXT
-	wxScopedPtr<wxGraphicsContext> const gc(wxGraphicsRenderer::GetDefaultRenderer()->CreateContext(dc));
-	gc->DrawBitmap(bitmap, x, y, w, h);
-#else
-	wxBitmap::Rescale(bitmap, wxSize(wxRound(w), wxRound(h)));
-	dc.DrawBitmap(bitmap, wxRound(x), wxRound(y), true);
-#endif
+	if (scaleMode == ScaleMode::Scale_None) {
+		drawX = 0;
+		drawY = 0;
+	}
+
+	// Use a graphics context to draw the bitmap if possible.
+	if constexpr (wxUSE_GRAPHICS_CONTEXT) {
+		wxScopedPtr<wxGraphicsContext> gc(wxGraphicsRenderer::GetDefaultRenderer()->CreateContext(dc));
+		gc->DrawBitmap(bitmap, drawX, drawY, drawWidth, drawHeight);
+	}
+	else {
+		wxBitmap::Rescale(bitmap, wxSize(wxRound(drawWidth), wxRound(drawHeight)));
+		dc.DrawBitmap(bitmap, wxRound(drawX), wxRound(drawY), true);
+	}
+}
+
+void VideoFrameBitmap::SetBitmap(const wxBitmapBundle& bitmap) {
+	this->m_bitmapBundle = bitmap;
+	this->hasBitmap = true;
+
+	InvalidateBestSize();
+	SetSize(GetBestSize());
+
+	// this is such a hack but it does work...
+	this->GetContainingSizer()->Layout();
+
+	// We need to redraw
+	this->Refresh();
+}
+
+void VideoFrameBitmap::ClearBitmap() {
+	this->hasBitmap = false;
+	this->m_bitmapBundle = wxNullBitmap;
+	this->Refresh();
+}
+
+wxStaticBitmapBase::ScaleMode VideoFrameBitmap::GetScaleMode() const {
+	return scaleMode;
+}
+
+void VideoFrameBitmap::SetScaleMode(wxStaticBitmapBase::ScaleMode mode) {
+	this->scaleMode = mode;
+	this->Refresh();
 }

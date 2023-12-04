@@ -19,18 +19,44 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 
 	SetMenuBar(menuBar);
 
-	// Log panel
-	wxBoxSizer* contentSizer = new wxBoxSizer(wxVERTICAL);
-	logContainer = new wxBoxSizer(wxVERTICAL);
-
-	logScroller = new wxScrolledWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHSCROLL | wxVSCROLL);
-	logScroller->SetSizer(logContainer);
-
-	logContainer->Fit(logScroller);
-	contentSizer->Add(logScroller, 1, wxEXPAND);
-
 	this->SetSizeHints(wxDefaultSize, wxDefaultSize);
-	this->SetSizer(contentSizer);
+
+	wxBoxSizer* rootSizer = new wxBoxSizer(wxVERTICAL);
+
+	splitter = new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSP_3D | wxSP_LIVE_UPDATE);
+	splitter->SetSashGravity(0.33);
+	splitter->SetMinimumPaneSize(std::max(1, this->GetCharWidth() * 12));
+
+	sidebar = new wxScrolledWindow(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHSCROLL | wxVSCROLL);
+	sidebar->SetScrollRate(5, 5);
+	sidebar->SetBackgroundColour(wxColour(255, 255, 255));
+
+	wxBoxSizer* sidebarItemsSizer = new wxBoxSizer(wxVERTICAL);
+
+	// add sidebar items here...
+
+	sidebar->SetSizerAndFit(sidebarItemsSizer);
+	sidebar->Layout();
+
+	mainContentPanel = new wxPanel(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxBORDER_NONE);
+
+	wxBoxSizer* mainContentSizer = new wxBoxSizer(wxVERTICAL);
+
+	streamView = new VideoFrameBitmap(mainContentPanel, wxID_ANY);
+	streamView->SetScaleMode(VideoFrameBitmap::ScaleMode::Scale_AspectFit);
+	streamView->SetBackgroundColour(wxColor{ 24, 24, 24 });
+
+	mainContentSizer->Add(streamView, 1, wxEXPAND);
+
+	mainContentPanel->SetSizerAndFit(mainContentSizer);
+	mainContentPanel->Layout();
+
+	splitter->SplitVertically(sidebar, mainContentPanel);
+	rootSizer->Add(splitter, 1, wxEXPAND);
+
+
+	this->SetSizerAndFit(rootSizer);
+	this->Layout();
 	this->Centre(wxBOTH);
 
 	// Window event bindings
@@ -41,7 +67,6 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 	Bind(SERVER_EVT_CLIENT_STARTING_STREAM, &ServerWindow::OnClientStartStream, this);
 	Bind(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED, &ServerWindow::OnClientStreamFrameReceived, this);
 	Bind(SERVER_EVT_CLIENT_ENDING_STREAM, &ServerWindow::OnClientEndStream, this);
-
 
 	// Start server
 	if (!StartServerThread(hostname, port)) {

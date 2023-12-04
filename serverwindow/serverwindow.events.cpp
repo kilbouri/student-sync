@@ -37,40 +37,36 @@ void ServerWindow::OnServerPushLog(wxThreadEvent& event) {
 	// eheh, I love this type system... not... WHY CAN I NOT FORCE A TYPE FOR THE PAYLOAD OF THE EVENT WTF
 	wxString message = event.GetPayload<wxString>();
 
-	logContainer->Add(new wxStaticText(logScroller, wxID_ANY, message));
-	logContainer->Layout();
+	wxStatusBar* statusBar = this->GetStatusBar();
+	if (statusBar) {
+		statusBar->SetStatusText(message);
+	}
 }
 
 void ServerWindow::OnClientStartStream(wxThreadEvent& event) {
-	// todo: use a critical section to guard access to streamWindow
 	wxBitmap firstFrame = BitmapFromByteVector(event.GetPayload<std::vector<byte>>());
-	streamWindow = new VideoStreamWindow(this, "StudentSync - Remote Screen", firstFrame);
-	streamWindow->Show();
+
+	// TODO: we will eventually not be receiving a bitmap on stream start
+	// TODO: StreamInitialize is a better name for this. idk where to put that but this is where I thought it. -IK
+	this->streamView->SetBitmap(firstFrame);
 }
 
 void ServerWindow::OnClientStreamFrameReceived(wxThreadEvent& event) {
-	// todo: use a critical section to guard access to streamWindow
-	if (!streamWindow) {
-		return;
-	}
-
 	wxBitmap nextFrame = BitmapFromByteVector(event.GetPayload<std::vector<byte>>());
-	streamWindow->SetFrame(nextFrame);
+	this->streamView->SetBitmap(nextFrame);
 }
 
 void ServerWindow::OnClientEndStream(wxThreadEvent& event) {
-	// todo: use a critical section to guard access to streamWindow
-	if (streamWindow) {
-		streamWindow->StreamEnded();
-	}
+	this->streamView->ClearBitmap();
 }
 
-
+// TODO: could this be handled on another thread then moved over the thread boundary?
+// Would sure improve window performance...
 wxBitmap BitmapFromByteVector(std::vector<byte> data) {
 	wxMemoryInputStream imageDataStream(data.data(), data.size());
 
 	wxImage image;
-	image.LoadFile(imageDataStream, wxBITMAP_TYPE_PNG);
+	image.LoadFile(imageDataStream);
 
 	return wxBitmap(image);
 }

@@ -4,7 +4,7 @@
 VideoStreamWindow::VideoStreamWindow(wxFrame* parent, wxString title, wxBitmap firstFrame)
 	: wxFrame(parent, wxID_ANY, title)
 {
-	videoFrame = new VideoFrameBitmap(this, wxID_ANY, firstFrame);
+	videoFrame = new VideoFrameBitmap(this, wxID_ANY);
 	videoFrame->SetBackgroundColour(wxColor(18, 18, 18));
 	videoFrame->SetScaleMode(VideoFrameBitmap::ScaleMode::Scale_AspectFit);
 
