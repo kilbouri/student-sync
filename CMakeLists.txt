@@ -12,11 +12,44 @@ endif()
 set(PROJECT_NAME "comp-4990-project")
 project(${PROJECT_NAME})
 
-# Add source to this project's executable.
-set(PROJECT_HEADERS "win32includes.h" "client/client.h" "clientwindow/clientwindow.h" "common/displaycapturer/displaycapturer.h" "common/managedhandle/managedhandle.h" "common/networkmessage/networkmessage.h" "server/server.h" "modeselectdialog/modeselectdialog.h" "serverwindow/serverwindow.h" "common/socket/socket.h" "videostreamwindow/videostreamwindow.h" "common/messages/hellomessage.h"  "common/messages/stringmessage.h"  "common/messages/number64message.h" "videostreamwindow/videoframebitmap.h" "common/messages/streamframemessage.h")
-set(PROJECT_SOURCES "client/client.cpp" "clientwindow/clientwindow.cpp" "common/displaycapturer/displaycapturer.cpp" "common/networkmessage/networkmessage.cpp" "main.cpp" "server/server.cpp" "modeselectdialog/modeselectdialog.cpp" "serverwindow/serverwindow.cpp" "common/socket/socket.cpp" "videostreamwindow/videostreamwindow.cpp" "videostreamwindow/videoframebitmap.cpp")
-add_executable (${PROJECT_NAME} WIN32 ${PROJECT_HEADERS} ${PROJECT_SOURCES} )
-target_sources(${PROJECT_NAME} PRIVATE appManifest.manifest)
+# Elements in this set have both a header and a cpp source file.
+set(CLASSES
+	"server/server"
+	"serverwindow/serverwindow"
+	"client/client"
+	"clientwindow/clientwindow"
+	"common/socket/socket"
+	"common/displaycapturer/displaycapturer"
+	"common/networkmessage/networkmessage"
+	"videostreamwindow/videostreamwindow"
+	"videostreamwindow/videoframebitmap"
+	"modeselectdialog/modeselectdialog"
+)
+
+# Elements in this set are a standalone header
+set(EXTRA_HEADERS
+	"win32includes.h"
+	"common/managedhandle/managedhandle.h"
+	"common/socket/socket.h"
+	"common/messages/hellomessage.h"
+	"common/messages/stringmessage.h"
+	"common/messages/number64message.h"
+	"common/messages/streamframemessage.h"
+)
+
+# Elements in this set are standalone source files.
+set(EXTRA_SOURCES "main.cpp" "appManifest.manifest")
+
+add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1) # stupid warning spam removal
+add_executable(
+	${PROJECT_NAME} WIN32
+	${EXTRA_HEADERS}
+	${EXTRA_SOURCES}
+)
+
+foreach(class ${CLASSES})
+	target_sources(${PROJECT_NAME} PRIVATE "${class}.h" "${class}.cpp")
+endforeach()
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
@@ -25,6 +58,7 @@ endif()
 # Add wxWidgets library
 # Config info: https://docs.wxwidgets.org/latest/overview_cmake.html#cmake_options
 set(wxBUILD_SHARED OFF)
+set(wxUSE_STL ON)
 set(wxBUILD_COMPATIBILITY "3.1")
 add_subdirectory(libs/wxWidgets)
 target_link_libraries(${PROJECT_NAME} wx::net wx::core wx::base)

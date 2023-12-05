@@ -124,7 +124,11 @@ Socket::IOResult Socket::WriteAllBytes(const byte* buffer, size_t nBytes) {
 	size_t bytesSent = 0;
 
 	do {
-		int writeResult = WriteBytes(buffer + bytesSent, nBytes - bytesSent);
+		// We can write any number of bytes in range [remaining, INT_MAX] at once
+		size_t remaining = nBytes - bytesSent;
+		int writableBytes = static_cast<int>(std::min<size_t>(remaining, std::numeric_limits<int>::max()));
+
+		int writeResult = WriteBytes(buffer + bytesSent, writableBytes);
 		if (writeResult == SOCKET_ERROR) {
 			switch (GetLastError()) {
 				case WSAECONNRESET:
@@ -147,7 +151,11 @@ Socket::IOResult Socket::ReadAllBytes(byte* buffer, size_t nBytes) {
 	size_t bytesRead = 0;
 
 	do {
-		int readResult = ReadBytes(buffer + bytesRead, nBytes - bytesRead);
+		// We can read any number of bytes in range [remaining, INT_MAX] at once
+		size_t remaining = nBytes - bytesRead;
+		int readableBytes = static_cast<int>(std::min<size_t>(remaining, std::numeric_limits<int>::max()));
+
+		int readResult = ReadBytes(buffer + bytesRead, readableBytes);
 		switch (readResult) {
 			case SOCKET_ERROR: return IOResult::Error;
 			case 0: return IOResult::ConnectionClosed;
