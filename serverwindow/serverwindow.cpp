@@ -92,7 +92,7 @@ bool ServerWindow::StartServerThread(std::string& hostname, int port) {
 	}
 
 	// We have a thread, lets make sure we have a valid Server instance for it to use
-	server = std::make_unique<Server>();
+	server = std::make_unique<SingleConnectServer>();
 
 	if (!server->BindAndListen(hostname, port)) {
 		return false; // can't bind and listen, maybe already taken?

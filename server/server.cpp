@@ -9,17 +9,43 @@
 #include <thread>
 #include <wx/wx.h>
 
-Server::Server() :
-	listenSocket{ TCPSocket() },
-	messageHandler{ std::nullopt },
-	currentClient{ TCPSocket::InvalidSocket() }
-{}
-
+#pragma region Server
 bool Server::BindAndListen(std::string& ipAddress, int portNumber) {
 	return listenSocket.Bind(ipAddress, portNumber) && listenSocket.Listen(TCPSocket::MaxConnectionQueueLength);
 }
 
-void Server::Start() {
+std::optional<std::string> Server::GetHostname() {
+	return listenSocket.GetBoundAddress();
+}
+
+std::optional<int> Server::GetPort() {
+	return listenSocket.GetBoundPort();
+}
+
+void Server::SetClientConnectedHandler(std::function<void(TCPSocket& client)> handler) {
+	connectHandler = handler;
+}
+
+void Server::SetMessageReceivedHandler(std::function<bool(TCPSocket& client, const NetworkMessage message)> handler) {
+	messageHandler = handler;
+}
+
+void Server::SetClientDisconnectedHandler(std::function<void(TCPSocket& client)> handler) {
+	disconnectHandler = handler;
+}
+
+Server::~Server() {
+	listenSocket.Close();
+}
+#pragma endregion
+
+#pragma region SingleConnectServer
+SingleConnectServer::SingleConnectServer()
+	: Server{},
+	currentClient{ TCPSocket::InvalidSocket() }
+{}
+
+void SingleConnectServer::Start() {
 	while (!IsStopRequested()) {
 		std::optional<TCPSocket> acceptResult = listenSocket.Accept();
 		if (!acceptResult) {
@@ -75,7 +101,7 @@ void Server::Start() {
 	}
 }
 
-void Server::Stop(bool now) {
+void SingleConnectServer::Stop(bool now) {
 	// prevent new connections
 	listenSocket.Close();
 
@@ -85,31 +111,8 @@ void Server::Stop(bool now) {
 	}
 }
 
-bool Server::IsStopRequested() {
+bool SingleConnectServer::IsStopRequested() {
 	// if the socket is invalid, the server has been stopped
 	return !listenSocket.IsValid();
 }
-
-std::optional<std::string> Server::GetHostname() {
-	return listenSocket.GetBoundAddress();
-}
-
-std::optional<int> Server::GetPort() {
-	return listenSocket.GetBoundPort();
-}
-
-void Server::SetClientConnectedHandler(std::function<void(TCPSocket& client)> handler) {
-	connectHandler = handler;
-}
-
-void Server::SetMessageReceivedHandler(std::function<bool(TCPSocket& client, const NetworkMessage message)> handler) {
-	messageHandler = handler;
-}
-
-void Server::SetClientDisconnectedHandler(std::function<void(TCPSocket& client)> handler) {
-	disconnectHandler = handler;
-}
-
-Server::~Server() {
-	Stop();
-}
+#pragma endregion

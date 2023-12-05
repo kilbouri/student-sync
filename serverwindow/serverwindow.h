@@ -22,12 +22,15 @@ public:
 
 	ServerWindow(wxString title, std::string& hostname, int port);
 protected:
-	std::unique_ptr<Server> server;
-	VideoStreamWindow* streamWindow;
+	// Server data
+	std::unique_ptr<SingleConnectServer> server;
 
 	// Window elements
-	wxScrolledWindow* logScroller;
-	wxBoxSizer* logContainer;
+	wxSplitterWindow* splitter;
+	wxScrolledWindow* sidebar;
+	wxPanel* mainContentPanel;
+	VideoFrameBitmap* streamView;
+	wxStatusBar* statusBar;
 
 	// Window events (defined in serverwindow.events.cpp)
 	void OnClose(wxCloseEvent& event);
@@ -49,11 +52,4 @@ protected:
 	bool StartVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message);
 	bool StreamFrameMessageHandler(TCPSocket& client, NetworkMessage& message);
 	bool EndVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message);
-
-protected:
-	wxSplitterWindow* splitter;
-	wxScrolledWindow* sidebar;
-	wxPanel* mainContentPanel;
-	VideoFrameBitmap* streamView;
-	wxStatusBar* statusBar;
 };

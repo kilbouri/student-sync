@@ -7,18 +7,13 @@
 #include "../common/networkmessage/networkmessage.h"
 #include "../win32includes.h"
 
-// todo: use threads to handle each connection so we can have concurrent connections
-// todo: create a mechanism to run some callback when a connection is created/deleted/etc
-
 class Server {
 public:
-	Server();
-
 	bool BindAndListen(std::string& ipAddress, int portNumber);
 
-	void Start();
-	void Stop(bool now = false);
-	bool IsStopRequested();
+	virtual void Start() = 0;
+	virtual void Stop(bool now = false) = 0;
+	virtual bool IsStopRequested() = 0;
 
 	std::optional<std::string> GetHostname();
 	std::optional<int> GetPort();
@@ -29,11 +24,32 @@ public:
 
 	~Server();
 
-private:
+protected:
 	TCPSocket listenSocket;
-	TCPSocket currentClient;
 
 	std::optional<std::function<void(TCPSocket&)>> connectHandler;
 	std::optional<std::function<bool(TCPSocket&, const NetworkMessage)>> messageHandler;
 	std::optional<std::function<void(TCPSocket&)>> disconnectHandler;
+};
+
+/// <summary>
+/// A simple server which accepts only one connection
+/// at a time This isn't very useful, but it is much simpler 
+/// to use compared to MultiConnectServer, so it may be useful
+/// for testing new behaviour.
+/// </summary>
+class SingleConnectServer : public Server {
+public:
+	SingleConnectServer();
+
+	// Inherited via Server
+	void Start() override;
+	void Stop(bool now) override;
+	bool IsStopRequested() override;
+
+private:
+	TCPSocket currentClient;
+};
+
+class MultiConnectServer : public Server {
 };
