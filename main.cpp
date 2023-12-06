@@ -89,28 +89,26 @@ int App::OnExit() {
 wxIMPLEMENT_APP(App);
 
 std::optional<wxFrame*> DoClientStartup() {
-	wxDialog* dialog = new wxDialog(nullptr, wxID_ANY, "Client Settings", wxDefaultPosition, wxSize(300, 150));
+	wxDialog dialog = wxDialog{ nullptr, wxID_ANY, "Client Settings", wxDefaultPosition, wxSize(300, 150) };
 
 	wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
 
 	// Address entry
-	wxTextCtrl* addressCtrl = new wxTextCtrl(dialog, wxID_ANY, "localhost");
-	mainSizer->Add(new wxStaticText(dialog, wxID_ANY, "Enter server address:"), 0, wxEXPAND | wxALL, 5);
+	wxTextCtrl* addressCtrl = new wxTextCtrl(&dialog, wxID_ANY, "localhost");
+	mainSizer->Add(new wxStaticText(&dialog, wxID_ANY, "Enter server address:"), 0, wxEXPAND | wxALL, 5);
 	mainSizer->Add(addressCtrl, 0, wxEXPAND | wxALL, 10);
 
 	// Port entry
-	wxTextCtrl* portCtrl = new wxTextCtrl(dialog, wxID_ANY, wxString::Format("%d", DEFAULT_PORT_NUMBER));
-	mainSizer->Add(new wxStaticText(dialog, wxID_ANY, "Enter server port:"), 0, wxEXPAND | wxALL, 5);
+	wxTextCtrl* portCtrl = new wxTextCtrl(&dialog, wxID_ANY, wxString::Format("%d", DEFAULT_PORT_NUMBER));
+	mainSizer->Add(new wxStaticText(&dialog, wxID_ANY, "Enter server port:"), 0, wxEXPAND | wxALL, 5);
 	mainSizer->Add(portCtrl, 0, wxEXPAND | wxALL, 10);
 
 	// OK and Cancel buttons
-	mainSizer->Add(dialog->CreateButtonSizer(wxOK | wxCANCEL), 0, wxALIGN_CENTER | wxALL, 10);
+	mainSizer->Add(dialog.CreateButtonSizer(wxOK | wxCANCEL), 0, wxALIGN_CENTER | wxALL, 10);
 
+	dialog.SetSizerAndFit(mainSizer);
 
-
-	dialog->SetSizerAndFit(mainSizer);
-
-	if (dialog->ShowModal() != wxID_OK) {
+	if (dialog.ShowModal() != wxID_OK) {
 		return std::nullopt;
 	}
 
@@ -121,11 +119,9 @@ std::optional<wxFrame*> DoClientStartup() {
 	}
 
 	return new ClientWindow("StudentSync - Client", addressCtrl->GetValue().ToStdString(), portValue);
-
 }
 
-std::optional<wxFrame*> DoServerStartup()
-{
+std::optional<wxFrame*> DoServerStartup() {
 	wxString title = "Select Network Interface";
 	wxString prompt = "Select the network interface to bind to:";
 	wxString promptPort = "Enter the server port:";
@@ -156,7 +152,7 @@ std::optional<wxFrame*> DoServerStartup()
 	}
 
 	// Create a dialog to hold the controls
-	wxDialog dialog(nullptr, wxID_ANY, title, wxDefaultPosition, wxSize(400, 200));
+	wxDialog dialog{ nullptr, wxID_ANY, title, wxDefaultPosition, wxSize(400, 200) };
 
 	// Interface selection
 	wxStaticText* interfaceLabel = new wxStaticText(&dialog, wxID_ANY, prompt);
