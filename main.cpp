@@ -89,23 +89,44 @@ int App::OnExit() {
 wxIMPLEMENT_APP(App);
 
 std::optional<wxFrame*> DoClientStartup() {
-	wxTextEntryDialog addressDialog(nullptr, "Enter server address:", "Server Address", "localhost");
-	if (addressDialog.ShowModal() != wxID_OK) {
+	wxDialog* dialog = new wxDialog(nullptr, wxID_ANY, "Server Settings", wxDefaultPosition, wxSize(300, 150));
+
+	wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
+
+	// Address entry
+	wxTextCtrl* addressCtrl = new wxTextCtrl(dialog, wxID_ANY, "localhost");
+	mainSizer->Add(new wxStaticText(dialog, wxID_ANY, "Enter server address:"), 0, wxEXPAND | wxALL, 5);
+	mainSizer->Add(addressCtrl, 0, wxEXPAND | wxALL, 10);
+
+	// Port entry
+	wxTextCtrl* portCtrl = new wxTextCtrl(dialog, wxID_ANY, wxString::Format("%d", DEFAULT_PORT_NUMBER));
+	mainSizer->Add(new wxStaticText(dialog, wxID_ANY, "Enter server port:"), 0, wxEXPAND | wxALL, 5);
+	mainSizer->Add(portCtrl, 0, wxEXPAND | wxALL, 10);
+
+	// OK and Cancel buttons
+	mainSizer->Add(dialog->CreateButtonSizer(wxOK | wxCANCEL), 0, wxALIGN_CENTER | wxALL, 10);
+
+	dialog->SetSizerAndFit(mainSizer);
+
+	if (dialog->ShowModal() != wxID_OK) {
 		return std::nullopt;
 	}
 
-	wxNumberEntryDialog portDialog(nullptr, "Enter server port:", wxEmptyString, "Server Port", DEFAULT_PORT_NUMBER, 0, LONG_MAX);
-	if (portDialog.ShowModal() != wxID_OK) {
+	long portValue;
+	if (!portCtrl->GetValue().ToLong(&portValue)) {
+		wxMessageBox("Invalid port value", "Error", wxICON_ERROR | wxOK);
 		return std::nullopt;
 	}
 
-	return new ClientWindow("StudentSync - Client", addressDialog.GetValue().ToStdString(), portDialog.GetValue());
+	return new ClientWindow("StudentSync - Client", addressCtrl->GetValue().ToStdString(), portValue);
+
 }
 
 std::optional<wxFrame*> DoServerStartup()
 {
 	wxString title = "Select Network Interface";
 	wxString prompt = "Select the network interface to bind to:";
+	wxString promptPort = "Enter the server port:";
 
 	auto adapters = GetNetworkAdapters();
 	if (!adapters) {
@@ -132,20 +153,45 @@ std::optional<wxFrame*> DoServerStartup()
 		}
 	}
 
-	wxSingleChoiceDialog interfaceDialog(nullptr, prompt, title, options);
-	interfaceDialog.SetSelection(0); // ensure 0.0.0.0 is default-selected
+	// Create a dialog to hold the controls
+	wxDialog dialog(nullptr, wxID_ANY, title, wxDefaultPosition, wxSize(400, 200));
 
-	if (interfaceDialog.ShowModal() != wxID_OK) {
+	// Interface selection
+	wxStaticText* interfaceLabel = new wxStaticText(&dialog, wxID_ANY, prompt);
+	wxChoice* interfaceChoice = new wxChoice(&dialog, wxID_ANY, wxDefaultPosition, wxDefaultSize, options);
+	interfaceChoice->SetSelection(0);
+
+	// Port entry
+	wxStaticText* portLabel = new wxStaticText(&dialog, wxID_ANY, promptPort);
+	wxTextCtrl* portCtrl = new wxTextCtrl(&dialog, wxID_ANY, wxString::Format("%d", DEFAULT_PORT_NUMBER));
+
+	// OK button
+	wxButton* okButton = new wxButton(&dialog, wxID_OK, "OK");
+
+	// Sizer
+	wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
+	mainSizer->Add(interfaceLabel, 0, wxEXPAND | wxALL, 10);
+	mainSizer->Add(interfaceChoice, 0, wxEXPAND | wxALL, 10);
+	mainSizer->Add(portLabel, 0, wxEXPAND | wxALL, 10);
+	mainSizer->Add(portCtrl, 0, wxEXPAND | wxALL, 10);
+	mainSizer->Add(okButton, 0, wxALIGN_CENTER | wxALL, 10);
+
+	dialog.SetSizerAndFit(mainSizer);
+
+	if (dialog.ShowModal() != wxID_OK) {
 		return std::nullopt;
 	}
 
-	wxNumberEntryDialog portDialog(nullptr, "Enter server port:", wxEmptyString, "Server Port", DEFAULT_PORT_NUMBER, 0, INT_MAX);
-	if (portDialog.ShowModal() != wxID_OK) {
+	int port;
+	if (!portCtrl->GetValue().ToStdString().empty() && portCtrl->GetValue().ToStdString().find_first_not_of("0123456789") == std::string::npos) {
+		port = std::stoi(portCtrl->GetValue().ToStdString());
+	}
+	else {
+		wxMessageBox("Invalid port value", "Error", wxICON_ERROR | wxOK);
 		return std::nullopt;
 	}
 
-	std::string address = optionToAddress.at(interfaceDialog.GetStringSelection());
-	int port = static_cast<int>(portDialog.GetValue());
+	std::string address = optionToAddress.at(options[interfaceChoice->GetSelection()]);
 
 	return new ServerWindow("StudentSync - Server", address, port);
 }
