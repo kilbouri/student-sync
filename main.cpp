@@ -89,7 +89,7 @@ int App::OnExit() {
 wxIMPLEMENT_APP(App);
 
 std::optional<wxFrame*> DoClientStartup() {
-	wxDialog* dialog = new wxDialog(nullptr, wxID_ANY, "Server Settings", wxDefaultPosition, wxSize(300, 150));
+	wxDialog* dialog = new wxDialog(nullptr, wxID_ANY, "Client Settings", wxDefaultPosition, wxSize(300, 150));
 
 	wxBoxSizer* mainSizer = new wxBoxSizer(wxVERTICAL);
 
@@ -105,6 +105,8 @@ std::optional<wxFrame*> DoClientStartup() {
 
 	// OK and Cancel buttons
 	mainSizer->Add(dialog->CreateButtonSizer(wxOK | wxCANCEL), 0, wxALIGN_CENTER | wxALL, 10);
+
+
 
 	dialog->SetSizerAndFit(mainSizer);
 
@@ -175,6 +177,9 @@ std::optional<wxFrame*> DoServerStartup()
 	mainSizer->Add(portLabel, 0, wxEXPAND | wxALL, 10);
 	mainSizer->Add(portCtrl, 0, wxEXPAND | wxALL, 10);
 	mainSizer->Add(okButton, 0, wxALIGN_CENTER | wxALL, 10);
+
+	// Set focus on the OK button
+	okButton->SetFocus();
 
 	dialog.SetSizerAndFit(mainSizer);
 
