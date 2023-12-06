@@ -33,6 +33,13 @@ public:
 	IOResult WriteAllBytes(const byte* buffer, size_t nBytes);
 	IOResult ReadAllBytes(byte* buffer, size_t nBytes);
 
+	/// <summary>
+	/// HACK: this provides direct access to the platform-specific
+	/// socket.
+	/// </summary>
+	/// <returns>The underlying socket</returns>
+	const SOCKET GetUnderlyingSocket() const;
+
 	Socket(const Socket& other); // Copy constructor
 	Socket(Socket&& other) noexcept; // Move constructor
 
@@ -68,6 +75,9 @@ public:
 
 	std::optional<std::string> GetBoundAddress();
 	std::optional<int> GetBoundPort();
+
+	std::optional<std::string> GetPeerAddress();
+	std::optional<int> GetPeerPort();
 
 private:
 	TCPSocket(SOCKET existing);

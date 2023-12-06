@@ -1,6 +1,9 @@
 #include "socket.h"
 #include "../../win32includes.h"
 
+std::optional<std::string> GetAddress(struct sockaddr_in socketInfo);
+int GetPort(struct sockaddr_in socketInfo);
+
 // Constructor for creation from a platform socket
 Socket::Socket(SOCKET s) : underlyingSocket{ new SOCKET(s) }, referenceCount{ new size_t(1) } {}
 
@@ -166,6 +169,10 @@ Socket::IOResult Socket::ReadAllBytes(byte* buffer, size_t nBytes) {
 	return IOResult::Success;
 }
 
+const SOCKET Socket::GetUnderlyingSocket() const {
+	return *underlyingSocket;
+}
+
 bool Socket::IsValid() {
 	return *underlyingSocket != INVALID_SOCKET;
 }
@@ -280,7 +287,6 @@ bool TCPSocket::Connect(std::string_view hostname, int portNumber) {
 }
 
 std::optional<std::string> TCPSocket::GetBoundAddress() {
-	// we're gonna try this...
 	sockaddr_in socketInfo = { 0 };
 	int socketInfoSize = sizeof(socketInfo);
 
@@ -288,6 +294,44 @@ std::optional<std::string> TCPSocket::GetBoundAddress() {
 		return std::nullopt;
 	}
 
+	return GetAddress(socketInfo);
+}
+
+std::optional<int> TCPSocket::GetBoundPort() {
+	struct sockaddr_in socketInfo = { 0 };
+	int socketInfoLength = sizeof(socketInfo);
+
+	if (getsockname(*underlyingSocket, (struct sockaddr*)&socketInfo, &socketInfoLength) != 0) {
+		return std::nullopt;
+	}
+
+	return GetPort(socketInfo);
+}
+
+std::optional<std::string> TCPSocket::GetPeerAddress() {
+	// we're gonna try this...
+	sockaddr_in socketInfo = { 0 };
+	int socketInfoSize = sizeof(socketInfo);
+
+	if (getpeername(*underlyingSocket, reinterpret_cast<sockaddr*>(&socketInfo), &socketInfoSize) == SOCKET_ERROR) {
+		return std::nullopt;
+	}
+
+	return GetAddress(socketInfo);
+}
+
+std::optional<int> TCPSocket::GetPeerPort() {
+	struct sockaddr_in socketInfo = { 0 };
+	int socketInfoLength = sizeof(socketInfo);
+
+	if (getpeername(*underlyingSocket, (struct sockaddr*)&socketInfo, &socketInfoLength) != 0) {
+		return std::nullopt;
+	}
+
+	return GetPort(socketInfo);
+}
+
+std::optional<std::string> GetAddress(struct sockaddr_in socketInfo) {
 	char addressBuffer[INET_ADDRSTRLEN] = { 0 };
 	if (inet_ntop(AF_INET, &(socketInfo.sin_addr), addressBuffer, sizeof(addressBuffer)) == nullptr) {
 		return std::nullopt;
@@ -310,13 +354,6 @@ std::optional<std::string> TCPSocket::GetBoundAddress() {
 	return addressString;
 }
 
-std::optional<int> TCPSocket::GetBoundPort() {
-	struct sockaddr_in socketInfo = { 0 };
-	int socketInfoLength = sizeof(socketInfo);
-
-	if (getsockname(*underlyingSocket, (struct sockaddr*)&socketInfo, &socketInfoLength) != 0) {
-		return std::nullopt;
-	}
-
+int GetPort(struct sockaddr_in socketInfo) {
 	return ntohs(socketInfo.sin_port);
 }

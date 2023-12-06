@@ -41,8 +41,8 @@ void* ServerWindow::Entry() {
 }
 
 void ServerWindow::OnClientConnect(TCPSocket& socket) {
-	std::optional<std::string> hostResult = socket.GetBoundAddress();
-	std::optional<int> portResult = socket.GetBoundPort();
+	std::optional<std::string> hostResult = socket.GetPeerAddress();
+	std::optional<int> portResult = socket.GetPeerPort();
 
 	std::string hostname = hostResult.value_or("<unknown host>");
 	std::string port = portResult.has_value() ? std::to_string(*portResult) : "<unknown port>";
@@ -68,8 +68,8 @@ bool ServerWindow::OnServerMessageReceived(TCPSocket& clientSocket, NetworkMessa
 }
 
 void ServerWindow::OnClientDisconnect(TCPSocket& socket) {
-	std::optional<std::string> hostResult = socket.GetBoundAddress();
-	std::optional<int> portResult = socket.GetBoundPort();
+	std::optional<std::string> hostResult = socket.GetPeerAddress();
+	std::optional<int> portResult = socket.GetPeerPort();
 
 	std::string hostname = hostResult.value_or("<unknown host>");
 	std::string port = portResult.has_value() ? std::to_string(*portResult) : "<unknown port>";
