@@ -166,6 +166,10 @@ Socket::IOResult Socket::ReadAllBytes(byte* buffer, size_t nBytes) {
 	return IOResult::Success;
 }
 
+const SOCKET Socket::GetUnderlyingSocket() const {
+	return *underlyingSocket;
+}
+
 bool Socket::IsValid() {
 	return *underlyingSocket != INVALID_SOCKET;
 }

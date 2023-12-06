@@ -35,7 +35,7 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 
 	sidebar = new wxScrolledWindow(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHSCROLL | wxVSCROLL);
 	sidebar->SetScrollRate(5, 5);
-	sidebar->SetBackgroundColour(wxColour(255, 255, 255));
+	sidebar->SetBackgroundColour(wxColour(238, 238, 238));
 
 	wxBoxSizer* sidebarItemsSizer = new wxBoxSizer(wxVERTICAL);
 
@@ -92,7 +92,7 @@ bool ServerWindow::StartServerThread(std::string& hostname, int port) {
 	}
 
 	// We have a thread, lets make sure we have a valid Server instance for it to use
-	server = std::make_unique<SingleConnectServer>();
+	server = std::make_unique<MultiConnectServer>();
 
 	if (!server->BindAndListen(hostname, port)) {
 		return false; // can't bind and listen, maybe already taken?

@@ -23,7 +23,7 @@ public:
 	ServerWindow(wxString title, std::string& hostname, int port);
 protected:
 	// Server data
-	std::unique_ptr<SingleConnectServer> server;
+	std::unique_ptr<Server> server;
 
 	// Window elements
 	wxSplitterWindow* splitter;
