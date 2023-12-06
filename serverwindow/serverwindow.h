@@ -21,6 +21,7 @@ public:
 	};
 
 	ServerWindow(wxString title, std::string& hostname, int port);
+
 protected:
 	// Server data
 	std::unique_ptr<Server> server;
@@ -39,6 +40,9 @@ protected:
 	void OnClientStartStream(wxThreadEvent& event);
 	void OnClientStreamFrameReceived(wxThreadEvent& event);
 	void OnClientEndStream(wxThreadEvent& event);
+
+	void SetConnectedClientsCounter(int numClients);
+	void SetLastLogMessage(std::string lastMessage);
 
 	// Server Thread elements (defined in serverwindow.thread.cpp)
 	bool StartServerThread(std::string& hostname, int port);

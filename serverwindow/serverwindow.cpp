@@ -2,6 +2,7 @@
 #include <thread>
 #include <queue>
 #include <optional>
+#include <format>
 
 #include "serverwindow.h"
 #include "serverwindow.thread.cpp"
@@ -13,8 +14,10 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 	this->SetSize(this->FromDIP(wxSize{ 500, 400 }));
 
 	statusBar = new wxStatusBar(this);
-	statusBar->SetStatusText("Nothing happening...");
+	statusBar->SetFieldsCount(2);
 
+	this->SetConnectedClientsCounter(0);
+	this->SetLastLogMessage("All quiet...");
 	this->SetStatusBar(statusBar);
 
 	// GUI Building
@@ -104,4 +107,17 @@ bool ServerWindow::StartServerThread(std::string& hostname, int port) {
 	}
 
 	return true;
+}
+
+void ServerWindow::SetConnectedClientsCounter(int numClients) {
+	const bool plural = numClients != 1;
+	this->statusBar->SetStatusText(std::format(
+		"{} client{} connected",
+		numClients,
+		numClients == 1 ? "" : "s"
+	), 0);
+}
+
+void ServerWindow::SetLastLogMessage(std::string lastMessage) {
+	this->statusBar->SetStatusText(lastMessage, 1);
 }

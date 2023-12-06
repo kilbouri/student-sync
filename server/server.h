@@ -14,6 +14,7 @@ public:
 	virtual void Start() = 0;
 	virtual void Stop(bool now = false) = 0;
 	virtual bool IsStopRequested() = 0;
+	virtual int GetConnectionCount() = 0;
 
 	std::optional<std::string> GetHostname();
 	std::optional<int> GetPort();
@@ -50,6 +51,7 @@ public:
 	void Start() override;
 	void Stop(bool now) override;
 	bool IsStopRequested() override;
+	int GetConnectionCount() override;
 
 private:
 	TCPSocket currentClient;
@@ -63,6 +65,7 @@ public:
 	void Start() override;
 	void Stop(bool now) override;
 	bool IsStopRequested() override;
+	int GetConnectionCount() override;
 
 private:
 	std::vector<TCPSocket> currentClients;

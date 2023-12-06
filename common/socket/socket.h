@@ -76,6 +76,9 @@ public:
 	std::optional<std::string> GetBoundAddress();
 	std::optional<int> GetBoundPort();
 
+	std::optional<std::string> GetPeerAddress();
+	std::optional<int> GetPeerPort();
+
 private:
 	TCPSocket(SOCKET existing);
 };

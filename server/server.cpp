@@ -121,6 +121,10 @@ bool SingleConnectServer::IsStopRequested() {
 	// if the socket is invalid, the server has been stopped
 	return !listenSocket.IsValid();
 }
+
+int SingleConnectServer::GetConnectionCount() {
+	return currentClient.IsValid() ? 1 : 0;
+}
 #pragma endregion
 
 #pragma region MultiConnectServer
@@ -227,6 +231,10 @@ void MultiConnectServer::Stop(bool now) {
 
 bool MultiConnectServer::IsStopRequested() {
 	return !listenSocket.IsValid();
+}
+
+int MultiConnectServer::GetConnectionCount() {
+	return currentClients.size();
 }
 
 std::vector<TCPSocket>::iterator MultiConnectServer::EndConnection(std::vector<TCPSocket>::iterator& client) {
