@@ -35,6 +35,7 @@ set(EXTRA_HEADERS
 	"common/messages/stringmessage.h"
 	"common/messages/number64message.h"
 	"common/messages/streamframemessage.h"
+	"common/configkeys/configkeys.h"
 )
 
 # Elements in this set are standalone source files.
