@@ -69,6 +69,7 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 
 	rootSizer->Add(splitter, 1, wxEXPAND);
 
+	this->SetDoubleBuffered(true);
 	this->SetSizer(rootSizer);
 	this->Layout();
 	this->Centre(wxBOTH);
