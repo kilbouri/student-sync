@@ -4,8 +4,7 @@
 
 #include "../client/client.h"
 
-class ClientWindow : public wxFrame, public wxTimer
-{
+class ClientWindow : public wxFrame, public wxTimer {
 public:
 	ClientWindow(wxString title, std::string_view serverHostname, int serverPort);
 
