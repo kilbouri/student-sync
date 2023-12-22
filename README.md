@@ -1,0 +1,1 @@
+Student Sync is a centralized client and server application that allows educators to remotely view the screens of their students as a live stream. It is a University final project written by Andrew Simon and Isaac Kilbourne.
