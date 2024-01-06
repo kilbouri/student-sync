@@ -11,13 +11,7 @@ void ClientWindow::OnAbout(wxCommandEvent& event) {
 
 void ClientWindow::OnShowPreferences(wxCommandEvent& event)
 {
-	ClientPreferences dummy = {
-		.username = "Something Rude",
-		.serverIp = "192.168.1.1",
-		.serverPort = 9999,
-	};
-
-	ClientPreferencesEditor editor{ dummy, this };
+	ClientPreferencesEditor editor{ ClientPreferencesManager::GetInstance().GetPreferences(), this };
 	editor.ShowModal();
 }
 

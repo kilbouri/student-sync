@@ -25,11 +25,13 @@ set(CLASSES
 	"videostreamwindow/videoframebitmap"
 	"modeselectdialog/modeselectdialog"
 	"clientpreferenceseditor/clientpreferenceseditor"
+	"clientpreferencesmanager/clientpreferencesmanager"
 )
 
 # Elements in this set are a standalone header
 set(EXTRA_HEADERS
 	"win32includes.h"
+	"common/appinfo/appinfo.h"
 	"common/managedhandle/managedhandle.h"
 	"common/socket/socket.h"
 	"common/messages/hellomessage.h"

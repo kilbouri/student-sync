@@ -1,7 +1,13 @@
 #include "clientpreferenceseditor.h"
 
+#include <iostream>
+#include <vector>
+#include <string>
+#include <ranges>
+
 ClientPreferencesEditor::ClientPreferencesEditor(const ClientPreferences& currentValues, wxWindow* parent, wxPoint pos, wxSize size)
 	: PreferencesEditor<ClientPreferences>(parent, "Client Preferences", pos, size)
+	, displayNameField{ nullptr }, frameRateField{ nullptr }, resolutionField{ nullptr }
 {
 	Initialize(currentValues);
 }
@@ -9,110 +15,71 @@ ClientPreferencesEditor::ClientPreferencesEditor(const ClientPreferences& curren
 wxPanel* ClientPreferencesEditor::CreatePreferencePanel(wxWindow* parent, const ClientPreferences& currentValues) {
 	wxPanel* panel = new wxPanel(parent, wxID_ANY);
 
-	this->SetSizeHints(wxDefaultSize, wxDefaultSize);
+	constexpr int NUM_COLUMNS = 1;
+	wxFlexGridSizer* flexGrid = new wxFlexGridSizer(0, 2 * NUM_COLUMNS, 5, 10);
+	flexGrid->SetFlexibleDirection(wxBOTH);
+	flexGrid->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
 
-	wxFlexGridSizer* fgSizer2;
-	fgSizer2 = new wxFlexGridSizer(0, 4, 0, 0);
-	fgSizer2->SetFlexibleDirection(wxBOTH);
-	fgSizer2->SetNonFlexibleGrowMode(wxFLEX_GROWMODE_SPECIFIED);
+	// Using this lets us avoid some really repetitive code later on
+	auto AddOption = [=](wxString label, wxWindow* control) {
+		wxStaticText* labelText = new wxStaticText(panel, wxID_ANY, label);
+		labelText->Wrap(-1);
+		flexGrid->Add(labelText, wxALIGN_CENTER_VERTICAL | wxALL | wxEXPAND);
+		flexGrid->Add(control, 1, wxALIGN_CENTER_VERTICAL | wxALL | wxEXPAND);
+	};
 
-	m_staticText8 = new wxStaticText(panel, wxID_ANY, wxT("Pick Selection"), wxDefaultPosition, wxDefaultSize, 0);
-	m_staticText8->Wrap(-1);
-	fgSizer2->Add(m_staticText8, 0, wxALL, 5);
+	displayNameField = new wxTextCtrl(panel, wxID_ANY, currentValues.displayName);
+	AddOption("Display Name", displayNameField);
 
-	m_comboBox18 = new wxComboBox(panel, wxID_ANY, wxT("Combo!"), wxDefaultPosition, wxDefaultSize, 0, NULL, 0);
-	fgSizer2->Add(m_comboBox18, 0, wxALL, 5);
+	// todo: software-enforce the range, and provide constants to use instead of magics
+	frameRateField = new wxSpinCtrl(panel, wxID_ANY);
+	frameRateField->SetMin(5);
+	frameRateField->SetValue(currentValues.maxFrameRate);
+	frameRateField->SetMax(60);
+	frameRateField->SetIncrement(5);
+	AddOption("Max Stream FPS", frameRateField);
 
-	m_staticText9 = new wxStaticText(panel, wxID_ANY, wxT("Pick Selection"), wxDefaultPosition, wxDefaultSize, 0);
-	m_staticText9->Wrap(-1);
-	fgSizer2->Add(m_staticText9, 0, wxALL, 5);
+	// todo: a way to detect user screen resolution and generate resolution options
+	resolutionField = new wxComboBox(panel, wxID_ANY);
+	resolutionField->AppendString("1920x1080 (Native)");
+	resolutionField->SetSelection(0);
+	resolutionField->AppendString("1280x720 (1/3)");
+	resolutionField->AppendString("640x360 (1/6)");
+	AddOption("Stream Resolution", resolutionField);
 
-	m_comboBox19 = new wxComboBox(panel, wxID_ANY, wxT("Combo!"), wxDefaultPosition, wxDefaultSize, 0, NULL, 0);
-	fgSizer2->Add(m_comboBox19, 0, wxALL, 5);
-
-	m_staticText10 = new wxStaticText(panel, wxID_ANY, wxT("Pick Selection"), wxDefaultPosition, wxDefaultSize, 0);
-	m_staticText10->Wrap(-1);
-	fgSizer2->Add(m_staticText10, 0, wxALL, 5);
-
-	m_comboBox20 = new wxComboBox(panel, wxID_ANY, wxT("Combo!"), wxDefaultPosition, wxDefaultSize, 0, NULL, 0);
-	fgSizer2->Add(m_comboBox20, 0, wxALL, 5);
-
-	m_staticText11 = new wxStaticText(panel, wxID_ANY, wxT("Pick Selection"), wxDefaultPosition, wxDefaultSize, 0);
-	m_staticText11->Wrap(-1);
-	fgSizer2->Add(m_staticText11, 0, wxALL, 5);
-
-	m_comboBox21 = new wxComboBox(panel, wxID_ANY, wxT("Combo!"), wxDefaultPosition, wxDefaultSize, 0, NULL, 0);
-	fgSizer2->Add(m_comboBox21, 0, wxALL, 5);
-
-	m_staticText12 = new wxStaticText(panel, wxID_ANY, wxT("Pick Selection"), wxDefaultPosition, wxDefaultSize, 0);
-	m_staticText12->Wrap(-1);
-	fgSizer2->Add(m_staticText12, 0, wxALL, 5);
-
-	m_comboBox22 = new wxComboBox(panel, wxID_ANY, wxT("Combo!"), wxDefaultPosition, wxDefaultSize, 0, NULL, 0);
-	fgSizer2->Add(m_comboBox22, 0, wxALL, 5);
-
-	m_staticText13 = new wxStaticText(panel, wxID_ANY, wxT("Pick Selection"), wxDefaultPosition, wxDefaultSize, 0);
-	m_staticText13->Wrap(-1);
-	fgSizer2->Add(m_staticText13, 0, wxALL, 5);
-
-	m_comboBox23 = new wxComboBox(panel, wxID_ANY, wxT("Combo!"), wxDefaultPosition, wxDefaultSize, 0, NULL, 0);
-	fgSizer2->Add(m_comboBox23, 0, wxALL, 5);
-
-	m_staticText15 = new wxStaticText(panel, wxID_ANY, wxT("Type String"), wxDefaultPosition, wxDefaultSize, 0);
-	m_staticText15->Wrap(-1);
-	fgSizer2->Add(m_staticText15, 0, wxALL, 5);
-
-	m_textCtrl3 = new wxTextCtrl(panel, wxID_ANY, wxT("Original Value"), wxDefaultPosition, wxDefaultSize, 0);
-	fgSizer2->Add(m_textCtrl3, 0, wxALL, 5);
-
-	m_staticText16 = new wxStaticText(panel, wxID_ANY, wxT("Type String"), wxDefaultPosition, wxDefaultSize, 0);
-	m_staticText16->Wrap(-1);
-	fgSizer2->Add(m_staticText16, 0, wxALL, 5);
-
-	m_textCtrl31 = new wxTextCtrl(panel, wxID_ANY, wxT("Original Value"), wxDefaultPosition, wxDefaultSize, 0);
-	fgSizer2->Add(m_textCtrl31, 0, wxALL, 5);
-
-	m_staticText17 = new wxStaticText(panel, wxID_ANY, wxT("Type String"), wxDefaultPosition, wxDefaultSize, 0);
-	m_staticText17->Wrap(-1);
-	fgSizer2->Add(m_staticText17, 0, wxALL, 5);
-
-	m_textCtrl32 = new wxTextCtrl(panel, wxID_ANY, wxT("Original Value"), wxDefaultPosition, wxDefaultSize, 0);
-	fgSizer2->Add(m_textCtrl32, 0, wxALL, 5);
-
-	m_staticText18 = new wxStaticText(panel, wxID_ANY, wxT("Type String"), wxDefaultPosition, wxDefaultSize, 0);
-	m_staticText18->Wrap(-1);
-	fgSizer2->Add(m_staticText18, 0, wxALL, 5);
-
-	m_textCtrl33 = new wxTextCtrl(panel, wxID_ANY, wxT("Original Value"), wxDefaultPosition, wxDefaultSize, 0);
-	fgSizer2->Add(m_textCtrl33, 0, wxALL, 5);
-
-	m_staticText19 = new wxStaticText(panel, wxID_ANY, wxT("Choose Number"), wxDefaultPosition, wxDefaultSize, 0);
-	m_staticText19->Wrap(-1);
-	fgSizer2->Add(m_staticText19, 0, wxALL, 5);
-
-	m_spinCtrlDouble1 = new wxSpinCtrlDouble(panel, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 100, 0.000000, 1);
-	m_spinCtrlDouble1->SetDigits(0);
-	fgSizer2->Add(m_spinCtrlDouble1, 0, wxALL, 5);
-
-	m_staticText21 = new wxStaticText(panel, wxID_ANY, wxT("Choose Number"), wxDefaultPosition, wxDefaultSize, 0);
-	m_staticText21->Wrap(-1);
-	fgSizer2->Add(m_staticText21, 0, wxALL, 5);
-
-	m_spinCtrlDouble2 = new wxSpinCtrlDouble(panel, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 100, 0, 1);
-	m_spinCtrlDouble2->SetDigits(0);
-	fgSizer2->Add(m_spinCtrlDouble2, 0, wxALL, 5);
-
-	m_staticText28 = new wxStaticText(panel, wxID_ANY, wxT("Choose Number"), wxDefaultPosition, wxDefaultSize, 0);
-	m_staticText28->Wrap(-1);
-	fgSizer2->Add(m_staticText28, 0, wxALL, 5);
-
-	m_spinCtrlDouble3 = new wxSpinCtrlDouble(panel, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 100, 0, 1);
-	m_spinCtrlDouble3->SetDigits(0);
-	fgSizer2->Add(m_spinCtrlDouble3, 0, wxALL, 5);
-
-
-	panel->SetSizer(fgSizer2);
-	panel->Layout();
-
+	panel->SetSizer(flexGrid);
 	return panel;
+}
+
+void ClientPreferencesEditor::OnApply() {
+	// the saving should really be dispatched over to a ClientPreferencesManager of sorts.
+	std::string displayName = displayNameField->GetValue();
+	long frameRate = frameRateField->GetValue();
+
+	std::string resolution = resolutionField->GetStringSelection();
+
+	size_t delimPosition = resolution.rfind('x');
+	if (delimPosition == std::string::npos) {
+		throw "Invalid resolution selected";
+	}
+
+	std::string left = resolution.substr(0, delimPosition);
+	std::string right = resolution.substr(delimPosition + 1);
+
+	long width = std::stoul(left);
+	long height = std::stoul(right);
+
+	ClientPreferencesManager::GetInstance().Save(
+		ClientPreferences{
+			.displayName = displayName,
+			.maxFrameRate = frameRate,
+			.maxFrameWidth = width,
+			.maxFrameHeight = height
+		}
+	);
+}
+
+void ClientPreferencesEditor::OnDiscard()
+{
+	/* no operation, since we only ever export the panel's values in OnApply */
 }
