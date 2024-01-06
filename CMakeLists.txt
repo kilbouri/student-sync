@@ -24,6 +24,7 @@ set(CLASSES
 	"videostreamwindow/videostreamwindow"
 	"videostreamwindow/videoframebitmap"
 	"modeselectdialog/modeselectdialog"
+	"clientpreferenceseditor/clientpreferenceseditor"
 )
 
 # Elements in this set are a standalone header
@@ -35,6 +36,7 @@ set(EXTRA_HEADERS
 	"common/messages/stringmessage.h"
 	"common/messages/number64message.h"
 	"common/messages/streamframemessage.h"
+	"preferenceseditor/preferenceseditor.h"
 )
 
 # Elements in this set are standalone source files.

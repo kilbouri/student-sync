@@ -1,4 +1,5 @@
 #include "clientwindow.h"
+#include "../clientpreferenceseditor/clientpreferenceseditor.h"
 
 void ClientWindow::OnExit(wxCommandEvent& event) {
 	Close(true);
@@ -6,6 +7,18 @@ void ClientWindow::OnExit(wxCommandEvent& event) {
 
 void ClientWindow::OnAbout(wxCommandEvent& event) {
 	wxMessageBox("You're in the client software poggers!", "About this Software", wxOK | wxICON_INFORMATION);
+}
+
+void ClientWindow::OnShowPreferences(wxCommandEvent& event)
+{
+	ClientPreferences dummy = {
+		.username = "Something Rude",
+		.serverIp = "192.168.1.1",
+		.serverPort = 9999,
+	};
+
+	ClientPreferencesEditor editor{ dummy, this };
+	editor.ShowModal();
 }
 
 // wxTimer::Notify
