@@ -6,7 +6,7 @@
 #include <wx/stattext.h>
 #include <wx/spinctrl.h>
 
-#include "../preferenceseditor/preferenceseditor.h"
+#include "../common/preferenceseditor/preferenceseditor.h"
 #include "../clientpreferencesmanager/clientpreferencesmanager.h"
 
 class ClientPreferencesEditor : public PreferencesEditor<ClientPreferences>

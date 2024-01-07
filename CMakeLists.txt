@@ -18,14 +18,17 @@ set(CLASSES
 	"serverwindow/serverwindow"
 	"client/client"
 	"clientwindow/clientwindow"
+	"clientpreferenceseditor/clientpreferenceseditor"
+	"clientpreferencesmanager/clientpreferencesmanager"
+	"common/screenresolution/screenresolution"
 	"common/socket/socket"
 	"common/displaycapturer/displaycapturer"
 	"common/networkmessage/networkmessage"
-	"videostreamwindow/videostreamwindow"
-	"videostreamwindow/videoframebitmap"
+	"common/videostreamwindow/videostreamwindow"
+	"common/videostreamwindow/videoframebitmap"
 	"modeselectdialog/modeselectdialog"
-	"clientpreferenceseditor/clientpreferenceseditor"
-	"clientpreferencesmanager/clientpreferencesmanager"
+	"serverpreferenceseditor/serverpreferenceseditor"
+	"serverpreferencesmanager/serverpreferencesmanager"
 )
 
 # Elements in this set are a standalone header
@@ -38,7 +41,7 @@ set(EXTRA_HEADERS
 	"common/messages/stringmessage.h"
 	"common/messages/number64message.h"
 	"common/messages/streamframemessage.h"
-	"preferenceseditor/preferenceseditor.h"
+	"common/preferenceseditor/preferenceseditor.h"
 )
 
 # Elements in this set are standalone source files.
