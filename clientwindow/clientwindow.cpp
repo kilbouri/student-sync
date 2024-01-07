@@ -9,6 +9,7 @@ ClientWindow::ClientWindow(wxString title, std::string_view serverHostname, int 
 	wxMenu* menuFile = new wxMenu;
 	menuFile->Append(ID_String, "Send A &String...\tCtrl-S", "Send a String to the Server");
 	menuFile->Append(ID_Number, "Send A &Number...\tCtrl-N", "Send a Number to the Server");
+	menuFile->Append(ID_ShowPreferences, "Preferences...\tCtrl-,", "Edit client preferences");
 	menuFile->AppendSeparator();
 	menuFile->Append(wxID_EXIT);
 
@@ -36,6 +37,7 @@ ClientWindow::ClientWindow(wxString title, std::string_view serverHostname, int 
 
 	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnAbout, this, wxID_ABOUT);
 	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnExit, this, wxID_EXIT);
+	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnShowPreferences, this, ID_ShowPreferences);
 
 	if (!client.Connect(serverHostname, serverPort)) {
 		wxLogFatalError("Failed to connect to server");

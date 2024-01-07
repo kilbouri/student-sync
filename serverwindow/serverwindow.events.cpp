@@ -1,6 +1,8 @@
 // this file provides event callbacks for ServerWindow. It is #included in serverwindow.cpp
 #pragma once
 #include "serverwindow.h"
+#include "../serverpreferencesmanager/serverpreferencesmanager.h"
+#include "../serverpreferenceseditor/serverpreferenceseditor.h"
 
 void ServerWindow::OnClose(wxCloseEvent& event) {
 	// we MUST wait for the thread to stop. The thread assumes this object
@@ -29,6 +31,11 @@ void ServerWindow::OnDetails(wxCommandEvent& event) {
 	message += "wxWidgets: " wxVERSION_NUM_DOT_STRING;
 
 	wxMessageBox(message);
+}
+
+void ServerWindow::OnShowPreferences(wxCommandEvent& event) {
+	ServerPreferencesEditor editor{ ServerPreferencesManager::GetInstance().GetPreferences(), this };
+	editor.ShowModal();
 }
 
 void ServerWindow::OnServerPushLog(wxThreadEvent& event) {

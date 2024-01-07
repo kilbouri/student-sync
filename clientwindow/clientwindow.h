@@ -21,6 +21,7 @@ private:
 
 	void OnExit(wxCommandEvent& event);
 	void OnAbout(wxCommandEvent& event);
+	void OnShowPreferences(wxCommandEvent& event);
 
 	virtual void Notify();
 };
@@ -31,4 +32,5 @@ enum {
 	ID_StartStream,
 	ID_NextFrame,
 	ID_EndStream,
+	ID_ShowPreferences,
 };

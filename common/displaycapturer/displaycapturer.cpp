@@ -8,6 +8,9 @@
 
 #include "../managedhandle/managedhandle.h"
 
+// todo: this is incredibly unperformant and would cause a huge strain on the client device. We can absolutely do better:
+// https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/desktop-dup-api
+
 struct MonitorInfo {
 	RECT rect;
 	TCHAR name[CCHDEVICENAME];

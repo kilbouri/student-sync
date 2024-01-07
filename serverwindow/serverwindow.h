@@ -7,7 +7,7 @@
 
 #include "../server/server.h"
 #include "../common/socket/socket.h"
-#include "../videostreamwindow/videostreamwindow.h"
+#include "../common/videostreamwindow/videostreamwindow.h"
 
 wxDECLARE_EVENT(SERVER_EVT_PUSH_LOG, wxThreadEvent);
 wxDECLARE_EVENT(SERVER_EVT_CLIENT_STARTING_STREAM, wxThreadEvent);
@@ -17,7 +17,8 @@ wxDECLARE_EVENT(SERVER_EVT_CLIENT_ENDING_STREAM, wxThreadEvent);
 class ServerWindow : public wxFrame, public wxThreadHelper {
 public:
 	enum {
-		ID_Details
+		ID_Details,
+		ID_ShowPreferences
 	};
 
 	ServerWindow(wxString title, std::string& hostname, int port);
@@ -36,6 +37,7 @@ protected:
 	// Window events (defined in serverwindow.events.cpp)
 	void OnClose(wxCloseEvent& event);
 	void OnDetails(wxCommandEvent& event);
+	void OnShowPreferences(wxCommandEvent& event);
 	void OnServerPushLog(wxThreadEvent& event);
 	void OnClientStartStream(wxThreadEvent& event);
 	void OnClientStreamFrameReceived(wxThreadEvent& event);

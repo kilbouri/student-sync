@@ -18,23 +18,30 @@ set(CLASSES
 	"serverwindow/serverwindow"
 	"client/client"
 	"clientwindow/clientwindow"
+	"clientpreferenceseditor/clientpreferenceseditor"
+	"clientpreferencesmanager/clientpreferencesmanager"
+	"common/screenresolution/screenresolution"
 	"common/socket/socket"
 	"common/displaycapturer/displaycapturer"
 	"common/networkmessage/networkmessage"
-	"videostreamwindow/videostreamwindow"
-	"videostreamwindow/videoframebitmap"
+	"common/videostreamwindow/videostreamwindow"
+	"common/videostreamwindow/videoframebitmap"
 	"modeselectdialog/modeselectdialog"
+	"serverpreferenceseditor/serverpreferenceseditor"
+	"serverpreferencesmanager/serverpreferencesmanager"
 )
 
 # Elements in this set are a standalone header
 set(EXTRA_HEADERS
 	"win32includes.h"
+	"common/appinfo/appinfo.h"
 	"common/managedhandle/managedhandle.h"
 	"common/socket/socket.h"
 	"common/messages/hellomessage.h"
 	"common/messages/stringmessage.h"
 	"common/messages/number64message.h"
 	"common/messages/streamframemessage.h"
+	"common/preferenceseditor/preferenceseditor.h"
 )
 
 # Elements in this set are standalone source files.
