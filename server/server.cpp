@@ -1,6 +1,7 @@
 #include "server.h"
 #include "../common/networkmessage/networkmessage.h"
 #include "../common/generator/generator.h"
+#include "../common/task/task.h"
 #include <string>
 #include <optional>
 #include <fstream>
@@ -17,27 +18,6 @@
 //
 // It also has a nice side effect of making the connection handlers very, very nice to write for the
 // consuming code.
-
-namespace ServerActions {
-	struct Action {
-	protected:
-		Action() {};
-	};
-
-	struct AwaitMessage : public Action {
-		AwaitMessage() {}
-	};
-
-	struct Send : public Action {
-		const NetworkMessage message;
-		Send(const NetworkMessage& message) : message{ message } {}
-	};
-}
-
-Generator<ServerActions::Action> HandleConnection() {
-	co_yield ServerActions::Send(NetworkMessage{ NetworkMessage::Tag::Hello });
-	co_yield ServerActions::AwaitMessage{};
-}
 
 #pragma region Server
 bool Server::BindAndListen(std::string& ipAddress, int portNumber) {
