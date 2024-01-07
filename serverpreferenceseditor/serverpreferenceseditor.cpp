@@ -42,11 +42,8 @@ wxPanel* ServerPreferencesEditor::CreatePreferencePanel(wxWindow* parent, const 
 	frameRateField->SetIncrement(5);
 	AddOption("Max Stream FPS", frameRateField);
 
-	// todo: a way to detect user screen resolution and generate resolution options
 	resolutionField = new wxComboBox(panel, wxID_ANY);
-	resolutionField->AppendString("1920x1080 (Native)");
-	resolutionField->AppendString("1280x720 (1/3)");
-	resolutionField->AppendString("640x360 (1/6)");
+	resolutionField->AppendString(currentValues.maxStreamResolution.ToString());
 	resolutionField->SetSelection(0);
 	AddOption("Stream Resolution", resolutionField);
 
@@ -55,26 +52,11 @@ wxPanel* ServerPreferencesEditor::CreatePreferencePanel(wxWindow* parent, const 
 }
 
 void ServerPreferencesEditor::OnApply() {
-	int maxConcurrentClients = maxConcurrentClientsField->GetValue();
-	int frameRate = frameRateField->GetValue();
-
-	std::string resolution = resolutionField->GetStringSelection();
-	size_t delimPosition = resolution.rfind('x');
-	if (delimPosition == std::string::npos) {
-		throw "Invalid resolution selected";
-	}
-
-	std::string left = resolution.substr(0, delimPosition);
-	std::string right = resolution.substr(delimPosition + 1);
-
-	unsigned width = std::stoul(left);
-	unsigned height = std::stoul(right);
-
 	ServerPreferencesManager::GetInstance().SetPreferences(
 		ServerPreferences{
-			.maxConcurrentClients = maxConcurrentClients,
-			.maxFrameRate = frameRate,
-			.maxStreamResolution = ScreenResolution{width, height}
+			.maxConcurrentClients = maxConcurrentClientsField->GetValue(),
+			.maxFrameRate = frameRateField->GetValue(),
+			.maxStreamResolution = ScreenResolution::Parse(resolutionField->GetStringSelection())
 		}
 	);
 }
