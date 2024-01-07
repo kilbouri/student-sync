@@ -1,6 +1,6 @@
 #include "server.h"
 #include "../common/networkmessage/networkmessage.h"
-
+#include "../common/generator/generator.h"
 #include <string>
 #include <optional>
 #include <fstream>
@@ -8,6 +8,36 @@
 #include <iostream>
 #include <thread>
 #include <wx/wx.h>
+#include <coroutine>
+
+// The rationale for using coroutines in the server, instead of (for example) dedicated threads,
+// is that the server must be capable of handling hundreds of concurrent connections, AND that most
+// of those concurrent connections will be inactive most of the time. That means creating a thread
+// for every connection would rapidly waste threads.
+//
+// It also has a nice side effect of making the connection handlers very, very nice to write for the
+// consuming code.
+
+namespace ServerActions {
+	struct Action {
+	protected:
+		Action() {};
+	};
+
+	struct AwaitMessage : public Action {
+		AwaitMessage() {}
+	};
+
+	struct Send : public Action {
+		const NetworkMessage message;
+		Send(const NetworkMessage& message) : message{ message } {}
+	};
+}
+
+Generator<ServerActions::Action> HandleConnection() {
+	co_yield ServerActions::Send(NetworkMessage{ NetworkMessage::Tag::Hello });
+	co_yield ServerActions::AwaitMessage{};
+}
 
 #pragma region Server
 bool Server::BindAndListen(std::string& ipAddress, int portNumber) {

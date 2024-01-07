@@ -35,6 +35,8 @@ set(CLASSES
 set(EXTRA_HEADERS
 	"win32includes.h"
 	"common/appinfo/appinfo.h"
+	"common/generator/generator.h"
+	"common/task/task.h"
 	"common/managedhandle/managedhandle.h"
 	"common/socket/socket.h"
 	"common/messages/hellomessage.h"
