@@ -14,8 +14,6 @@
 /// server-client conversation.
 /// </summary>
 struct Server {
-	using Job = std::suspend_always;
-
 	/// <summary>
 	/// A context object which provides methods for connection handlers to communicate with the server
 	/// in a safe, extendable manner.
@@ -24,15 +22,13 @@ struct Server {
 		/// <summary>
 		/// Tells the server that the handler would like to send the provided message.
 		/// </summary>
-		virtual Server::Job Send(NetworkMessage message) = 0;
+		virtual Task<void> Send(NetworkMessage message) = 0;
 
 		/// <summary>
 		/// Tells the server that the handler would like to receive another message.
 		/// </summary>
-		Server::Job NextMessage();
-		virtual Server::Job DoReceive() = 0;
+		virtual Task<std::optional<NetworkMessage>> Recieve() = 0;
 
-		std::optional<NetworkMessage> GetLatestMessage();
 	protected:
 		std::optional<NetworkMessage> latestMessage;
 	};
@@ -65,8 +61,8 @@ protected:
 /// </summary>
 struct SingleConnectServer : public Server {
 	struct ConnectionContext : Server::ConnectionContext {
-		Server::Job Send(NetworkMessage message) override;
-		Server::Job DoReceive() override;
+		Task<void> Send(NetworkMessage message) override;
+		Task<std::optional<NetworkMessage>> Recieve() override;
 
 		ConnectionContext(SingleConnectServer* server, TCPSocket socket);
 

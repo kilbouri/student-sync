@@ -6,17 +6,16 @@
 SingleConnectServer::ConnectionContext::ConnectionContext(SingleConnectServer* server, TCPSocket socket)
 	: server{ server }, clientSocket{ socket } {}
 
-Server::Job SingleConnectServer::ConnectionContext::Send(NetworkMessage message) {
+Task<void> SingleConnectServer::ConnectionContext::Send(NetworkMessage message) {
 	// in this server, we don't have to do any fanciness to queue the message until
 	// a send opening or anything like that
 	message.Send(this->clientSocket);
-	return {};
+	co_return;
 }
 
-Server::Job SingleConnectServer::ConnectionContext::DoReceive() {
-	// in this server, we don't have to do any fanciness to wait for a read opening
-	this->latestMessage = NetworkMessage::TryReceive(this->clientSocket);
-	return {};
+Task<std::optional<NetworkMessage>> SingleConnectServer::ConnectionContext::Recieve() {
+	// in this server, we don't have to do any fanciness to queue a read until data is present
+	co_return NetworkMessage::TryReceive(this->clientSocket);
 }
 #pragma endregion
 

@@ -41,17 +41,19 @@ Task<void> ServerWindow::ConnectionHandler(std::shared_ptr<Server::ConnectionCon
 	this->OnClientConnect();
 
 	while (true) {
-		co_await ctx->NextMessage();
-		std::optional<NetworkMessage> message = ctx->GetLatestMessage();
+
+		// I had a brain-wave... we can make this return a Task<NetworkMessage?>. The server can populate the value before resuming the coroutne!
+		std::optional<NetworkMessage> message = co_await ctx->Recieve();
 
 		if (!message) {
-			// end the connection
-			this->OnClientDisconnect();
-			co_return;
+			break;
 		}
 
 		this->OnServerMessageReceived(*message);
 	}
+
+	this->OnClientDisconnect();
+	co_return;
 }
 
 void ServerWindow::OnClientConnect() {

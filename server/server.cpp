@@ -24,20 +24,6 @@
 // It also has a nice side effect of making the connection handlers very, very nice to write for the
 // consuming code.
 
-#pragma region Server::ConnectionContext
-Server::Job Server::ConnectionContext::NextMessage() {
-	// clear any previous message
-	this->latestMessage = std::nullopt;
-
-	// invoke the actual job
-	return this->DoReceive();
-}
-
-std::optional<NetworkMessage> Server::ConnectionContext::GetLatestMessage() {
-	return this->latestMessage;
-}
-#pragma endregion
-
 #pragma region Server
 bool Server::BindAndListen(std::string& ipAddress, int portNumber) {
 	return listenSocket.Bind(ipAddress, portNumber) && listenSocket.Listen(TCPSocket::MaxConnectionQueueLength);
