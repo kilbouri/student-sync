@@ -17,7 +17,6 @@ event->SetPayload(wxString(message));							\
 wxQueueEvent(this, event);										\
 }
 
-
 wxString CreateLogMessage(NetworkMessage& receivedMessage);
 wxBitmap BitmapFromByteVector(std::vector<byte> data);
 

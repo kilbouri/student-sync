@@ -13,6 +13,9 @@
 #include <wx/wx.h>
 #include <coroutine>
 
+#include "server.singleconnect.cpp"
+#include "server.multiconnect.cpp"
+
 // The rationale for using coroutines in the server, instead of (for example) dedicated threads,
 // is that the server must be capable of handling hundreds of concurrent connections, AND that most
 // of those concurrent connections will be inactive most of the time. That means creating a thread
@@ -20,6 +23,20 @@
 //
 // It also has a nice side effect of making the connection handlers very, very nice to write for the
 // consuming code.
+
+#pragma region Server::ConnectionContext
+Server::Job Server::ConnectionContext::NextMessage() {
+	// clear any previous message
+	this->latestMessage = std::nullopt;
+
+	// invoke the actual job
+	return this->DoReceive();
+}
+
+std::optional<NetworkMessage> Server::ConnectionContext::GetLatestMessage() {
+	return this->latestMessage;
+}
+#pragma endregion
 
 #pragma region Server
 bool Server::BindAndListen(std::string& ipAddress, int portNumber) {
@@ -42,209 +59,3 @@ Server::~Server() {
 	listenSocket.Close();
 }
 #pragma endregion
-
-#pragma region Server::ConnectionContext
-Server::Job Server::ConnectionContext::NextMessage() {
-	// clear any previous message
-	this->latestMessage = std::nullopt;
-
-	// invoke the actual job
-	return this->DoReceive();
-}
-
-std::optional<NetworkMessage> Server::ConnectionContext::GetLatestMessage() {
-	return this->latestMessage;
-}
-#pragma endregion
-
-#pragma region SingleConnectServer
-SingleConnectServer::SingleConnectServer()
-	: Server{}, currentConnection{ std::nullopt }, currentClientSocket{ TCPSocket::InvalidSocket() }
-{}
-
-void SingleConnectServer::Start() {
-	while (!IsStopRequested()) {
-		std::optional<TCPSocket> acceptResult = listenSocket.Accept();
-		if (!acceptResult) {
-			continue;
-		}
-
-		// if we don't have a connection handler, we should just kill the connection
-		if (!connectionHandler) {
-			acceptResult->Close();
-			continue;
-		}
-
-		// Fire off the connection handler and await its completion
-		currentClientSocket = acceptResult;
-		currentConnection = ConnectionContext{ this, *acceptResult };
-
-		auto handler = (*connectionHandler)(*currentConnection);
-		while (!handler.Done() && !IsStopRequested()) {
-			handler.Resume();
-		}
-
-		// Ensure the client gets closed if the handler did not close it
-		acceptResult->Close();
-	}
-}
-
-void SingleConnectServer::Stop(bool now) {
-	// prevent new connections
-	listenSocket.Close();
-
-	// kill current connection, if there is any
-	if (now && currentConnection) {
-		currentClientSocket->Close();
-	}
-}
-
-bool SingleConnectServer::IsStopRequested() {
-	// if the socket is invalid, the server has been stopped
-	return !listenSocket.IsValid();
-}
-
-int SingleConnectServer::GetConnectionCount() {
-	return currentConnection.has_value() ? 1 : 0;
-}
-#pragma endregion
-
-#pragma region SingleConnectServer::ConnectionContext
-SingleConnectServer::ConnectionContext::ConnectionContext(SingleConnectServer* server, TCPSocket socket)
-	: server{ server }, clientSocket{ socket } {}
-
-Server::Job SingleConnectServer::ConnectionContext::Send(NetworkMessage message) {
-	// in this server, we don't have to do any fanciness to queue the message until
-	// a send opening or anything like that
-	message.Send(this->clientSocket);
-	return {};
-}
-
-Server::Job SingleConnectServer::ConnectionContext::DoReceive() {
-	// in this server, we don't have to do any fanciness to wait for a read opening
-	this->latestMessage = NetworkMessage::TryReceive(this->clientSocket);
-	return {};
-}
-#pragma endregion
-
-#if 0
-#pragma region MultiConnectServer
-MultiConnectServer::MultiConnectServer()
-	: Server(), currentClients{}, clientReadBuffers{}, connections{}
-{}
-
-// TODO: servers shouldn't allow event handlers to interact with a client socket
-// directly, especially in the MultiConnectServer's case. Its fine for now
-// because IK is feeling overconfident, but its not a great architecture.
-// Better would be to provide event handlers a mechanism to enqueue messages
-// to send, then use a writeSet to write when actually able
-void MultiConnectServer::Start() {
-	while (!IsStopRequested()) {
-
-		// readSet is a set of sockets that we wish to wait for
-		// readability on (ie. incoming connection or data ready to read).
-		fd_set readSet = {};
-		FD_ZERO(&readSet);
-		FD_SET(listenSocket.GetUnderlyingSocket(), &readSet);
-
-		for (auto& clientSocket : currentClients) {
-			FD_SET(clientSocket.GetUnderlyingSocket(), &readSet);
-		}
-
-		// this will block until at least one socket in readSet is readable
-		int selectResult = select(0, &readSet, nullptr, nullptr, nullptr);
-		if (selectResult == SOCKET_ERROR) {
-			continue; // we should really handle this better...
-		}
-
-		// is there an incoming connection?
-		if (FD_ISSET(listenSocket.GetUnderlyingSocket(), &readSet)) {
-			std::optional<TCPSocket> newClient = listenSocket.Accept();
-			if (newClient) {
-				currentClients.push_back(*newClient);
-				InvokeClientConnectedHandler(*newClient);
-			}
-		}
-
-		// are there any pending reads?
-		for (auto clientIterator = currentClients.begin(); clientIterator != currentClients.end();) {
-			SOCKET clientRawSocket = (*clientIterator).GetUnderlyingSocket();
-			if (!FD_ISSET(clientRawSocket, &readSet)) { // socket not ready
-				clientIterator++;
-				continue;
-			}
-
-			unsigned long pendingBytes = 0;
-			if (ioctlsocket(clientRawSocket, FIONREAD, &pendingBytes) == SOCKET_ERROR) {
-				// Drop the connection if we can't know how many bytes are pending
-				clientIterator = EndConnection(clientIterator);
-				continue;
-			}
-
-			// get buffer and its current size
-			std::vector<byte>& buffer = clientReadBuffers[clientRawSocket];
-			size_t originalSize = buffer.size();
-
-			// create room for all buffered + pending bytes
-			buffer.resize(buffer.size() + pendingBytes);
-
-			int readResult = clientIterator->ReadBytes(buffer.data() + originalSize, pendingBytes);
-			if (readResult == SOCKET_ERROR) {
-				// todo: a connection drop handler
-				clientIterator = EndConnection(clientIterator);
-				continue;
-			}
-
-			if (readResult == 0) {
-				// client disconnected
-				InvokeClientDisconnectedHandler(*clientIterator);
-				clientIterator = EndConnection(clientIterator);
-				continue;
-			}
-
-			// resize down to the actual size of data we have (may be different, but probably won't be)
-			buffer.resize(originalSize + readResult);
-
-			std::optional<std::tuple<NetworkMessage, int>> maybeMessage = NetworkMessage::TryFromBuffer(buffer);
-			if (maybeMessage) {
-				auto& [message, consumedBytes] = *maybeMessage;
-				buffer.erase(buffer.begin(), buffer.begin() + consumedBytes);
-
-				InvokeMessageReceivedHandler(*clientIterator, message);
-			}
-
-			clientIterator++;
-		}
-	}
-}
-
-void MultiConnectServer::Stop(bool now) {
-	listenSocket.Close();
-
-	if (now) {
-		// Kill all connected clients during immediate shutdown
-		for (auto iterator = currentClients.begin(); iterator != currentClients.end();) {
-			// DO NOT move the iterator forward!
-			iterator = EndConnection(iterator);
-		}
-	}
-}
-
-bool MultiConnectServer::IsStopRequested() {
-	return !listenSocket.IsValid();
-}
-
-int MultiConnectServer::GetConnectionCount() {
-	return currentClients.size();
-}
-
-std::vector<TCPSocket>::iterator MultiConnectServer::EndConnection(std::vector<TCPSocket>::iterator& client) {
-	// erase any buffers
-	clientReadBuffers.erase(client->GetUnderlyingSocket());
-
-	// close the connection
-	client->Close();
-	return currentClients.erase(client); // do this last, or `client` will be invalid!
-}
-#pragma endregion
-#endif
