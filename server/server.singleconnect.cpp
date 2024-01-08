@@ -40,7 +40,7 @@ void SingleConnectServer::Start() {
 
 		// Fire off the connection handler and await its completion
 		currentClientSocket = acceptResult;
-		currentConnection = ConnectionContext{ this, *acceptResult };
+		currentConnection = std::make_shared<ConnectionContext>(this, *acceptResult);
 
 		auto handler = (*connectionHandler)(*currentConnection);
 		while (!handler.Done() && !IsStopRequested()) {

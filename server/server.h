@@ -33,7 +33,6 @@ struct Server {
 		virtual Server::Job DoReceive() = 0;
 
 		std::optional<NetworkMessage> GetLatestMessage();
-
 	protected:
 		std::optional<NetworkMessage> latestMessage;
 	};
@@ -48,7 +47,7 @@ struct Server {
 	std::optional<std::string> GetHostname();
 	std::optional<int> GetPort();
 
-	using ConnectionHandlerFunc = std::function<Task<void>(ConnectionContext&)>;
+	using ConnectionHandlerFunc = std::function<Task<void>(std::shared_ptr<ConnectionContext>)>;
 	void SetConnectionHandler(ConnectionHandlerFunc handler);
 
 	~Server();
@@ -85,7 +84,7 @@ struct SingleConnectServer : public Server {
 	int GetConnectionCount() override;
 
 private:
-	std::optional<ConnectionContext> currentConnection;
+	std::optional<std::shared_ptr<ConnectionContext>> currentConnection;
 	std::optional<TCPSocket> currentClientSocket;
 };
 

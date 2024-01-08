@@ -37,13 +37,16 @@ void* ServerWindow::Entry() {
 	return 0;
 }
 
-Task<void> ServerWindow::ConnectionHandler(Server::ConnectionContext& ctx) {
+Task<void> ServerWindow::ConnectionHandler(std::shared_ptr<Server::ConnectionContext> ctx) {
+	this->OnClientConnect();
+
 	while (true) {
-		co_await ctx.NextMessage();
-		std::optional<NetworkMessage> message = ctx.GetLatestMessage();
+		co_await ctx->NextMessage();
+		std::optional<NetworkMessage> message = ctx->GetLatestMessage();
 
 		if (!message) {
 			// end the connection
+			this->OnClientDisconnect();
 			co_return;
 		}
 
@@ -51,14 +54,8 @@ Task<void> ServerWindow::ConnectionHandler(Server::ConnectionContext& ctx) {
 	}
 }
 
-void ServerWindow::OnClientConnect(TCPSocket& socket) {
-	std::optional<std::string> hostResult = socket.GetPeerAddress();
-	std::optional<int> portResult = socket.GetPeerPort();
-
-	std::string hostname = hostResult.value_or("<unknown host>");
-	std::string port = portResult.has_value() ? std::to_string(*portResult) : "<unknown port>";
-
-	PUSH_LOG_MESSAGE(hostname + ":" + port + " connected");
+void ServerWindow::OnClientConnect() {
+	PUSH_LOG_MESSAGE("Client connected");
 }
 
 bool ServerWindow::OnServerMessageReceived(NetworkMessage receivedMessage) {
@@ -78,14 +75,8 @@ bool ServerWindow::OnServerMessageReceived(NetworkMessage receivedMessage) {
 #undef SERVER_MESSAGE_HANDLER
 }
 
-void ServerWindow::OnClientDisconnect(TCPSocket& socket) {
-	std::optional<std::string> hostResult = socket.GetPeerAddress();
-	std::optional<int> portResult = socket.GetPeerPort();
-
-	std::string hostname = hostResult.value_or("<unknown host>");
-	std::string port = portResult.has_value() ? std::to_string(*portResult) : "<unknown port>";
-
-	PUSH_LOG_MESSAGE(hostname + ":" + port + " disconnected");
+void ServerWindow::OnClientDisconnect() {
+	PUSH_LOG_MESSAGE("Client disconnected");
 }
 
 bool ServerWindow::NoOpMessageHandler(NetworkMessage& message) {

@@ -35,7 +35,7 @@ protected:
 	VideoFrameBitmap* streamView;
 	wxStatusBar* statusBar;
 
-	Task<void> ConnectionHandler(Server::ConnectionContext& context);
+	Task<void> ConnectionHandler(std::shared_ptr<Server::ConnectionContext> context);
 
 	// Window events (defined in serverwindow.events.cpp)
 	void OnClose(wxCloseEvent& event);
@@ -53,9 +53,9 @@ protected:
 	bool StartServerThread(std::string& hostname, int port);
 	void* Entry() override; // Inherited via wxThreadHelper
 
-	void OnClientConnect(TCPSocket& socket);
+	void OnClientConnect();
 	bool OnServerMessageReceived(NetworkMessage message);
-	void OnClientDisconnect(TCPSocket& socket);
+	void OnClientDisconnect();
 
 	bool NoOpMessageHandler(NetworkMessage& message);
 	bool StartVideoStreamMessageHandler(NetworkMessage& message);
