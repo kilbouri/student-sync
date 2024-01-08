@@ -5,8 +5,8 @@
 #include <optional>
 
 /// <summary>
-/// A coroutine type for lightweight, cooperative, concurrency. Tasks begin executing immediately
-/// upon construction.
+/// A coroutine type for lightweight, cooperative, concurrency. Tasks do not
+/// begin executing until they are explicitly resumed or awaited.
 /// </summary>
 template <typename TResult> requires (std::is_void_v<TResult> || std::movable<TResult>)
 struct Task {
@@ -23,16 +23,16 @@ struct Task {
 			return Task{ Handle::from_promise(*this) };
 		}
 
-		std::suspend_never initial_suspend() noexcept {
+		std::suspend_always initial_suspend() noexcept {
+			return {};
+		}
+
+		std::suspend_always final_suspend() noexcept {
 			return {};
 		}
 
 		void return_value(TResult value) noexcept {
 			this->value = value;
-		}
-
-		std::suspend_always final_suspend() noexcept {
-			return {};
 		}
 
 		void unhandled_exception() { throw; }
@@ -88,8 +88,8 @@ struct Task {
 };
 
 /// <summary>
-/// A coroutine type for lightweight, cooperative, concurrency. Tasks begin executing immediately
-/// upon construction.
+/// A coroutine type for lightweight, cooperative, concurrency. Tasks do not
+/// begin executing until they are explicitly resumed or awaited.
 /// </summary>
 template <>
 struct Task<void> {
@@ -105,16 +105,15 @@ struct Task<void> {
 			return retval;
 		}
 
-		std::suspend_never initial_suspend() noexcept {
+		std::suspend_always initial_suspend() noexcept {
 			return {};
 		}
-
-		void return_void() noexcept {}
 
 		std::suspend_always final_suspend() noexcept {
 			return {};
 		}
 
+		void return_void() noexcept {}
 		void unhandled_exception() { throw; }
 	};
 

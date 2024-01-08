@@ -3,13 +3,18 @@
 // included by server.cpp
 
 #pragma region ConnectionContext
+Task<void> MultiConnectServer::ConnectionContext::Send(NetworkMessage message) {
+	co_return;
+}
 
+Task<std::optional<NetworkMessage>> MultiConnectServer::ConnectionContext::Recieve() {
+	co_return std::nullopt;
+}
 #pragma endregion
 
 #pragma region Server
-#if 0
 MultiConnectServer::MultiConnectServer()
-	: Server(), currentClients{}, clientReadBuffers{}, connections{}
+	: Server()
 {}
 
 // TODO: servers shouldn't allow event handlers to interact with a client socket
@@ -125,5 +130,4 @@ std::vector<TCPSocket>::iterator MultiConnectServer::EndConnection(std::vector<T
 	client->Close();
 	return currentClients.erase(client); // do this last, or `client` will be invalid!
 }
-#endif
 #pragma endregion

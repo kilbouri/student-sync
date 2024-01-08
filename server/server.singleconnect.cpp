@@ -31,22 +31,25 @@ void SingleConnectServer::Start() {
 			continue;
 		}
 
-		// if we don't have a connection handler, we should just kill the connection
+		// if we don't have a connection handler, that means the server will do nothing
+		// meaningful and should therefore immediately end the connection.
 		if (!connectionHandler) {
 			acceptResult->Close();
 			continue;
 		}
 
-		// Fire off the connection handler and await its completion
 		currentClientSocket = acceptResult;
 		currentConnection = std::make_shared<ConnectionContext>(this, *acceptResult);
 
+		// We basically just synchronously wait for the handler coroutine to
+		// be done (or the server be requested to stop).
 		auto handler = (*connectionHandler)(*currentConnection);
 		while (!handler.Done() && !IsStopRequested()) {
 			handler.Resume();
 		}
 
-		// Ensure the client gets closed if the handler did not close it
+		currentClientSocket = std::nullopt;
+		currentConnection = std::nullopt;
 		acceptResult->Close();
 	}
 }

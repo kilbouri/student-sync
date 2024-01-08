@@ -84,10 +84,14 @@ private:
 	std::optional<TCPSocket> currentClientSocket;
 };
 
-#if 0
-class MultiConnectServer : public Server {
-public:
-	MultiConnectServer(); // todo: optional connection limit
+struct MultiConnectServer : public Server {
+	struct ConnectionContext : Server::ConnectionContext {
+		Task<void> Send(NetworkMessage message) override;
+		Task<std::optional<NetworkMessage>> Recieve() override;
+	};
+
+	 // todo: optional connection limit
+	MultiConnectServer();
 
 	// Inherited via Server
 	void Start() override;
@@ -96,18 +100,6 @@ public:
 	int GetConnectionCount() override;
 
 private:
-	std::vector<ConnectionContext> connections;
-
-
-	std::vector<TCPSocket> currentClients;
-	std::unordered_map<SOCKET, std::vector<byte>> clientReadBuffers;
-
-	/// <summary>
-	/// Does all cleanup required to close/drop a connection, including
-	/// releasing any buffers, closing the connection, and removing the
-	/// connection from the current client list
-	/// </summary>
-	std::vector<TCPSocket>::iterator EndConnection(std::vector<TCPSocket>::iterator& client);
+	// maps a socket to the context for the connection on that socket
+	std::unordered_map<TCPSocket, ConnectionContext> connections;
 };
-
-#endif
