@@ -107,13 +107,8 @@ Task<void> SingleConnectServer::ConnectionContext::Send(NetworkMessage message) 
 	co_return;
 }
 
-Task<NetworkMessage> SingleConnectServer::ConnectionContext::Receive() {
-	while (true) {
-		std::optional<NetworkMessage> reply = NetworkMessage::TryReceive(this->clientSocket);
-		if (reply) {
-			co_return reply.value();
-		}
-	}
+Task<std::optional<NetworkMessage>> SingleConnectServer::ConnectionContext::TryReceive() {
+	co_return NetworkMessage::TryReceive(this->clientSocket);
 }
 bool SingleConnectServer::ConnectionContext::ConnectionIsAlive() {
 	return this->clientSocket.IsValid();

@@ -40,8 +40,13 @@ void* ServerWindow::Entry() {
 
 Task<void> ServerWindow::ConnectionHandler(Server::ConnectionContext& ctx) {
 	while (ctx.ConnectionIsAlive()) {
-		NetworkMessage message = co_await ctx.Receive();
-		this->OnServerMessageReceived(message);
+		std::optional<NetworkMessage> message = co_await ctx.TryReceive();
+		if (!message) {
+			ctx.Terminate();
+			co_return;
+		}
+
+		this->OnServerMessageReceived(*message);
 	}
 
 	co_return;

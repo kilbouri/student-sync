@@ -21,7 +21,7 @@ struct Server {
 	/// </summary>
 	struct ConnectionContext {
 		virtual Task<void> Send(NetworkMessage message) = 0;
-		virtual Task<NetworkMessage> Receive() = 0;
+		virtual Task<std::optional<NetworkMessage>> TryReceive() = 0;
 		virtual void Terminate() = 0;
 		virtual bool ConnectionIsAlive() = 0;
 	};
@@ -55,7 +55,7 @@ protected:
 struct SingleConnectServer : public Server {
 	struct ConnectionContext : Server::ConnectionContext {
 		Task<void> Send(NetworkMessage message) override;
-		Task<NetworkMessage> Receive() override;
+		Task<std::optional<NetworkMessage>> TryReceive() override;
 		void Terminate() override;
 		bool ConnectionIsAlive() override;
 

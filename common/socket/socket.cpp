@@ -137,6 +137,7 @@ Socket::IOResult Socket::WriteAllBytes(const byte* buffer, size_t nBytes) {
 				case WSAECONNRESET:
 				case WSAESHUTDOWN:
 				case WSAECONNABORTED:
+					this->Close();
 					return IOResult::ConnectionClosed;
 
 				default:
@@ -160,9 +161,14 @@ Socket::IOResult Socket::ReadAllBytes(byte* buffer, size_t nBytes) {
 
 		int readResult = ReadBytes(buffer + bytesRead, readableBytes);
 		switch (readResult) {
-			case SOCKET_ERROR: return IOResult::Error;
-			case 0: return IOResult::ConnectionClosed;
-			default: bytesRead += readResult; break;
+			case 0:
+				this->Close();
+				return IOResult::ConnectionClosed;
+			case SOCKET_ERROR:
+				return IOResult::Error;
+			default:
+				bytesRead += readResult;
+				break;
 		}
 	} while (bytesRead < nBytes);
 
