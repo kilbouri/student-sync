@@ -16,10 +16,6 @@ struct Task {
 	struct promise_type {
 		std::optional<TResult> value;
 
-		bool has_value() {
-			return value != std::nullopt;
-		}
-
 		promise_type() {}
 		~promise_type() {}
 
@@ -59,6 +55,7 @@ struct Task {
 		return *this;
 	}
 
+#pragma region enable using co_await within
 	bool await_ready() {
 		return handle.done();
 	}
@@ -71,6 +68,17 @@ struct Task {
 	TResult await_resume() {
 		return handle.promise().value.value();
 	}
+#pragma endregion
+
+#pragma region control helpers
+	void Resume() {
+		handle.resume();
+	}
+
+	bool Done() {
+		return handle.done();
+	}
+#pragma endregion
 
 	~Task() {
 		if (handle) {
@@ -126,17 +134,27 @@ struct Task<void> {
 		s.handle = nullptr;
 		return *this;
 	}
-#pragma region co_await
-	bool await_ready() noexcept {
+#pragma region enable using co_await within
+	bool await_ready() {
 		return handle.done();
 	}
 
-	void await_suspend(std::coroutine_handle<> awaiterCoroutine) noexcept {
+	void await_suspend(std::coroutine_handle<> awaiterCoroutine) {
 		handle.resume(); // resume ourself
 		awaiterCoroutine.resume(); // resume the awaiter
 	}
 
-	void await_resume() noexcept {}
+	void await_resume() {}
+#pragma endregion
+
+#pragma region control helpers
+	void Resume() {
+		handle.resume();
+	}
+
+	bool Done() {
+		return handle.done();
+	}
 #pragma endregion
 
 	~Task() {

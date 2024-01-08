@@ -34,22 +34,22 @@ void* ServerWindow::Entry() {
 		server->SetConnectionHandler(std::bind(&ServerWindow::ConnectionHandler, this, _1));
 	}
 
-	auto serverTask = server->Start();
+	server->Start();
 	return 0;
 }
 
 Task<void> ServerWindow::ConnectionHandler(Server::ConnectionContext& ctx) {
-	while (ctx.ConnectionIsAlive()) {
-		std::optional<NetworkMessage> message = co_await ctx.TryReceive();
+	while (true) {
+		co_await ctx.NextMessage();
+		std::optional<NetworkMessage> message = ctx.GetLatestMessage();
+
 		if (!message) {
-			ctx.Terminate();
+			// end the connection
 			co_return;
 		}
 
 		this->OnServerMessageReceived(*message);
 	}
-
-	co_return;
 }
 
 void ServerWindow::OnClientConnect(TCPSocket& socket) {

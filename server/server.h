@@ -14,21 +14,33 @@
 /// server-client conversation.
 /// </summary>
 struct Server {
+	using Job = std::suspend_always;
 
 	/// <summary>
 	/// A context object which provides methods for connection handlers to communicate with the server
 	/// in a safe, extendable manner.
 	/// </summary>
 	struct ConnectionContext {
-		virtual Task<void> Send(NetworkMessage message) = 0;
-		virtual Task<std::optional<NetworkMessage>> TryReceive() = 0;
-		virtual void Terminate() = 0;
-		virtual bool ConnectionIsAlive() = 0;
+		/// <summary>
+		/// Tells the server that the handler would like to send the provided message.
+		/// </summary>
+		virtual Server::Job Send(NetworkMessage message) = 0;
+
+		/// <summary>
+		/// Tells the server that the handler would like to receive another message.
+		/// </summary>
+		Server::Job NextMessage();
+		virtual Server::Job DoReceive() = 0;
+
+		std::optional<NetworkMessage> GetLatestMessage();
+
+	protected:
+		std::optional<NetworkMessage> latestMessage;
 	};
 
 	bool BindAndListen(std::string& ipAddress, int portNumber);
 
-	virtual Task<void> Start() = 0;
+	virtual void Start() = 0;
 	virtual void Stop(bool now = false) = 0;
 	virtual bool IsStopRequested() = 0;
 	virtual int GetConnectionCount() = 0;
@@ -54,12 +66,11 @@ protected:
 /// </summary>
 struct SingleConnectServer : public Server {
 	struct ConnectionContext : Server::ConnectionContext {
-		Task<void> Send(NetworkMessage message) override;
-		Task<std::optional<NetworkMessage>> TryReceive() override;
-		void Terminate() override;
-		bool ConnectionIsAlive() override;
+		Server::Job Send(NetworkMessage message) override;
+		Server::Job DoReceive() override;
 
 		ConnectionContext(SingleConnectServer* server, TCPSocket socket);
+
 	private:
 		TCPSocket clientSocket;
 		SingleConnectServer* server;
@@ -68,13 +79,14 @@ struct SingleConnectServer : public Server {
 	SingleConnectServer();
 
 	// Inherited via Server
-	Task<void> Start() override;
+	void Start() override;
 	void Stop(bool now) override;
 	bool IsStopRequested() override;
 	int GetConnectionCount() override;
 
 private:
 	std::optional<ConnectionContext> currentConnection;
+	std::optional<TCPSocket> currentClientSocket;
 };
 
 #if 0

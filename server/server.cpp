@@ -43,13 +43,26 @@ Server::~Server() {
 }
 #pragma endregion
 
+#pragma region Server::ConnectionContext
+Server::Job Server::ConnectionContext::NextMessage() {
+	// clear any previous message
+	this->latestMessage = std::nullopt;
+
+	// invoke the actual job
+	return this->DoReceive();
+}
+
+std::optional<NetworkMessage> Server::ConnectionContext::GetLatestMessage() {
+	return this->latestMessage;
+}
+#pragma endregion
+
 #pragma region SingleConnectServer
 SingleConnectServer::SingleConnectServer()
-	: Server{},
-	currentConnection{ }
+	: Server{}, currentConnection{ std::nullopt }, currentClientSocket{ TCPSocket::InvalidSocket() }
 {}
 
-Task<void> SingleConnectServer::Start() {
+void SingleConnectServer::Start() {
 	while (!IsStopRequested()) {
 		std::optional<TCPSocket> acceptResult = listenSocket.Accept();
 		if (!acceptResult) {
@@ -62,14 +75,17 @@ Task<void> SingleConnectServer::Start() {
 			continue;
 		}
 
-		// Fire of the connection handler and await its completion
+		// Fire off the connection handler and await its completion
+		currentClientSocket = acceptResult;
 		currentConnection = ConnectionContext{ this, *acceptResult };
-		co_await(*connectionHandler)(*currentConnection);
+
+		auto handler = (*connectionHandler)(*currentConnection);
+		while (!handler.Done() && !IsStopRequested()) {
+			handler.Resume();
+		}
 
 		// Ensure the client gets closed if the handler did not close it
-		if (currentConnection) {
-			currentConnection->Terminate();
-		}
+		acceptResult->Close();
 	}
 }
 
@@ -79,7 +95,7 @@ void SingleConnectServer::Stop(bool now) {
 
 	// kill current connection, if there is any
 	if (now && currentConnection) {
-		currentConnection->Terminate();
+		currentClientSocket->Close();
 	}
 }
 
@@ -97,21 +113,17 @@ int SingleConnectServer::GetConnectionCount() {
 SingleConnectServer::ConnectionContext::ConnectionContext(SingleConnectServer* server, TCPSocket socket)
 	: server{ server }, clientSocket{ socket } {}
 
-void SingleConnectServer::ConnectionContext::Terminate() {
-	this->clientSocket.Close();
-	this->server->currentConnection = std::nullopt;
-}
-
-Task<void> SingleConnectServer::ConnectionContext::Send(NetworkMessage message) {
+Server::Job SingleConnectServer::ConnectionContext::Send(NetworkMessage message) {
+	// in this server, we don't have to do any fanciness to queue the message until
+	// a send opening or anything like that
 	message.Send(this->clientSocket);
-	co_return;
+	return {};
 }
 
-Task<std::optional<NetworkMessage>> SingleConnectServer::ConnectionContext::TryReceive() {
-	co_return NetworkMessage::TryReceive(this->clientSocket);
-}
-bool SingleConnectServer::ConnectionContext::ConnectionIsAlive() {
-	return this->clientSocket.IsValid();
+Server::Job SingleConnectServer::ConnectionContext::DoReceive() {
+	// in this server, we don't have to do any fanciness to wait for a read opening
+	this->latestMessage = NetworkMessage::TryReceive(this->clientSocket);
+	return {};
 }
 #pragma endregion
 
