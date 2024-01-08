@@ -17,6 +17,7 @@ event->SetPayload(wxString(message));							\
 wxQueueEvent(this, event);										\
 }
 
+
 wxString CreateLogMessage(NetworkMessage& receivedMessage);
 wxBitmap BitmapFromByteVector(std::vector<byte> data);
 
@@ -30,14 +31,20 @@ void* ServerWindow::Entry() {
 	// set server callbacks
 	{
 		using namespace std::placeholders;
-		server->SetClientConnectedHandler(std::bind(&ServerWindow::OnClientConnect, this, _1));
-		server->SetMessageReceivedHandler(std::bind(&ServerWindow::OnServerMessageReceived, this, _1, _2));
-		server->SetClientDisconnectedHandler(std::bind(&ServerWindow::OnClientDisconnect, this, _1));
+		server->SetConnectionHandler(std::bind(&ServerWindow::ConnectionHandler, this, _1));
 	}
 
-	// Hit that go button!
-	server->Start();
+	auto serverTask = server->Start();
 	return 0;
+}
+
+Task<void> ServerWindow::ConnectionHandler(Server::ConnectionContext& ctx) {
+	while (ctx.ConnectionIsAlive()) {
+		NetworkMessage message = co_await ctx.Receive();
+		this->OnServerMessageReceived(message);
+	}
+
+	co_return;
 }
 
 void ServerWindow::OnClientConnect(TCPSocket& socket) {
@@ -50,12 +57,12 @@ void ServerWindow::OnClientConnect(TCPSocket& socket) {
 	PUSH_LOG_MESSAGE(hostname + ":" + port + " connected");
 }
 
-bool ServerWindow::OnServerMessageReceived(TCPSocket& clientSocket, NetworkMessage receivedMessage) {
+bool ServerWindow::OnServerMessageReceived(NetworkMessage receivedMessage) {
 	using Tag = NetworkMessage::Tag;
 
 	PUSH_LOG_MESSAGE(CreateLogMessage(receivedMessage));
 
-#define SERVER_MESSAGE_HANDLER(type, handlerFunc) case type: return handlerFunc(clientSocket, receivedMessage)
+#define SERVER_MESSAGE_HANDLER(type, handlerFunc) case type: return handlerFunc(receivedMessage)
 	switch (receivedMessage.tag) {
 		SERVER_MESSAGE_HANDLER(Tag::String, NoOpMessageHandler);
 		SERVER_MESSAGE_HANDLER(Tag::Number64, NoOpMessageHandler);
@@ -77,17 +84,17 @@ void ServerWindow::OnClientDisconnect(TCPSocket& socket) {
 	PUSH_LOG_MESSAGE(hostname + ":" + port + " disconnected");
 }
 
-bool ServerWindow::NoOpMessageHandler(TCPSocket& client, NetworkMessage& message) {
+bool ServerWindow::NoOpMessageHandler(NetworkMessage& message) {
 	return true;
 }
 
-bool ServerWindow::StartVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message) {
+bool ServerWindow::StartVideoStreamMessageHandler(NetworkMessage& message) {
 	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_STARTING_STREAM);
 	wxQueueEvent(this, event);
 	return true;
 }
 
-bool ServerWindow::StreamFrameMessageHandler(TCPSocket& client, NetworkMessage& message) {
+bool ServerWindow::StreamFrameMessageHandler(NetworkMessage& message) {
 	std::optional<StreamFrameMessage> streamFrameMessage = StreamFrameMessage::FromNetworkMessage(message);
 	if (!streamFrameMessage) {
 		return true;
@@ -102,7 +109,7 @@ bool ServerWindow::StreamFrameMessageHandler(TCPSocket& client, NetworkMessage& 
 	return true;
 }
 
-bool ServerWindow::EndVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message) {
+bool ServerWindow::EndVideoStreamMessageHandler(NetworkMessage& message) {
 	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_ENDING_STREAM);
 	wxQueueEvent(this, event);
 	return true;

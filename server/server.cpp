@@ -1,7 +1,9 @@
 #include "server.h"
+
 #include "../common/networkmessage/networkmessage.h"
 #include "../common/generator/generator.h"
 #include "../common/task/task.h"
+
 #include <string>
 #include <optional>
 #include <fstream>
@@ -32,51 +34,8 @@ std::optional<int> Server::GetPort() {
 	return listenSocket.GetBoundPort();
 }
 
-void Server::SetClientConnectedHandler(std::function<void(TCPSocket& client)> handler) {
-	connectHandler = handler;
-}
-
-void Server::SetMessageReceivedHandler(std::function<bool(TCPSocket& client, const NetworkMessage message)> handler) {
-	messageHandler = handler;
-}
-
-void Server::SetClientDisconnectedHandler(std::function<void(TCPSocket& client)> handler) {
-	disconnectHandler = handler;
-}
-
-void Server::InvokeClientConnectedHandler(TCPSocket& client) noexcept {
-	if (!connectHandler) {
-		return;
-	}
-
-	try {
-		(*connectHandler)(client);
-	}
-	catch (...) { /* threw exception, not good! */ }
-}
-
-std::optional<bool> Server::InvokeMessageReceivedHandler(TCPSocket& client, const NetworkMessage message) noexcept {
-	if (!messageHandler) {
-		return std::nullopt;
-	}
-
-	try {
-		return (*messageHandler)(client, message);
-	}
-	catch (...) {
-		return std::nullopt;
-	}
-}
-
-void Server::InvokeClientDisconnectedHandler(TCPSocket& client) noexcept {
-	if (!disconnectHandler) {
-		return;
-	}
-
-	try {
-		(*disconnectHandler)(client);
-	}
-	catch (...) { /* threw exception, not good! */ }
+void Server::SetConnectionHandler(ConnectionHandlerFunc handler) {
+	this->connectionHandler = handler;
 }
 
 Server::~Server() {
@@ -87,33 +46,30 @@ Server::~Server() {
 #pragma region SingleConnectServer
 SingleConnectServer::SingleConnectServer()
 	: Server{},
-	currentClient{ TCPSocket::InvalidSocket() }
+	currentConnection{ }
 {}
 
-void SingleConnectServer::Start() {
+Task<void> SingleConnectServer::Start() {
 	while (!IsStopRequested()) {
 		std::optional<TCPSocket> acceptResult = listenSocket.Accept();
 		if (!acceptResult) {
 			continue;
 		}
 
-		currentClient = *acceptResult;
-		InvokeClientConnectedHandler(currentClient);
-
-		while (!IsStopRequested()) {
-			std::optional<NetworkMessage> messageOpt = NetworkMessage::TryReceive(currentClient);
-			if (!messageOpt) {
-				break;
-			}
-
-			const NetworkMessage message = std::move(*messageOpt);
-			InvokeMessageReceivedHandler(currentClient, message);
+		// if we don't have a connection handler, we should just kill the connection
+		if (!connectionHandler) {
+			acceptResult->Close();
+			continue;
 		}
 
-		InvokeClientDisconnectedHandler(currentClient);
+		// Fire of the connection handler and await its completion
+		currentConnection = ConnectionContext{ this, *acceptResult };
+		co_await(*connectionHandler)(*currentConnection);
 
-		currentClient.Close();
-		currentClient = TCPSocket::InvalidSocket();
+		// Ensure the client gets closed if the handler did not close it
+		if (currentConnection) {
+			currentConnection->Terminate();
+		}
 	}
 }
 
@@ -121,9 +77,9 @@ void SingleConnectServer::Stop(bool now) {
 	// prevent new connections
 	listenSocket.Close();
 
-	if (now) {
-		// kill current connection, if there is any
-		currentClient.Close();
+	// kill current connection, if there is any
+	if (now && currentConnection) {
+		currentConnection->Terminate();
 	}
 }
 
@@ -133,13 +89,41 @@ bool SingleConnectServer::IsStopRequested() {
 }
 
 int SingleConnectServer::GetConnectionCount() {
-	return currentClient.IsValid() ? 1 : 0;
+	return currentConnection.has_value() ? 1 : 0;
 }
 #pragma endregion
 
+#pragma region SingleConnectServer::ConnectionContext
+SingleConnectServer::ConnectionContext::ConnectionContext(SingleConnectServer* server, TCPSocket socket)
+	: server{ server }, clientSocket{ socket } {}
+
+void SingleConnectServer::ConnectionContext::Terminate() {
+	this->clientSocket.Close();
+	this->server->currentConnection = std::nullopt;
+}
+
+Task<void> SingleConnectServer::ConnectionContext::Send(NetworkMessage message) {
+	message.Send(this->clientSocket);
+	co_return;
+}
+
+Task<NetworkMessage> SingleConnectServer::ConnectionContext::Receive() {
+	while (true) {
+		std::optional<NetworkMessage> reply = NetworkMessage::TryReceive(this->clientSocket);
+		if (reply) {
+			co_return reply.value();
+		}
+	}
+}
+bool SingleConnectServer::ConnectionContext::ConnectionIsAlive() {
+	return this->clientSocket.IsValid();
+}
+#pragma endregion
+
+#if 0
 #pragma region MultiConnectServer
 MultiConnectServer::MultiConnectServer()
-	: Server(), currentClients{}, clientReadBuffers{}
+	: Server(), currentClients{}, clientReadBuffers{}, connections{}
 {}
 
 // TODO: servers shouldn't allow event handlers to interact with a client socket
@@ -256,3 +240,4 @@ std::vector<TCPSocket>::iterator MultiConnectServer::EndConnection(std::vector<T
 	return currentClients.erase(client); // do this last, or `client` will be invalid!
 }
 #pragma endregion
+#endif

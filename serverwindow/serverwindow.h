@@ -8,6 +8,7 @@
 #include "../server/server.h"
 #include "../common/socket/socket.h"
 #include "../common/videostreamwindow/videostreamwindow.h"
+#include "../common/task/task.h"
 
 wxDECLARE_EVENT(SERVER_EVT_PUSH_LOG, wxThreadEvent);
 wxDECLARE_EVENT(SERVER_EVT_CLIENT_STARTING_STREAM, wxThreadEvent);
@@ -34,6 +35,8 @@ protected:
 	VideoFrameBitmap* streamView;
 	wxStatusBar* statusBar;
 
+	Task<void> ConnectionHandler(Server::ConnectionContext& context);
+
 	// Window events (defined in serverwindow.events.cpp)
 	void OnClose(wxCloseEvent& event);
 	void OnDetails(wxCommandEvent& event);
@@ -51,11 +54,11 @@ protected:
 	void* Entry() override; // Inherited via wxThreadHelper
 
 	void OnClientConnect(TCPSocket& socket);
-	bool OnServerMessageReceived(TCPSocket& socket, NetworkMessage message);
+	bool OnServerMessageReceived(NetworkMessage message);
 	void OnClientDisconnect(TCPSocket& socket);
 
-	bool NoOpMessageHandler(TCPSocket& client, NetworkMessage& message);
-	bool StartVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message);
-	bool StreamFrameMessageHandler(TCPSocket& client, NetworkMessage& message);
-	bool EndVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message);
+	bool NoOpMessageHandler(NetworkMessage& message);
+	bool StartVideoStreamMessageHandler(NetworkMessage& message);
+	bool StreamFrameMessageHandler(NetworkMessage& message);
+	bool EndVideoStreamMessageHandler(NetworkMessage& message);
 };

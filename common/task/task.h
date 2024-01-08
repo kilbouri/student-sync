@@ -4,14 +4,18 @@
 #include <iostream>
 #include <optional>
 
-// Template for value-returning tasks
-template <typename TResult>
+/// <summary>
+/// A coroutine type for lightweight, cooperative, concurrency. Tasks begin executing immediately
+/// upon construction.
+/// </summary>
+template <typename TResult> requires (std::is_void_v<TResult> || std::movable<TResult>)
 struct Task {
 	struct promise_type;
 	using Handle = std::coroutine_handle<promise_type>;
 
 	struct promise_type {
-		std::optional<TResult> value{ std::nullopt };
+		std::optional<TResult> value;
+
 		bool has_value() {
 			return value != std::nullopt;
 		}
@@ -23,7 +27,7 @@ struct Task {
 			return Task{ Handle::from_promise(*this) };
 		}
 
-		std::suspend_always initial_suspend() noexcept {
+		std::suspend_never initial_suspend() noexcept {
 			return {};
 		}
 
@@ -45,11 +49,11 @@ struct Task {
 	Task(const Task&) = delete;
 	Task& operator=(const Task&) = delete;
 
-	Task(Task&& s) : handle(s.handle) {
+	Task(Task&& s) noexcept : handle(s.handle) {
 		s.handle = nullptr;
 	}
 
-	Task& operator=(Task&& s) {
+	Task& operator=(Task&& s) noexcept {
 		handle = s.handle;
 		s.handle = nullptr;
 		return *this;
@@ -75,7 +79,10 @@ struct Task {
 	}
 };
 
-// template for specifically valueless tasks
+/// <summary>
+/// A coroutine type for lightweight, cooperative, concurrency. Tasks begin executing immediately
+/// upon construction.
+/// </summary>
 template <>
 struct Task<void> {
 	struct promise_type;
@@ -90,7 +97,7 @@ struct Task<void> {
 			return retval;
 		}
 
-		std::suspend_always initial_suspend() noexcept {
+		std::suspend_never initial_suspend() noexcept {
 			return {};
 		}
 
@@ -110,11 +117,11 @@ struct Task<void> {
 	Task(const Task&) = delete;
 	Task& operator=(const Task&) = delete;
 
-	Task(Task&& s) : handle(s.handle) {
+	Task(Task&& s) noexcept : handle(s.handle) {
 		s.handle = nullptr;
 	}
 
-	Task& operator=(Task&& s) {
+	Task& operator=(Task&& s) noexcept {
 		handle = s.handle;
 		s.handle = nullptr;
 		return *this;

@@ -12,11 +12,6 @@
 int64_t htonll_signed(int64_t value);
 int64_t ntohll_signed(int64_t value);
 
-// Represents a Type-Length-Value encoded message that
-// may be transmitted over a socket.
-class NetworkMessage {
-public:
-
 #define TagValues(x) \
 		x(Hello)         \
 		x(Ok)            \
@@ -26,20 +21,24 @@ public:
 		x(String)        \
 		x(Number64)
 #define CreateEnum(name) name,
+enum class NetworkMessageTag : uint8_t { TagValues(CreateEnum) };
 
-	enum class Tag : uint8_t { TagValues(CreateEnum) };
+// Represents a Type-Length-Value encoded message that
+// may be transmitted over a socket.
+struct NetworkMessage {
+	using Tag = NetworkMessageTag;
 
 	// HERE BE DRAGONS!
 	// If you change these to a type of different width, you NEED to change TryReceive, TryFromBuffer,
 	// and Send to use appropriate byte order conversions!
-	typedef std::underlying_type_t<NetworkMessage::Tag> TagType;
-	typedef size_t Length;
-	typedef std::vector<byte> Value;
+	using TagType = std::underlying_type_t<NetworkMessage::Tag>;
+	using Length = size_t;
+	using Value = std::vector<uint8_t>;
 
 	static constexpr bool IsValidTag(TagType);
 
-	const Tag tag;
-	const Value data;
+	Tag tag;
+	Value data;
 
 	NetworkMessage(Tag, Value = Value(0));
 
@@ -58,7 +57,7 @@ public:
 	/// <param name="buffer">The buffer to try to create a message from</param>
 	/// <returns>std::nullopt if the buffer does not contain a message, otherwise
 	/// a tuple containing the message and the number of bytes consumed.</returns>
-	static std::optional<std::tuple<NetworkMessage, size_t>> TryFromBuffer(const std::vector<byte>& buffer);
+	static std::optional<std::tuple<NetworkMessage, size_t>> TryFromBuffer(const std::vector<uint8_t>& buffer);
 
 	/// <summary>
 	/// Sends the message on the specified socket.
