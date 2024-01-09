@@ -112,14 +112,10 @@ bool Socket::Close() {
 }
 
 int Socket::WriteBytes(const byte* buffer, int nBytes) {
-	// just because we accept a int, does not mean we can read that many bytes.
-	// We take the smaller of nBytes and the max value for an int.
 	return send(*underlyingSocket, reinterpret_cast<const char*>(buffer), nBytes, 0);
 }
 
 int Socket::ReadBytes(byte* buffer, int nBytes) {
-	// just because we accept a int, does not mean we can read that many bytes.
-	// We take the smaller of nBytes and the max value for an int.
 	return recv(*underlyingSocket, reinterpret_cast<char*>(buffer), nBytes, 0);
 }
 
@@ -175,11 +171,11 @@ Socket::IOResult Socket::ReadAllBytes(byte* buffer, size_t nBytes) {
 	return IOResult::Success;
 }
 
-const SOCKET Socket::GetUnderlyingSocket() const {
+const SOCKET Socket::GetDescriptor() const {
 	return *underlyingSocket;
 }
 
-bool Socket::IsValid() {
+bool Socket::IsValid() const {
 	return *underlyingSocket != INVALID_SOCKET;
 }
 
