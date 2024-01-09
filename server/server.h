@@ -55,39 +55,6 @@ protected:
 	virtual void DoRun() = 0;
 };
 
-/// <summary>
-/// A simple server which accepts only one connection
-/// at a time This isn't very useful, but it is much simpler
-/// compared to MultiConnectServer, so it may be useful
-/// for testing new behaviour.
-/// </summary>
-struct SingleConnectServer : public Server {
-	struct ConnectionContext : Server::ConnectionContext {
-		Task<void> Send(NetworkMessage message) override;
-		Task<std::optional<NetworkMessage>> Recieve() override;
-
-		ConnectionContext(SingleConnectServer& server, TCPSocket socket);
-
-	private:
-		TCPSocket clientSocket;
-		SingleConnectServer& server;
-	};
-
-	SingleConnectServer();
-
-	// Inherited via Server
-	void Stop(bool now) override;
-	bool IsStopRequested() override;
-	int GetConnectionCount() override;
-
-protected:
-	void DoRun() override;
-
-private:
-	std::optional<std::shared_ptr<ConnectionContext>> currentConnection;
-	std::optional<TCPSocket> currentClientSocket;
-};
-
 struct MultiConnectServer : public Server {
 	struct ConnectionContext : Server::ConnectionContext {
 		Task<void> Send(NetworkMessage message) override;
@@ -100,13 +67,13 @@ struct MultiConnectServer : public Server {
 	};
 
 	struct Connection {
-		//! due to initialization order, the socket must come before the future.
 
 		void Terminate();
 		bool IsClosed() const;
 
 		Connection(TCPSocket socket, ConnectionHandlerFunc& handlerFunc);
 	private:
+		//! due to initialization order, the socket must come before the future.
 		TCPSocket socket;
 		std::future<void> future;
 
