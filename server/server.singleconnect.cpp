@@ -3,7 +3,7 @@
 // included by server.cpp
 
 #pragma region ConnectionContext
-SingleConnectServer::ConnectionContext::ConnectionContext(SingleConnectServer* server, TCPSocket socket)
+SingleConnectServer::ConnectionContext::ConnectionContext(SingleConnectServer& server, TCPSocket socket)
 	: server{ server }, clientSocket{ socket } {}
 
 Task<void> SingleConnectServer::ConnectionContext::Send(NetworkMessage message) {
@@ -24,26 +24,21 @@ SingleConnectServer::SingleConnectServer()
 	: Server{}, currentConnection{ std::nullopt }, currentClientSocket{ TCPSocket::InvalidSocket() }
 {}
 
-void SingleConnectServer::Start() {
+void SingleConnectServer::DoRun() {
+	ConnectionHandlerFunc connectionHandler = *connectionHandlerFunc;
+
 	while (!IsStopRequested()) {
 		std::optional<TCPSocket> acceptResult = listenSocket.Accept();
 		if (!acceptResult) {
 			continue;
 		}
 
-		// if we don't have a connection handler, that means the server will do nothing
-		// meaningful and should therefore immediately end the connection.
-		if (!connectionHandler) {
-			acceptResult->Close();
-			continue;
-		}
-
 		currentClientSocket = acceptResult;
-		currentConnection = std::make_shared<ConnectionContext>(this, *acceptResult);
+		currentConnection = std::make_shared<ConnectionContext>(*this, *acceptResult);
 
 		// We basically just synchronously wait for the handler coroutine to
 		// be done (or the server be requested to stop).
-		auto handler = (*connectionHandler)(*currentConnection);
+		auto handler = (connectionHandler)(*currentConnection);
 		while (!handler.Done() && !IsStopRequested()) {
 			handler.Resume();
 		}

@@ -35,7 +35,7 @@ struct Server {
 
 	bool BindAndListen(std::string& ipAddress, int portNumber);
 
-	virtual void Start() = 0;
+	void Run();
 	virtual void Stop(bool now = false) = 0;
 	virtual bool IsStopRequested() = 0;
 	virtual int GetConnectionCount() = 0;
@@ -50,7 +50,9 @@ struct Server {
 
 protected:
 	TCPSocket listenSocket;
-	std::optional<ConnectionHandlerFunc> connectionHandler;
+	std::optional<ConnectionHandlerFunc> connectionHandlerFunc;
+
+	virtual void DoRun() = 0;
 };
 
 /// <summary>
@@ -64,20 +66,22 @@ struct SingleConnectServer : public Server {
 		Task<void> Send(NetworkMessage message) override;
 		Task<std::optional<NetworkMessage>> Recieve() override;
 
-		ConnectionContext(SingleConnectServer* server, TCPSocket socket);
+		ConnectionContext(SingleConnectServer& server, TCPSocket socket);
 
 	private:
 		TCPSocket clientSocket;
-		SingleConnectServer* server;
+		SingleConnectServer& server;
 	};
 
 	SingleConnectServer();
 
 	// Inherited via Server
-	void Start() override;
 	void Stop(bool now) override;
 	bool IsStopRequested() override;
 	int GetConnectionCount() override;
+
+protected:
+	void DoRun() override;
 
 private:
 	std::optional<std::shared_ptr<ConnectionContext>> currentConnection;
@@ -88,18 +92,38 @@ struct MultiConnectServer : public Server {
 	struct ConnectionContext : Server::ConnectionContext {
 		Task<void> Send(NetworkMessage message) override;
 		Task<std::optional<NetworkMessage>> Recieve() override;
+
+		ConnectionContext(TCPSocket socket);
+
+	private:
+		TCPSocket clientSocket;
+	};
+
+	struct Connection {
+		//! due to initialization order, the socket must come before the future.
+
+		void Terminate();
+		bool IsClosed() const;
+
+		Connection(TCPSocket socket, ConnectionHandlerFunc& handlerFunc);
+	private:
+		TCPSocket socket;
+		std::future<void> future;
+
+		static std::future<void> CreateFuture(TCPSocket socket, ConnectionHandlerFunc& handler);
 	};
 
 	 // todo: optional connection limit
 	MultiConnectServer();
 
 	// Inherited via Server
-	void Start() override;
 	void Stop(bool now) override;
 	bool IsStopRequested() override;
 	int GetConnectionCount() override;
 
+protected:
+	void DoRun() override;
+
 private:
-	// maps a socket to the context for the connection on that socket
-	std::unordered_map<TCPSocket, ConnectionContext> connections;
+	std::vector<Connection> connections;
 };

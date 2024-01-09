@@ -3,6 +3,7 @@
 #include <coroutine>
 #include <iostream>
 #include <optional>
+#include <future>
 
 /// <summary>
 /// A coroutine type for lightweight, cooperative, concurrency. Tasks do not
@@ -148,7 +149,9 @@ struct Task<void> {
 
 #pragma region control helpers
 	void Resume() {
-		handle.resume();
+		if (!await_ready()) {
+			handle.resume();
+		}
 	}
 
 	bool Done() {

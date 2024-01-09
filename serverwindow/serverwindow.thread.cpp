@@ -33,7 +33,7 @@ void* ServerWindow::Entry() {
 		server->SetConnectionHandler(std::bind(&ServerWindow::ConnectionHandler, this, _1));
 	}
 
-	server->Start();
+	server->Run();
 	return 0;
 }
 

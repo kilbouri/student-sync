@@ -2,13 +2,48 @@
 
 // included by server.cpp
 
+#pragma region Connection
+void MultiConnectServer::Connection::Terminate() {
+	this->socket.Close();
+	this->future.wait();
+}
+
+bool MultiConnectServer::Connection::IsClosed() const {
+	return !this->socket.IsValid();
+}
+MultiConnectServer::Connection::Connection(TCPSocket socket, ConnectionHandlerFunc& handlerFunc)
+	: socket{ socket }, future{ Connection::CreateFuture(this->socket, handlerFunc) }
+{}
+
+std::future<void> MultiConnectServer::Connection::CreateFuture(TCPSocket socket, ConnectionHandlerFunc& handler) {
+
+	return std::async(std::launch::async, [socket, handler]() -> void {
+		TCPSocket constFix{ socket };
+
+		auto ctx = std::make_shared<ConnectionContext>(socket);
+		auto task = handler(ctx);
+
+		while (!task.Done()) {
+			task.Resume();
+		}
+
+		// ensure the socket gets closed
+		constFix.Close();
+	});
+}
+#pragma endregion
+
 #pragma region ConnectionContext
+MultiConnectServer::ConnectionContext::ConnectionContext(TCPSocket socket)
+	: clientSocket{ socket } {}
+
 Task<void> MultiConnectServer::ConnectionContext::Send(NetworkMessage message) {
+	message.Send(this->clientSocket);
 	co_return;
 }
 
 Task<std::optional<NetworkMessage>> MultiConnectServer::ConnectionContext::Recieve() {
-	co_return std::nullopt;
+	co_return NetworkMessage::TryReceive(this->clientSocket);
 }
 #pragma endregion
 
@@ -17,88 +52,47 @@ MultiConnectServer::MultiConnectServer()
 	: Server()
 {}
 
-// TODO: servers shouldn't allow event handlers to interact with a client socket
-// directly, especially in the MultiConnectServer's case. Its fine for now
-// because IK is feeling overconfident, but its not a great architecture.
-// Better would be to provide event handlers a mechanism to enqueue messages
-// to send, then use a writeSet to write when actually able
-void MultiConnectServer::Start() {
+void MultiConnectServer::DoRun() {
+	ConnectionHandlerFunc connectionHandler = *connectionHandlerFunc;
 	while (!IsStopRequested()) {
-
-		// readSet is a set of sockets that we wish to wait for
-		// readability on (ie. incoming connection or data ready to read).
-		fd_set readSet = {};
+		fd_set readSet;
 		FD_ZERO(&readSet);
-		FD_SET(listenSocket.GetUnderlyingSocket(), &readSet);
+		FD_SET(listenSocket.GetDescriptor(), &readSet);
 
-		for (auto& clientSocket : currentClients) {
-			FD_SET(clientSocket.GetUnderlyingSocket(), &readSet);
-		}
+		// 60 second timeout
+		timeval timeout{
+			.tv_sec = 60,
+			.tv_usec = 0
+		};
 
-		// this will block until at least one socket in readSet is readable
-		int selectResult = select(0, &readSet, nullptr, nullptr, nullptr);
-		if (selectResult == SOCKET_ERROR) {
-			continue; // we should really handle this better...
-		}
-
-		// is there an incoming connection?
-		if (FD_ISSET(listenSocket.GetUnderlyingSocket(), &readSet)) {
-			std::optional<TCPSocket> newClient = listenSocket.Accept();
-			if (newClient) {
-				currentClients.push_back(*newClient);
-				InvokeClientConnectedHandler(*newClient);
-			}
-		}
-
-		// are there any pending reads?
-		for (auto clientIterator = currentClients.begin(); clientIterator != currentClients.end();) {
-			SOCKET clientRawSocket = (*clientIterator).GetUnderlyingSocket();
-			if (!FD_ISSET(clientRawSocket, &readSet)) { // socket not ready
-				clientIterator++;
+		// clean up any exited connections (none on first iteration)
+		for (auto iterator = connections.begin(); iterator != connections.end();) {
+			if (iterator->IsClosed()) {
+				iterator = connections.erase(iterator);
 				continue;
 			}
 
-			unsigned long pendingBytes = 0;
-			if (ioctlsocket(clientRawSocket, FIONREAD, &pendingBytes) == SOCKET_ERROR) {
-				// Drop the connection if we can't know how many bytes are pending
-				clientIterator = EndConnection(clientIterator);
-				continue;
-			}
-
-			// get buffer and its current size
-			std::vector<byte>& buffer = clientReadBuffers[clientRawSocket];
-			size_t originalSize = buffer.size();
-
-			// create room for all buffered + pending bytes
-			buffer.resize(buffer.size() + pendingBytes);
-
-			int readResult = clientIterator->ReadBytes(buffer.data() + originalSize, pendingBytes);
-			if (readResult == SOCKET_ERROR) {
-				// todo: a connection drop handler
-				clientIterator = EndConnection(clientIterator);
-				continue;
-			}
-
-			if (readResult == 0) {
-				// client disconnected
-				InvokeClientDisconnectedHandler(*clientIterator);
-				clientIterator = EndConnection(clientIterator);
-				continue;
-			}
-
-			// resize down to the actual size of data we have (may be different, but probably won't be)
-			buffer.resize(originalSize + readResult);
-
-			std::optional<std::tuple<NetworkMessage, int>> maybeMessage = NetworkMessage::TryFromBuffer(buffer);
-			if (maybeMessage) {
-				auto& [message, consumedBytes] = *maybeMessage;
-				buffer.erase(buffer.begin(), buffer.begin() + consumedBytes);
-
-				InvokeMessageReceivedHandler(*clientIterator, message);
-			}
-
-			clientIterator++;
+			iterator++;
 		}
+
+		// todo: check return code here
+		int selectCode = select(0, &readSet, nullptr, nullptr, &timeout);
+		if (selectCode == SOCKET_ERROR) {
+			continue;
+		}
+
+		// if we got here because of an incoming connection, accept it
+		if (!FD_ISSET(listenSocket.GetDescriptor(), &readSet)) {
+			continue;
+		}
+
+		std::optional<TCPSocket> clientSocket = listenSocket.Accept();
+		if (!clientSocket) {
+
+			continue;
+		}
+
+		connections.emplace_back(Connection{ *clientSocket, connectionHandler });
 	}
 }
 
@@ -106,10 +100,8 @@ void MultiConnectServer::Stop(bool now) {
 	listenSocket.Close();
 
 	if (now) {
-		// Kill all connected clients during immediate shutdown
-		for (auto iterator = currentClients.begin(); iterator != currentClients.end();) {
-			// DO NOT move the iterator forward!
-			iterator = EndConnection(iterator);
+		for (auto& connection : connections) {
+			connection.Terminate();
 		}
 	}
 }
@@ -119,15 +111,6 @@ bool MultiConnectServer::IsStopRequested() {
 }
 
 int MultiConnectServer::GetConnectionCount() {
-	return currentClients.size();
-}
-
-std::vector<TCPSocket>::iterator MultiConnectServer::EndConnection(std::vector<TCPSocket>::iterator& client) {
-	// erase any buffers
-	clientReadBuffers.erase(client->GetUnderlyingSocket());
-
-	// close the connection
-	client->Close();
-	return currentClients.erase(client); // do this last, or `client` will be invalid!
+	return connections.size();
 }
 #pragma endregion

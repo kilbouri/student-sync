@@ -38,7 +38,15 @@ std::optional<int> Server::GetPort() {
 }
 
 void Server::SetConnectionHandler(ConnectionHandlerFunc handler) {
-	this->connectionHandler = handler;
+	this->connectionHandlerFunc = handler;
+}
+
+void Server::Run() {
+	if (!connectionHandlerFunc) {
+		throw "ConnectionHandler not set before calling Server::Run()!";
+	}
+
+	DoRun();
 }
 
 Server::~Server() {
