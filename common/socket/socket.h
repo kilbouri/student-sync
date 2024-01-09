@@ -23,7 +23,7 @@ public:
 		Error
 	};
 
-	bool IsValid();
+	bool IsValid() const;
 	bool Shutdown(Direction direction);
 	bool Close();
 
@@ -38,7 +38,7 @@ public:
 	/// socket.
 	/// </summary>
 	/// <returns>The underlying socket</returns>
-	const SOCKET GetUnderlyingSocket() const;
+	const SOCKET GetDescriptor() const;
 
 	Socket(const Socket& other); // Copy constructor
 	Socket(Socket&& other) noexcept; // Move constructor

@@ -5,13 +5,37 @@
 #include <vector>
 
 #include "../common/networkmessage/networkmessage.h"
+#include "../common/task/task.h"
 #include "../win32includes.h"
+#include <future>
 
-class Server {
-public:
+/// <summary>
+/// Base class for all Server implementations. Provides basic server operations and facilities to script
+/// server-client conversation.
+/// </summary>
+struct Server {
+	/// <summary>
+	/// A context object which provides methods for connection handlers to communicate with the server
+	/// in a safe, extendable manner.
+	/// </summary>
+	struct ConnectionContext {
+		/// <summary>
+		/// Tells the server that the handler would like to send the provided message.
+		/// </summary>
+		virtual Task<void> Send(NetworkMessage message) = 0;
+
+		/// <summary>
+		/// Tells the server that the handler would like to receive another message.
+		/// </summary>
+		virtual Task<std::optional<NetworkMessage>> Recieve() = 0;
+
+	protected:
+		std::optional<NetworkMessage> latestMessage;
+	};
+
 	bool BindAndListen(std::string& ipAddress, int portNumber);
 
-	virtual void Start() = 0;
+	void Run();
 	virtual void Stop(bool now = false) = 0;
 	virtual bool IsStopRequested() = 0;
 	virtual int GetConnectionCount() = 0;
@@ -19,22 +43,16 @@ public:
 	std::optional<std::string> GetHostname();
 	std::optional<int> GetPort();
 
-	void SetClientConnectedHandler(std::function<void(TCPSocket& client)> handler);
-	void SetMessageReceivedHandler(std::function<bool(TCPSocket& client, const NetworkMessage message)> handler);
-	void SetClientDisconnectedHandler(std::function<void(TCPSocket& client)> handler);
-
-	void InvokeClientConnectedHandler(TCPSocket& client) noexcept;
-	std::optional<bool> InvokeMessageReceivedHandler(TCPSocket& client, const NetworkMessage message) noexcept;
-	void InvokeClientDisconnectedHandler(TCPSocket& client) noexcept;
+	using ConnectionHandlerFunc = std::function<Task<void>(std::shared_ptr<ConnectionContext>)>;
+	void SetConnectionHandler(ConnectionHandlerFunc handler);
 
 	~Server();
 
 protected:
 	TCPSocket listenSocket;
+	std::optional<ConnectionHandlerFunc> connectionHandlerFunc;
 
-	std::optional<std::function<void(TCPSocket&)>> connectHandler;
-	std::optional<std::function<bool(TCPSocket&, const NetworkMessage)>> messageHandler;
-	std::optional<std::function<void(TCPSocket&)>> disconnectHandler;
+	virtual void DoRun() = 0;
 };
 
 /// <summary>
@@ -43,38 +61,69 @@ protected:
 /// compared to MultiConnectServer, so it may be useful
 /// for testing new behaviour.
 /// </summary>
-class SingleConnectServer : public Server {
-public:
+struct SingleConnectServer : public Server {
+	struct ConnectionContext : Server::ConnectionContext {
+		Task<void> Send(NetworkMessage message) override;
+		Task<std::optional<NetworkMessage>> Recieve() override;
+
+		ConnectionContext(SingleConnectServer& server, TCPSocket socket);
+
+	private:
+		TCPSocket clientSocket;
+		SingleConnectServer& server;
+	};
+
 	SingleConnectServer();
 
 	// Inherited via Server
-	void Start() override;
 	void Stop(bool now) override;
 	bool IsStopRequested() override;
 	int GetConnectionCount() override;
 
+protected:
+	void DoRun() override;
+
 private:
-	TCPSocket currentClient;
+	std::optional<std::shared_ptr<ConnectionContext>> currentConnection;
+	std::optional<TCPSocket> currentClientSocket;
 };
 
-class MultiConnectServer : public Server {
-public:
-	MultiConnectServer(); // todo: optional connection limit
+struct MultiConnectServer : public Server {
+	struct ConnectionContext : Server::ConnectionContext {
+		Task<void> Send(NetworkMessage message) override;
+		Task<std::optional<NetworkMessage>> Recieve() override;
+
+		ConnectionContext(TCPSocket socket);
+
+	private:
+		TCPSocket clientSocket;
+	};
+
+	struct Connection {
+		//! due to initialization order, the socket must come before the future.
+
+		void Terminate();
+		bool IsClosed() const;
+
+		Connection(TCPSocket socket, ConnectionHandlerFunc& handlerFunc);
+	private:
+		TCPSocket socket;
+		std::future<void> future;
+
+		static std::future<void> CreateFuture(TCPSocket socket, ConnectionHandlerFunc& handler);
+	};
+
+	 // todo: optional connection limit
+	MultiConnectServer();
 
 	// Inherited via Server
-	void Start() override;
 	void Stop(bool now) override;
 	bool IsStopRequested() override;
 	int GetConnectionCount() override;
 
-private:
-	std::vector<TCPSocket> currentClients;
-	std::unordered_map<SOCKET, std::vector<byte>> clientReadBuffers;
+protected:
+	void DoRun() override;
 
-	/// <summary>
-	/// Does all cleanup required to close/drop a connection, including
-	/// releasing any buffers, closing the connection, and removing the
-	/// connection from the current client list
-	/// </summary>
-	std::vector<TCPSocket>::iterator EndConnection(std::vector<TCPSocket>::iterator& client);
+private:
+	std::vector<Connection> connections;
 };

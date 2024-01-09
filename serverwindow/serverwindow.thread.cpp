@@ -30,32 +30,42 @@ void* ServerWindow::Entry() {
 	// set server callbacks
 	{
 		using namespace std::placeholders;
-		server->SetClientConnectedHandler(std::bind(&ServerWindow::OnClientConnect, this, _1));
-		server->SetMessageReceivedHandler(std::bind(&ServerWindow::OnServerMessageReceived, this, _1, _2));
-		server->SetClientDisconnectedHandler(std::bind(&ServerWindow::OnClientDisconnect, this, _1));
+		server->SetConnectionHandler(std::bind(&ServerWindow::ConnectionHandler, this, _1));
 	}
 
-	// Hit that go button!
-	server->Start();
+	server->Run();
 	return 0;
 }
 
-void ServerWindow::OnClientConnect(TCPSocket& socket) {
-	std::optional<std::string> hostResult = socket.GetPeerAddress();
-	std::optional<int> portResult = socket.GetPeerPort();
+Task<void> ServerWindow::ConnectionHandler(std::shared_ptr<Server::ConnectionContext> ctx) {
+	this->OnClientConnect();
 
-	std::string hostname = hostResult.value_or("<unknown host>");
-	std::string port = portResult.has_value() ? std::to_string(*portResult) : "<unknown port>";
+	while (true) {
 
-	PUSH_LOG_MESSAGE(hostname + ":" + port + " connected");
+		// I had a brain-wave... we can make this return a Task<NetworkMessage?>. The server can populate the value before resuming the coroutne!
+		std::optional<NetworkMessage> message = co_await ctx->Recieve();
+
+		if (!message) {
+			break;
+		}
+
+		this->OnServerMessageReceived(*message);
+	}
+
+	this->OnClientDisconnect();
+	co_return;
 }
 
-bool ServerWindow::OnServerMessageReceived(TCPSocket& clientSocket, NetworkMessage receivedMessage) {
+void ServerWindow::OnClientConnect() {
+	PUSH_LOG_MESSAGE("Client connected");
+}
+
+bool ServerWindow::OnServerMessageReceived(NetworkMessage receivedMessage) {
 	using Tag = NetworkMessage::Tag;
 
 	PUSH_LOG_MESSAGE(CreateLogMessage(receivedMessage));
 
-#define SERVER_MESSAGE_HANDLER(type, handlerFunc) case type: return handlerFunc(clientSocket, receivedMessage)
+#define SERVER_MESSAGE_HANDLER(type, handlerFunc) case type: return handlerFunc(receivedMessage)
 	switch (receivedMessage.tag) {
 		SERVER_MESSAGE_HANDLER(Tag::String, NoOpMessageHandler);
 		SERVER_MESSAGE_HANDLER(Tag::Number64, NoOpMessageHandler);
@@ -67,27 +77,21 @@ bool ServerWindow::OnServerMessageReceived(TCPSocket& clientSocket, NetworkMessa
 #undef SERVER_MESSAGE_HANDLER
 }
 
-void ServerWindow::OnClientDisconnect(TCPSocket& socket) {
-	std::optional<std::string> hostResult = socket.GetPeerAddress();
-	std::optional<int> portResult = socket.GetPeerPort();
-
-	std::string hostname = hostResult.value_or("<unknown host>");
-	std::string port = portResult.has_value() ? std::to_string(*portResult) : "<unknown port>";
-
-	PUSH_LOG_MESSAGE(hostname + ":" + port + " disconnected");
+void ServerWindow::OnClientDisconnect() {
+	PUSH_LOG_MESSAGE("Client disconnected");
 }
 
-bool ServerWindow::NoOpMessageHandler(TCPSocket& client, NetworkMessage& message) {
+bool ServerWindow::NoOpMessageHandler(NetworkMessage& message) {
 	return true;
 }
 
-bool ServerWindow::StartVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message) {
+bool ServerWindow::StartVideoStreamMessageHandler(NetworkMessage& message) {
 	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_STARTING_STREAM);
 	wxQueueEvent(this, event);
 	return true;
 }
 
-bool ServerWindow::StreamFrameMessageHandler(TCPSocket& client, NetworkMessage& message) {
+bool ServerWindow::StreamFrameMessageHandler(NetworkMessage& message) {
 	std::optional<StreamFrameMessage> streamFrameMessage = StreamFrameMessage::FromNetworkMessage(message);
 	if (!streamFrameMessage) {
 		return true;
@@ -102,7 +106,7 @@ bool ServerWindow::StreamFrameMessageHandler(TCPSocket& client, NetworkMessage& 
 	return true;
 }
 
-bool ServerWindow::EndVideoStreamMessageHandler(TCPSocket& client, NetworkMessage& message) {
+bool ServerWindow::EndVideoStreamMessageHandler(NetworkMessage& message) {
 	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_ENDING_STREAM);
 	wxQueueEvent(this, event);
 	return true;

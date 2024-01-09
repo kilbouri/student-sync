@@ -35,7 +35,7 @@ std::optional<NetworkMessage> NetworkMessage::TryReceive(Socket& socket) {
 	// ---------------------- LENGTH ----------------------
 
 	Length length;
-	if (socket.ReadAllBytes(reinterpret_cast<byte*>(&length), sizeof(length)) != IOResult::Success) {
+	if (socket.ReadAllBytes(reinterpret_cast<uint8_t*>(&length), sizeof(length)) != IOResult::Success) {
 		return std::nullopt;
 	}
 
@@ -56,20 +56,20 @@ std::optional<NetworkMessage> NetworkMessage::TryReceive(Socket& socket) {
 	return NetworkMessage(tag, value);
 }
 
-std::optional<std::tuple<NetworkMessage, size_t>> NetworkMessage::TryFromBuffer(const std::vector<byte>& buffer) {
+std::optional<std::tuple<NetworkMessage, size_t>> NetworkMessage::TryFromBuffer(const std::vector<uint8_t>& buffer) {
 	// Tag and length aren't optional, so the message must always be at least the size of them
 	constexpr size_t minSize = sizeof(TagType) + sizeof(Length);
 	if (buffer.size() < minSize) {
 		return std::nullopt;
 	}
 
-	const byte* tagStart = buffer.data();
-	const byte* lengthStart = tagStart + sizeof(TagType);
-	const byte* valueStart = lengthStart + sizeof(Length); // Careful, this is out of bounds if length is 0!
+	const uint8_t* tagStart = buffer.data();
+	const uint8_t* lengthStart = tagStart + sizeof(TagType);
+	const uint8_t* valueStart = lengthStart + sizeof(Length); // Careful, this is out of bounds if length is 0!
 
 	// ---------------------- LENGTH ----------------------
 
-	// Since we have random access to the bytes, we can check the length field first to
+	// Since we have random access to the uint8_ts, we can check the length field first to
 	// short circuit if the buffer is too small.
 	Length length;
 	std::memcpy(&length, lengthStart, sizeof(Length));
@@ -105,13 +105,13 @@ bool NetworkMessage::Send(Socket& socket) {
 	if (!NetworkMessage::IsValidTag(rawTag)) { return false; } // just in case :)
 
 	Length length = htonll(this->data.size());
-	std::vector<byte> networkData(sizeof(rawTag) + sizeof(length) + this->data.size());
+	std::vector<uint8_t> networkData(sizeof(rawTag) + sizeof(length) + this->data.size());
 
 	// We eat the copy cost in order to create a single buffer. This allows us to give the
 	// socket the opportunity to be as efficient as possible by providing all the data at once.
-	byte* tagStart = networkData.data();
-	byte* lengthStart = tagStart + sizeof(rawTag);
-	byte* dataStart = lengthStart + sizeof(length);
+	uint8_t* tagStart = networkData.data();
+	uint8_t* lengthStart = tagStart + sizeof(rawTag);
+	uint8_t* dataStart = lengthStart + sizeof(length);
 
 	std::memcpy(tagStart, &tag, sizeof(tag));
 	std::memcpy(lengthStart, &length, sizeof(length));
