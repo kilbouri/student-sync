@@ -28,7 +28,7 @@ void Server::Run() {
 	while (serverSocket.IsValid()) {
 		// clean up closed connections
 		for (auto iter = connections.begin(); iter != connections.end();) {
-			if (iter->clientSocket.IsValid()) {
+			if (iter->socket.IsValid()) {
 				++iter;
 			}
 			else {
@@ -56,7 +56,7 @@ void Server::Run() {
 		}
 
 		Connection& connection = connections.emplace_back<Connection>({
-			.clientSocket = *client,
+			.socket = *client,
 			.identifier = ++identifier,
 			.username = "Placeholder",
 		});
@@ -100,5 +100,5 @@ Server::~Server() {
 }
 
 void Server::Connection::Terminate() {
-	clientSocket.Close();
+	socket.Close();
 }

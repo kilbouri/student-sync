@@ -32,25 +32,46 @@ void* ServerWindow::Entry() {
 	return 0;
 }
 
-void ServerWindow::ConnectionHandler(Server::Connection& connection) {
-	OnClientConnect();
-
-	// the socket will be invalidated when we should exit
-	while (connection.clientSocket.IsValid()) {
-		auto message = NetworkMessage::TryReceive(connection.clientSocket);
-		if (!message) {
-			PUSH_LOG_MESSAGE("Failed to receive message");
-		}
-		else {
-			OnServerMessageReceived(*message);
-		}
+void ServerWindow::ConnectionHandler(Server::Connection& con) {
+	std::unique_lock<std::mutex> lock(shutdownLock, std::try_to_lock);
+	if (!lock.owns_lock()) {
+		// we did not acquire the lock. This means that we MUST NOT create a future (we are in the process of shutting down)
+		con.Terminate();
+		return;
 	}
 
-	OnClientDisconnect();
+	// erase any completed futures (this isn't as fast as it could be, but who cares)
+	std::erase_if(connectionFutures, [](std::future<void> const& future) -> bool {
+		using namespace std::chrono_literals;
+		return future.wait_for(0s) == std::future_status::ready;
+	});
+
+	connectionFutures.emplace_back(std::async(std::launch::async, [this, &con]() -> void {
+		// create a local copy of the connection data
+		Server::Connection connection(con);
+
+		OnClientConnect(connection);
+
+		while (connection.socket.IsValid()) {
+			auto message = NetworkMessage::TryReceive(connection.socket);
+			if (!message) {
+				PUSH_LOG_MESSAGE("Failed to receive message");
+			}
+			else {
+				OnServerMessageReceived(*message);
+			}
+		}
+
+		OnClientDisconnect(connection);
+	}));
 }
 
-void ServerWindow::OnClientConnect() {
-	PUSH_LOG_MESSAGE("Client connected");
+void ServerWindow::OnClientConnect(Server::Connection& connection) {
+	PUSH_LOG_MESSAGE(std::format("Client connected (user: {}, id: {})", connection.username, connection.identifier));
+}
+
+void ServerWindow::OnClientDisconnect(Server::Connection& connection) {
+	PUSH_LOG_MESSAGE(std::format("Client disconnected (user: {}, id: {})", connection.username, connection.identifier));
 }
 
 bool ServerWindow::OnServerMessageReceived(NetworkMessage receivedMessage) {
@@ -68,10 +89,6 @@ bool ServerWindow::OnServerMessageReceived(NetworkMessage receivedMessage) {
 		default: return false;
 	}
 #undef SERVER_MESSAGE_HANDLER
-}
-
-void ServerWindow::OnClientDisconnect() {
-	PUSH_LOG_MESSAGE("Client disconnected");
 }
 
 bool ServerWindow::NoOpMessageHandler(NetworkMessage& message) {

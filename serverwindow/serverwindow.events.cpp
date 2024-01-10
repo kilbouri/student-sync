@@ -9,7 +9,16 @@ void ServerWindow::OnClose(wxCloseEvent& event) {
 	// has not been destroyed while it is running.
 	wxThread* thread = GetThread();
 	if (thread && thread->IsRunning()) {
+		std::unique_lock<std::mutex> lock(shutdownLock);
+
 		server->Stop(true); // force stop server immediately
+
+		// wait for all features to finish
+		for (auto& connection : connectionFutures) {
+			connection.wait();
+		}
+
+		// wait for all connections to be finished
 		thread->Wait(); // wait for thread to end
 	}
 

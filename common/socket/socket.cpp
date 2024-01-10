@@ -172,12 +172,12 @@ std::optional<TCPSocket> TCPSocket::Accept() {
 		return std::nullopt;
 	}
 
-	SOCKET clientSocket = accept(*underlyingSocket, NULL, NULL);
-	if (clientSocket == INVALID_SOCKET) {
+	SOCKET socket = accept(*underlyingSocket, NULL, NULL);
+	if (socket == INVALID_SOCKET) {
 		return std::nullopt;
 	}
 
-	return std::optional<TCPSocket>{ std::in_place, TCPSocket(clientSocket) };
+	return std::optional<TCPSocket>{ std::in_place, TCPSocket(socket) };
 }
 
 bool TCPSocket::Connect(std::string_view hostname, int portNumber) {

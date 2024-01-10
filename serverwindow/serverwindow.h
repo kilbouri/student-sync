@@ -28,6 +28,16 @@ protected:
 	// Server data
 	std::unique_ptr<Server> server;
 
+	// This mutex must only ever be acquired by:
+	// 1. The window (main) thread, when the program is shutting down, or
+	// 2. By the server thread, at any time.
+	//
+	// This means that if the server thread cannot immediately acquire the lock,
+	// the program is shutting down and therefore the connection should be
+	// immediately closed.
+	std::mutex shutdownLock;
+	std::vector<std::future<void>> connectionFutures;
+
 	// Window elements
 	wxSplitterWindow* splitter;
 	wxScrolledWindow* sidebar;
@@ -53,9 +63,9 @@ protected:
 	bool StartServerThread(std::string& hostname, int port);
 	void* Entry() override; // Inherited via wxThreadHelper
 
-	void OnClientConnect();
+	void OnClientConnect(Server::Connection& connection);
 	bool OnServerMessageReceived(NetworkMessage message);
-	void OnClientDisconnect();
+	void OnClientDisconnect(Server::Connection& connection);
 
 	bool NoOpMessageHandler(NetworkMessage& message);
 	bool StartVideoStreamMessageHandler(NetworkMessage& message);
