@@ -1,9 +1,5 @@
 #include "server.h"
 
-#include "../common/networkmessage/networkmessage.h"
-#include "../common/generator/generator.h"
-#include "../common/task/task.h"
-
 #include <string>
 #include <optional>
 #include <fstream>
@@ -13,43 +9,96 @@
 #include <wx/wx.h>
 #include <coroutine>
 
-#include "server.singleconnect.cpp"
-#include "server.multiconnect.cpp"
-
-// The rationale for using coroutines in the server, instead of (for example) dedicated threads,
-// is that the server must be capable of handling hundreds of concurrent connections, AND that most
-// of those concurrent connections will be inactive most of the time. That means creating a thread
-// for every connection would rapidly waste threads.
-//
-// It also has a nice side effect of making the connection handlers very, very nice to write for the
-// consuming code.
-
-#pragma region Server
-bool Server::BindAndListen(std::string& ipAddress, int portNumber) {
-	return listenSocket.Bind(ipAddress, portNumber) && listenSocket.Listen(TCPSocket::MaxConnectionQueueLength);
-}
-
-std::optional<std::string> Server::GetHostname() {
-	return listenSocket.GetBoundAddress();
-}
-
-std::optional<int> Server::GetPort() {
-	return listenSocket.GetBoundPort();
-}
-
-void Server::SetConnectionHandler(ConnectionHandlerFunc handler) {
-	this->connectionHandlerFunc = handler;
+Server::Server(std::string& hostname, int port, ConnectionHandler handler)
+	: serverSocket{ TCPSocket{} }, connections{}, connectionHandler{ handler }
+{
+	if (!serverSocket.Bind(hostname, port)) {
+		throw "Server failed to bind to " + hostname + ":" + std::to_string(port);
+	}
 }
 
 void Server::Run() {
-	if (!connectionHandlerFunc) {
-		throw "ConnectionHandler not set before calling Server::Run()!";
+	static unsigned long identifier = 0;
+
+	if (!serverSocket.Listen(TCPSocket::MaxConnectionQueueLength)) {
+		throw "Server failed to listen";
 	}
 
-	DoRun();
+	fd_set readSet = {};
+	while (serverSocket.IsValid()) {
+		// clean up closed connections
+		for (auto iter = connections.begin(); iter != connections.end();) {
+			if (iter->clientSocket.IsValid()) {
+				++iter;
+			}
+			else {
+				iter = connections.erase(iter);
+			}
+		}
+
+		FD_ZERO(&readSet);
+		FD_SET(serverSocket.GetDescriptor(), &readSet);
+
+		timeval timeout{
+			.tv_sec = 30,
+			.tv_usec = 0
+		};
+
+		int selectResult = select(0, &readSet, nullptr, nullptr, &timeout);
+		if (selectResult == 0 || selectResult == SOCKET_ERROR) {
+			// error or timeout
+			continue;
+		}
+
+		auto client = serverSocket.Accept();
+		if (!client) {
+			continue;
+		}
+
+		Connection& connection = connections.emplace_back<Connection>({
+			.clientSocket = *client,
+			.identifier = ++identifier,
+			.username = "Placeholder",
+		});
+
+		connectionHandler(connection);
+	}
+}
+
+void Server::Stop(bool force) {
+	serverSocket.Close();
+	if (!force) {
+		return;
+	}
+
+	// close connections
+	for (auto& connection : connections) {
+		connection.Terminate();
+	}
+
+	// clear connection list
+	connections.clear();
+}
+
+bool Server::IsRunning() const {
+	return serverSocket.IsValid();
+}
+
+int Server::GetConnectionCount() const {
+	return connections.size();
+}
+
+TCPSocket::SocketInfo Server::GetServerInfo() const {
+	return serverSocket.GetBoundSocketInfo().value_or(TCPSocket::SocketInfo{
+			.Address = "Unknown",
+			.Port = 0
+	});
 }
 
 Server::~Server() {
-	listenSocket.Close();
+	Stop(true);
 }
-#pragma endregion
+
+void Server::Connection::Terminate() {
+	clientSocket.Close();
+}

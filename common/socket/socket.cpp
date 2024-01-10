@@ -1,85 +1,19 @@
 #include "socket.h"
 #include "../../win32includes.h"
 
-std::optional<std::string> GetAddress(struct sockaddr_in socketInfo);
-int GetPort(struct sockaddr_in socketInfo);
+/// <summary>
+/// A deleter which calls closesocket on the socket before deallocating it
+/// </summary>
+struct SocketDeleter {
+	void operator()(SOCKET* socket) const {
+		closesocket(*socket);
+		delete socket;
+	}
+};
 
 // Constructor for creation from a platform socket
-Socket::Socket(SOCKET s) : underlyingSocket{ new SOCKET(s) }, referenceCount{ new size_t(1) } {}
-
-// Copy constructor
-Socket::Socket(const Socket& other) :
-	underlyingSocket{ other.underlyingSocket },
-	referenceCount{ other.referenceCount }
-{
-	(*referenceCount)++;
-}
-
-// Copy assignment operator
-Socket& Socket::operator=(const Socket& other) {
-	if (this == &other) {
-		return *this;
-	}
-
-	if (underlyingSocket && referenceCount) {
-		(*referenceCount)--;
-
-		if (*referenceCount == 0) {
-			Close();
-			delete underlyingSocket;
-			delete referenceCount;
-		}
-	}
-
-	// Copy data from the other object
-	underlyingSocket = other.underlyingSocket;
-	referenceCount = other.referenceCount;
-	(*referenceCount)++;
-
-	return *this;
-}
-
-// Move constructor
-Socket::Socket(Socket&& other) noexcept :
-	underlyingSocket{ std::exchange(other.underlyingSocket, nullptr) },
-	referenceCount{ std::exchange(other.referenceCount, nullptr) }
+Socket::Socket(SOCKET s) : underlyingSocket{ new SOCKET(s), SocketDeleter{} }
 {}
-
-Socket& Socket::operator=(Socket&& other) noexcept {
-	if (this == &other) {
-		return *this;
-	}
-
-	if (underlyingSocket && referenceCount) {
-		(*referenceCount)--;
-
-		if (*referenceCount == 0) {
-			Close();
-			delete underlyingSocket;
-			delete referenceCount;
-		}
-	}
-
-	// Move data from the other object
-	underlyingSocket = std::exchange(other.underlyingSocket, nullptr);
-	referenceCount = std::exchange(other.referenceCount, nullptr);
-
-	return *this;
-}
-
-Socket::~Socket() {
-	// if either of these are unset, that pretty much means this object was moved out of
-	if (underlyingSocket && referenceCount) {
-		*referenceCount -= 1;
-
-		if (*referenceCount == 0) {
-			Close();
-
-			delete underlyingSocket;
-			delete referenceCount;
-		}
-	}
-}
 
 bool Socket::Shutdown(Direction direction) {
 	if (!IsValid()) {
@@ -288,52 +222,22 @@ bool TCPSocket::Connect(std::string_view hostname, int portNumber) {
 	return connectResult != SOCKET_ERROR;
 }
 
-std::optional<std::string> TCPSocket::GetBoundAddress() {
+static inline std::optional<std::string> GetAddress(struct sockaddr_in);
+static std::optional<TCPSocket::SocketInfo> GetSocketInfo(SOCKET socket, int(*fetchFunc)(SOCKET, sockaddr*, int*)) {
 	sockaddr_in socketInfo = { 0 };
 	int socketInfoSize = sizeof(socketInfo);
 
-	if (getsockname(*underlyingSocket, reinterpret_cast<sockaddr*>(&socketInfo), &socketInfoSize) == SOCKET_ERROR) {
+	if (fetchFunc(socket, reinterpret_cast<sockaddr*>(&socketInfo), &socketInfoSize) == SOCKET_ERROR) {
 		return std::nullopt;
 	}
 
-	return GetAddress(socketInfo);
+	return TCPSocket::SocketInfo{
+		.Address = GetAddress(socketInfo).value_or("Unknown"),
+		.Port = ntohs(socketInfo.sin_port)
+	};
 }
 
-std::optional<int> TCPSocket::GetBoundPort() {
-	struct sockaddr_in socketInfo = { 0 };
-	int socketInfoLength = sizeof(socketInfo);
-
-	if (getsockname(*underlyingSocket, (struct sockaddr*)&socketInfo, &socketInfoLength) != 0) {
-		return std::nullopt;
-	}
-
-	return GetPort(socketInfo);
-}
-
-std::optional<std::string> TCPSocket::GetPeerAddress() {
-	// we're gonna try this...
-	sockaddr_in socketInfo = { 0 };
-	int socketInfoSize = sizeof(socketInfo);
-
-	if (getpeername(*underlyingSocket, reinterpret_cast<sockaddr*>(&socketInfo), &socketInfoSize) == SOCKET_ERROR) {
-		return std::nullopt;
-	}
-
-	return GetAddress(socketInfo);
-}
-
-std::optional<int> TCPSocket::GetPeerPort() {
-	struct sockaddr_in socketInfo = { 0 };
-	int socketInfoLength = sizeof(socketInfo);
-
-	if (getpeername(*underlyingSocket, (struct sockaddr*)&socketInfo, &socketInfoLength) != 0) {
-		return std::nullopt;
-	}
-
-	return GetPort(socketInfo);
-}
-
-std::optional<std::string> GetAddress(struct sockaddr_in socketInfo) {
+static inline std::optional<std::string> GetAddress(struct sockaddr_in socketInfo) {
 	char addressBuffer[INET_ADDRSTRLEN] = { 0 };
 	if (inet_ntop(AF_INET, &(socketInfo.sin_addr), addressBuffer, sizeof(addressBuffer)) == nullptr) {
 		return std::nullopt;
@@ -356,6 +260,10 @@ std::optional<std::string> GetAddress(struct sockaddr_in socketInfo) {
 	return addressString;
 }
 
-int GetPort(struct sockaddr_in socketInfo) {
-	return ntohs(socketInfo.sin_port);
+std::optional<TCPSocket::SocketInfo> TCPSocket::GetBoundSocketInfo() const {
+	return GetSocketInfo(this->GetDescriptor(), &getsockname);
+}
+
+std::optional<TCPSocket::SocketInfo> TCPSocket::GetPeerSocketInfo() const {
+	return GetSocketInfo(this->GetDescriptor(), &getpeername);
 }

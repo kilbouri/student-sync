@@ -31,8 +31,7 @@ public:
 		// Disallow co_await in generator coroutines.
 		void await_transform() = delete;
 
-		[[noreturn]]
-		static void unhandled_exception() { throw; }
+		static void unhandled_exception() { }
 
 		std::optional<T> current_value;
 	};

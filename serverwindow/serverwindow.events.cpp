@@ -17,17 +17,11 @@ void ServerWindow::OnClose(wxCloseEvent& event) {
 }
 
 void ServerWindow::OnDetails(wxCommandEvent& event) {
-	auto hostResult = server.get()->GetHostname();
-	auto portResult = server.get()->GetPort();
+	TCPSocket::SocketInfo localConnection = server->GetServerInfo();
 
 	std::string message = "";
-
-	std::string hostname = hostResult.value_or("Unknown");
-	message += "Hostname: " + hostname + "\n";
-
-	std::string port = portResult.has_value() ? std::to_string(*portResult) : "Unknown";
-	message += "Port: " + port + "\n";
-
+	message += "Hostname: " + localConnection.Address + "\n";
+	message += "Port: " + std::to_string(localConnection.Port) + "\n";
 	message += "wxWidgets: " wxVERSION_NUM_DOT_STRING;
 
 	wxMessageBox(message);

@@ -35,7 +35,7 @@ protected:
 	VideoFrameBitmap* streamView;
 	wxStatusBar* statusBar;
 
-	Task<void> ConnectionHandler(std::shared_ptr<Server::ConnectionContext> context);
+	void ConnectionHandler(Server::Connection& connection);
 
 	// Window events (defined in serverwindow.events.cpp)
 	void OnClose(wxCloseEvent& event);

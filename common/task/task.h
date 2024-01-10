@@ -36,7 +36,7 @@ struct Task {
 			this->value = value;
 		}
 
-		void unhandled_exception() { throw; }
+		void unhandled_exception() { }
 	};
 
 	Handle handle;

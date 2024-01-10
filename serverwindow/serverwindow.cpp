@@ -92,24 +92,18 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 }
 
 bool ServerWindow::StartServerThread(std::string& hostname, int port) {
+	// todo: we are recommended to use std::jthread instead!
+
 	// create a thread for the server to run on
 	if (CreateThread(wxTHREAD_JOINABLE) != wxTHREAD_NO_ERROR) {
 		return false; // failed to create thread
 	}
 
 	// We have a thread, lets make sure we have a valid Server instance for it to use
-	server = std::make_unique<MultiConnectServer>();
+	auto handler = std::bind(&ServerWindow::ConnectionHandler, this, std::placeholders::_1);
+	server = std::make_unique<Server>(hostname, port, handler);
 
-	if (!server->BindAndListen(hostname, port)) {
-		return false; // can't bind and listen, maybe already taken?
-	}
-
-	// All preconditions satisfied, SMASH THAT GO BUTTON!
-	if (GetThread()->Run() != wxTHREAD_NO_ERROR) {
-		return false; // button smashed too hard, thread failed to start
-	}
-
-	return true;
+	return GetThread()->Run() == wxTHREAD_NO_ERROR;
 }
 
 void ServerWindow::SetConnectedClientsCounter(int numClients) {

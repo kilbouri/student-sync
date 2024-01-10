@@ -28,32 +28,25 @@ void* ServerWindow::Entry() {
 	// server this thread is running.
 
 	// set server callbacks
-	{
-		using namespace std::placeholders;
-		server->SetConnectionHandler(std::bind(&ServerWindow::ConnectionHandler, this, _1));
-	}
-
 	server->Run();
 	return 0;
 }
 
-Task<void> ServerWindow::ConnectionHandler(std::shared_ptr<Server::ConnectionContext> ctx) {
-	this->OnClientConnect();
+void ServerWindow::ConnectionHandler(Server::Connection& connection) {
+	OnClientConnect();
 
-	while (true) {
-
-		// I had a brain-wave... we can make this return a Task<NetworkMessage?>. The server can populate the value before resuming the coroutne!
-		std::optional<NetworkMessage> message = co_await ctx->Recieve();
-
+	// the socket will be invalidated when we should exit
+	while (connection.clientSocket.IsValid()) {
+		auto message = NetworkMessage::TryReceive(connection.clientSocket);
 		if (!message) {
-			break;
+			PUSH_LOG_MESSAGE("Failed to receive message");
 		}
-
-		this->OnServerMessageReceived(*message);
+		else {
+			OnServerMessageReceived(*message);
+		}
 	}
 
-	this->OnClientDisconnect();
-	co_return;
+	OnClientDisconnect();
 }
 
 void ServerWindow::OnClientConnect() {
