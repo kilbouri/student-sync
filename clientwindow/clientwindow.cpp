@@ -37,4 +37,9 @@ ClientWindow::ClientWindow(wxString title, std::string_view serverHostname, int 
 	if (!client.Connect(serverHostname, serverPort)) {
 		wxLogFatalError("Failed to connect to server");
 	}
+
+	std::string username = ClientPreferencesManager::GetInstance().GetPreferences().displayName;
+	if (!client.Register(username)) {
+		wxLogFatalError("Failed to register with server");
+	}
 }

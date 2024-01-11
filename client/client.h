@@ -14,8 +14,8 @@ public:
 	bool Connect(std::string_view hostname, int portNumber);
 	bool Disconnect();
 
-	// Updated methods for handling video stream requests and responses
 	bool RequestVideoStream();
+	bool Register(std::string& username);
 
 	bool StartVideoStream();
 	bool SendVideoFrame();

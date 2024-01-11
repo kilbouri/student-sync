@@ -57,6 +57,11 @@ void ServerWindow::ConnectionHandler(Server::Connection& con) {
 			return ClientDisconnected(connection);
 		}
 
+		if (!OkMessage{}.ToNetworkMessage().Send(connection.socket)) {
+			connection.Terminate();
+			return ClientDisconnected(connection);
+		}
+
 		ClientRegistered(connection, *helloMessage);
 
 		while (connection.socket.IsValid()) {

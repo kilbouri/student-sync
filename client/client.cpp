@@ -5,6 +5,7 @@
 #include <string>
 
 #include "../common/socket/socket.h"
+#include "../common/messages/hellomessage.h"
 #include "../common/networkmessage/networkmessage.h"
 #include "../common/messages/streamframemessage.h"
 
@@ -26,6 +27,15 @@ bool Client::StartVideoStream() {
 	}
 
 	return NetworkMessage(NetworkMessage::Tag::StartStream, std::move(*firstFrame)).Send(socket);
+}
+
+bool Client::Register(std::string& username) {
+	if (!HelloMessage{ username }.ToNetworkMessage().Send(socket)) {
+		return false;
+	}
+
+	auto reply = NetworkMessage::TryReceive(socket);
+	return reply && (reply->tag == NetworkMessage::Tag::Ok);
 }
 
 bool Client::SendVideoFrame() {

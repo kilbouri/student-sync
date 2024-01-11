@@ -84,6 +84,10 @@ Socket::IOResult Socket::WriteAllBytes(const byte* buffer, size_t nBytes) {
 Socket::IOResult Socket::ReadAllBytes(byte* buffer, size_t nBytes) {
 	size_t bytesRead = 0;
 
+	//! somehow, the first message is causing an error. The cause is the socket having
+	//! the underlyingSocket become nullptr while we are still reading.
+	//! First place to look is to see if we are accidentally missing a return code below.
+
 	do {
 		// We can read any number of bytes in range [remaining, INT_MAX] at once
 		size_t remaining = nBytes - bytesRead;

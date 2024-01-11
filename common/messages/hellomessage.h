@@ -16,6 +16,7 @@ struct HelloMessage {
 	}
 
 	NetworkMessage ToNetworkMessage() const noexcept {
-		return NetworkMessage(NetworkMessage::Tag::Hello);
+		NetworkMessage::Value value{ username.begin(), username.end() };
+		return NetworkMessage(NetworkMessage::Tag::Hello, value);
 	}
 };

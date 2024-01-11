@@ -9,6 +9,7 @@
 #include "../common/socket/socket.h"
 #include "../common/videostreamwindow/videostreamwindow.h"
 #include "../common/messages/hellomessage.h"
+#include "../common/messages/okmessage.h"
 #include "../common/messages/streamframemessage.h"
 
 
