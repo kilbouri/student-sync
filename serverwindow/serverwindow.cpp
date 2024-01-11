@@ -8,11 +8,12 @@
 #include "serverwindow.thread.cpp"
 #include "serverwindow.events.cpp"
 
+#define DefineEvent(evtName) wxDEFINE_EVENT(evtName, wxThreadEvent);
+Events(DefineEvent)
+
 ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 	: wxFrame(NULL, wxID_ANY, title), server{ nullptr }
 {
-	this->SetSize(this->FromDIP(wxSize{ 500, 400 }));
-
 	statusBar = new wxStatusBar(this);
 	statusBar->SetFieldsCount(2);
 
@@ -29,8 +30,6 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 	menuBar->Append(menuFile, "&File");
 
 	SetMenuBar(menuBar);
-
-	this->SetSizeHints(wxDefaultSize, wxDefaultSize);
 
 	wxBoxSizer* rootSizer = new wxBoxSizer(wxVERTICAL);
 
@@ -69,6 +68,9 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 	splitter->SplitVertically(sidebar, mainContentPanel, defaultSidebarPosition);
 
 	rootSizer->Add(splitter, 1, wxEXPAND);
+
+	this->SetMinClientSize(this->FromDIP(wxSize{ 250, 200 }));
+	this->SetSize(this->FromDIP(wxSize{ 500, 400 }));
 
 	this->SetDoubleBuffered(true);
 	this->SetSizer(rootSizer);

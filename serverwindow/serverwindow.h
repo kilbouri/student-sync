@@ -10,13 +10,23 @@
 #include "../common/videostreamwindow/videostreamwindow.h"
 #include "../common/task/task.h"
 
-wxDECLARE_EVENT(SERVER_EVT_PUSH_LOG, wxThreadEvent);
-wxDECLARE_EVENT(SERVER_EVT_CLIENT_STARTING_STREAM, wxThreadEvent);
-wxDECLARE_EVENT(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED, wxThreadEvent);
-wxDECLARE_EVENT(SERVER_EVT_CLIENT_ENDING_STREAM, wxThreadEvent);
+#define Events(x) \
+	x(SERVER_EVT_PUSH_LOG) \
+	x(SERVER_EVT_ADD_CLIENT) \
+	x(SERVER_EVT_CLIENT_STARTING_STREAM) \
+	x(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED) \
+	x(SERVER_EVT_CLIENT_ENDING_STREAM)
+
+#define DeclareEvent(evtName) wxDECLARE_EVENT(evtName, wxThreadEvent);
+Events(DeclareEvent)
 
 class ServerWindow : public wxFrame, public wxThreadHelper {
 public:
+	struct ClientInfo {
+		unsigned long identifier;
+		std::string username;
+	};
+
 	enum {
 		ID_Details,
 		ID_ShowPreferences
@@ -37,6 +47,9 @@ protected:
 	// immediately closed.
 	std::mutex shutdownLock;
 	std::vector<std::future<void>> connectionFutures;
+
+	// Main Thread ONLY elements
+	std::vector<ClientInfo> clients;
 
 	// Window elements
 	wxSplitterWindow* splitter;

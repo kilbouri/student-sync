@@ -1,6 +1,6 @@
 // this file provides event callbacks for ServerWindow. It is #included in serverwindow.cpp
-#pragma once
 #include "serverwindow.h"
+
 #include "../serverpreferencesmanager/serverpreferencesmanager.h"
 #include "../serverpreferenceseditor/serverpreferenceseditor.h"
 

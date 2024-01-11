@@ -1,14 +1,9 @@
 // This file defines the background thread for ServerWindow. It is #included in serverwindow.cpp
-#pragma once
 #include "serverwindow.h"
+
 #include "../common/messages/stringmessage.h"
 #include "../common/messages/number64message.h"
 #include "../common/messages/streamframemessage.h"
-
-wxDEFINE_EVENT(SERVER_EVT_PUSH_LOG, wxThreadEvent);
-wxDEFINE_EVENT(SERVER_EVT_CLIENT_STARTING_STREAM, wxThreadEvent);
-wxDEFINE_EVENT(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED, wxThreadEvent);
-wxDEFINE_EVENT(SERVER_EVT_CLIENT_ENDING_STREAM, wxThreadEvent);
 
 #define PUSH_LOG_MESSAGE(message)								\
 {																\
@@ -28,6 +23,7 @@ void* ServerWindow::Entry() {
 	// server this thread is running.
 
 	// set server callbacks
+	PUSH_LOG_MESSAGE("Server starting...");
 	server->Run();
 	return 0;
 }
@@ -68,6 +64,8 @@ void ServerWindow::ConnectionHandler(Server::Connection& con) {
 
 void ServerWindow::OnClientConnect(Server::Connection& connection) {
 	PUSH_LOG_MESSAGE(std::format("Client connected (user: {}, id: {})", connection.username, connection.identifier));
+
+	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_ADD_CLIENT);
 }
 
 void ServerWindow::OnClientDisconnect(Server::Connection& connection) {
@@ -79,16 +77,14 @@ bool ServerWindow::OnServerMessageReceived(NetworkMessage receivedMessage) {
 
 	PUSH_LOG_MESSAGE(CreateLogMessage(receivedMessage));
 
-#define SERVER_MESSAGE_HANDLER(type, handlerFunc) case type: return handlerFunc(receivedMessage)
 	switch (receivedMessage.tag) {
-		SERVER_MESSAGE_HANDLER(Tag::String, NoOpMessageHandler);
-		SERVER_MESSAGE_HANDLER(Tag::Number64, NoOpMessageHandler);
-		SERVER_MESSAGE_HANDLER(Tag::StartStream, StartVideoStreamMessageHandler);
-		SERVER_MESSAGE_HANDLER(Tag::StreamFrame, StreamFrameMessageHandler);
-		SERVER_MESSAGE_HANDLER(Tag::StopStream, EndVideoStreamMessageHandler);
+		case Tag::String:		return NoOpMessageHandler(receivedMessage);
+		case Tag::Number64:		return NoOpMessageHandler(receivedMessage);
+		case Tag::StartStream:	return StartVideoStreamMessageHandler(receivedMessage);
+		case Tag::StreamFrame:	return StreamFrameMessageHandler(receivedMessage);
+		case Tag::StopStream:	return EndVideoStreamMessageHandler(receivedMessage);
 		default: return false;
 	}
-#undef SERVER_MESSAGE_HANDLER
 }
 
 bool ServerWindow::NoOpMessageHandler(NetworkMessage& message) {
