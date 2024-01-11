@@ -40,8 +40,7 @@ set(EXTRA_HEADERS
 	"common/managedhandle/managedhandle.h"
 	"common/socket/socket.h"
 	"common/messages/hellomessage.h"
-	"common/messages/stringmessage.h"
-	"common/messages/number64message.h"
+	"common/messages/okmessage.h"
 	"common/messages/streamframemessage.h"
 	"common/preferenceseditor/preferenceseditor.h"
 )

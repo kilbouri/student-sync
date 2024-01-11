@@ -48,7 +48,7 @@ public:
 		return StreamFrameMessage(format, imageData);
 	}
 
-	NetworkMessage ToNetworkMessage() noexcept {
+	NetworkMessage ToNetworkMessage() const noexcept {
 		size_t imageDataSize = imageData.size() * sizeof(decltype(imageData)::value_type);
 		size_t formatSize = sizeof(format); // 8 bits, no endianness conversion needed
 

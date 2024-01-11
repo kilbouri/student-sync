@@ -48,7 +48,7 @@ std::optional<NetworkMessage> NetworkMessage::TryReceive(Socket& socket) {
 	}
 
 	// there is data to be read from the socket to populate the buffer
-	Value value(length);
+	Value value(length, 0);
 	if (socket.ReadAllBytes(value.data(), length) != IOResult::Success) {
 		return std::nullopt;
 	}
@@ -84,7 +84,10 @@ std::optional<std::tuple<NetworkMessage, size_t>> NetworkMessage::TryFromBuffer(
 	TagType rawTag;
 	std::memcpy(&rawTag, tagStart, sizeof(TagType));
 
-	if (!NetworkMessage::IsValidTag(rawTag)) { return std::nullopt; }
+	if (!NetworkMessage::IsValidTag(rawTag)) {
+		return std::nullopt;
+	}
+
 	Tag tag = static_cast<Tag>(rawTag);
 
 	// ---------------------- VALUE -----------------------

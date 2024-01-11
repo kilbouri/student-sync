@@ -58,7 +58,6 @@ void Server::Run() {
 		Connection& connection = connections.emplace_back<Connection>({
 			.socket = *client,
 			.identifier = ++identifier,
-			.username = "Placeholder",
 		});
 
 		connectionHandler(connection);

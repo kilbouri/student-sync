@@ -6,8 +6,6 @@
 
 #include "../common/socket/socket.h"
 #include "../common/networkmessage/networkmessage.h"
-#include "../common/messages/stringmessage.h"
-#include "../common/messages/number64message.h"
 #include "../common/messages/streamframemessage.h"
 
 Client::Client() : socket(TCPSocket{}) {}
@@ -18,14 +16,6 @@ bool Client::Connect(std::string_view hostname, int portNumber) {
 
 bool Client::Disconnect() {
 	return socket.Close();
-}
-
-bool Client::SendString(const std::string& str) {
-	return StringMessage(str).ToNetworkMessage().Send(socket);
-}
-
-bool Client::SendNumber(int64_t number) {
-	return Number64Message(number).ToNetworkMessage().Send(socket);
 }
 
 bool Client::StartVideoStream() {

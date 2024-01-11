@@ -42,7 +42,6 @@ struct Server::Connection {
 	// then the server also still exists.
 	TCPSocket socket = TCPSocket::InvalidSocket();
 	unsigned long identifier;
-	std::string username;
 
 	void Terminate();
 };

@@ -7,8 +7,6 @@ ClientWindow::ClientWindow(wxString title, std::string_view serverHostname, int 
 	: wxFrame(NULL, wxID_ANY, title), client{ Client{} }
 {
 	wxMenu* menuFile = new wxMenu;
-	menuFile->Append(ID_String, "Send A &String...\tCtrl-S", "Send a String to the Server");
-	menuFile->Append(ID_Number, "Send A &Number...\tCtrl-N", "Send a Number to the Server");
 	menuFile->Append(ID_ShowPreferences, "Preferences...\tCtrl-,", "Edit client preferences");
 	menuFile->AppendSeparator();
 	menuFile->Append(wxID_EXIT);
@@ -27,9 +25,6 @@ ClientWindow::ClientWindow(wxString title, std::string_view serverHostname, int 
 	menuBar->Append(menuHelp, "&Help");
 
 	SetMenuBar(menuBar);
-
-	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnString, this, ID_String);
-	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnNumber, this, ID_Number);
 
 	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnStartStream, this, ID_StartStream);
 	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnSendNextFrame, this, ID_NextFrame);

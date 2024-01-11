@@ -43,9 +43,9 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 	wxBoxSizer* sidebarItemsSizer = new wxBoxSizer(wxVERTICAL);
 
 	// add sidebar items here...
-	wxStaticText* placeholder = new wxStaticText(sidebar, wxID_ANY, "Clients will appear here in the future.");
-	placeholder->SetMinSize(wxSize{ 5 * this->GetCharWidth(), placeholder->GetMinHeight() });
-	sidebarItemsSizer->Add(placeholder, 1, wxEXPAND);
+	sidebarText = new wxStaticText(sidebar, wxID_ANY, "Clients will appear here in the future.");
+	sidebarText->SetMinSize(wxSize{ 5 * this->GetCharWidth(), sidebarText->GetMinHeight() });
+	sidebarItemsSizer->Add(sidebarText, 1, wxEXPAND);
 
 	sidebar->SetSizer(sidebarItemsSizer);
 	sidebar->Layout();
@@ -82,10 +82,12 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 	Bind(wxEVT_MENU, &ServerWindow::OnShowPreferences, this, ID_ShowPreferences);
 	Bind(wxEVT_CLOSE_WINDOW, &ServerWindow::OnClose, this);
 
+	// Server event bindings
 	Bind(SERVER_EVT_PUSH_LOG, &ServerWindow::OnServerPushLog, this);
-	Bind(SERVER_EVT_CLIENT_STARTING_STREAM, &ServerWindow::OnClientStartStream, this);
+	Bind(SERVER_EVT_CLIENT_CONNECT, &ServerWindow::OnClientConnected, this);
+	Bind(SERVER_EVT_CLIENT_DISCONNECT, &ServerWindow::OnClientDisconnected, this);
+	Bind(SERVER_EVT_CLIENT_REGISTERED, &ServerWindow::OnClientRegistered, this);
 	Bind(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED, &ServerWindow::OnClientStreamFrameReceived, this);
-	Bind(SERVER_EVT_CLIENT_ENDING_STREAM, &ServerWindow::OnClientEndStream, this);
 
 	// Start server
 	if (!StartServerThread(hostname, port)) {
@@ -119,4 +121,25 @@ void ServerWindow::SetConnectedClientsCounter(int numClients) {
 
 void ServerWindow::SetLastLogMessage(std::string lastMessage) {
 	this->statusBar->SetStatusText(lastMessage, 1);
+}
+
+void ServerWindow::RefreshClientList() {
+	std::string newText = "";
+
+	// todo: is there a better way to sort this stuff?
+	std::vector<ClientInfo> sortedClients;
+	sortedClients.reserve(this->clients.size());
+
+	for (auto const& [_, client] : clients) { sortedClients.push_back(client); }
+	std::sort(sortedClients.begin(), sortedClients.end(), [](ClientInfo const& first, ClientInfo const& second) -> bool {
+		return (first.username == second.username)
+			? first.identifier < second.identifier
+			: first.username < second.username;
+	});
+
+	for (auto const& [identifier, username] : sortedClients) {
+		newText += std::format("{} (id: {}) \n", username, identifier);
+	}
+
+	sidebarText->SetLabel(newText);
 }

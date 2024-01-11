@@ -4,6 +4,7 @@
 #include "../serverpreferencesmanager/serverpreferencesmanager.h"
 #include "../serverpreferenceseditor/serverpreferenceseditor.h"
 
+#pragma region Window Events
 void ServerWindow::OnClose(wxCloseEvent& event) {
 	// we MUST wait for the thread to stop. The thread assumes this object
 	// has not been destroyed while it is running.
@@ -40,6 +41,26 @@ void ServerWindow::OnShowPreferences(wxCommandEvent& event) {
 	ServerPreferencesEditor editor{ ServerPreferencesManager::GetInstance().GetPreferences(), this };
 	editor.ShowModal();
 }
+#pragma endregion
+
+#pragma region Server-sent Events
+void ServerWindow::OnClientConnected(wxThreadEvent& event) {
+	ClientInfo client = event.GetPayload<ClientInfo>();
+	this->clients[client.identifier] = client;
+	this->RefreshClientList();
+}
+
+void ServerWindow::OnClientDisconnected(wxThreadEvent& event) {
+	unsigned long identifier = event.GetPayload<unsigned long>();
+	this->clients.erase(identifier);
+	this->RefreshClientList();
+}
+
+void ServerWindow::OnClientRegistered(wxThreadEvent& event) {
+	ClientInfo client = event.GetPayload<ClientInfo>();
+	this->clients[client.identifier] = client;
+	this->RefreshClientList();
+}
 
 void ServerWindow::OnServerPushLog(wxThreadEvent& event) {
 	// eheh, I love this type system... not... WHY CAN I NOT FORCE A TYPE FOR THE PAYLOAD OF THE EVENT WTF
@@ -63,3 +84,4 @@ void ServerWindow::OnClientStreamFrameReceived(wxThreadEvent& event) {
 void ServerWindow::OnClientEndStream(wxThreadEvent& event) {
 	this->streamView->ClearBitmap();
 }
+#pragma endregion

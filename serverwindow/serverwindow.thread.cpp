@@ -1,10 +1,6 @@
 // This file defines the background thread for ServerWindow. It is #included in serverwindow.cpp
 #include "serverwindow.h"
 
-#include "../common/messages/stringmessage.h"
-#include "../common/messages/number64message.h"
-#include "../common/messages/streamframemessage.h"
-
 #define PUSH_LOG_MESSAGE(message)								\
 {																\
 wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_PUSH_LOG);	\
@@ -46,7 +42,22 @@ void ServerWindow::ConnectionHandler(Server::Connection& con) {
 		// create a local copy of the connection data
 		Server::Connection connection(con);
 
-		OnClientConnect(connection);
+		ClientConnected(connection);
+
+		// todo: distinguish between force closing due to protocol violation and closing due to disconnect
+		auto firstMessage = NetworkMessage::TryReceive(connection.socket);
+		if (!firstMessage) {
+			connection.Terminate();
+			return ClientDisconnected(connection);
+		}
+
+		auto helloMessage = HelloMessage::FromNetworkMessage(std::move(*firstMessage));
+		if (!helloMessage) {
+			connection.Terminate();
+			return ClientDisconnected(connection);
+		}
+
+		ClientRegistered(connection, *helloMessage);
 
 		while (connection.socket.IsValid()) {
 			auto message = NetworkMessage::TryReceive(connection.socket);
@@ -54,46 +65,55 @@ void ServerWindow::ConnectionHandler(Server::Connection& con) {
 				PUSH_LOG_MESSAGE("Failed to receive message");
 			}
 			else {
-				OnServerMessageReceived(*message);
+				MessageReceived(*message);
 			}
 		}
 
-		OnClientDisconnect(connection);
+		return ClientDisconnected(connection);
 	}));
 }
 
-void ServerWindow::OnClientConnect(Server::Connection& connection) {
-	PUSH_LOG_MESSAGE(std::format("Client connected (user: {}, id: {})", connection.username, connection.identifier));
+void ServerWindow::ClientConnected(Server::Connection& connection) {
+	PUSH_LOG_MESSAGE(std::format("Client connected (id: {})", connection.identifier));
 
-	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_ADD_CLIENT);
+	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_CONNECT);
+	event->SetPayload(ClientInfo {.identifier = connection.identifier, .username = "Connecting..."});
+
+	wxQueueEvent(this, event);
 }
 
-void ServerWindow::OnClientDisconnect(Server::Connection& connection) {
-	PUSH_LOG_MESSAGE(std::format("Client disconnected (user: {}, id: {})", connection.username, connection.identifier));
+void ServerWindow::ClientRegistered(Server::Connection& connection, HelloMessage& hello) {
+	PUSH_LOG_MESSAGE(std::format("Client registered (id: {}, username: '{}')", connection.identifier, hello.username));
+
+	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_REGISTERED);
+	event->SetPayload(ClientInfo {.identifier = connection.identifier, .username = hello.username});
+
+	wxQueueEvent(this, event);
 }
 
-bool ServerWindow::OnServerMessageReceived(NetworkMessage receivedMessage) {
+void ServerWindow::ClientDisconnected(Server::Connection& connection) {
+	PUSH_LOG_MESSAGE(std::format("Client disconnected (id: {})", connection.identifier));
+
+	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_DISCONNECT);
+
+	// the username is not required at this time (if it is, then we would need to lock the clients collection and search it.. yikes)
+	event->SetPayload(connection.identifier);
+
+	wxQueueEvent(this, event);
+}
+
+bool ServerWindow::MessageReceived(NetworkMessage& receivedMessage) {
 	using Tag = NetworkMessage::Tag;
 
 	PUSH_LOG_MESSAGE(CreateLogMessage(receivedMessage));
 
 	switch (receivedMessage.tag) {
-		case Tag::String:		return NoOpMessageHandler(receivedMessage);
-		case Tag::Number64:		return NoOpMessageHandler(receivedMessage);
-		case Tag::StartStream:	return StartVideoStreamMessageHandler(receivedMessage);
 		case Tag::StreamFrame:	return StreamFrameMessageHandler(receivedMessage);
-		case Tag::StopStream:	return EndVideoStreamMessageHandler(receivedMessage);
 		default: return false;
 	}
 }
 
 bool ServerWindow::NoOpMessageHandler(NetworkMessage& message) {
-	return true;
-}
-
-bool ServerWindow::StartVideoStreamMessageHandler(NetworkMessage& message) {
-	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_STARTING_STREAM);
-	wxQueueEvent(this, event);
 	return true;
 }
 
@@ -112,37 +132,15 @@ bool ServerWindow::StreamFrameMessageHandler(NetworkMessage& message) {
 	return true;
 }
 
-bool ServerWindow::EndVideoStreamMessageHandler(NetworkMessage& message) {
-	wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_ENDING_STREAM);
-	wxQueueEvent(this, event);
-	return true;
-}
-
 wxString CreateLogMessage(NetworkMessage& receivedMessage) {
 	using Tag = NetworkMessage::Tag;
+	size_t byteCount = receivedMessage.data.size();
 
 	switch (receivedMessage.tag) {
-		case Tag::String: {
-			std::optional<StringMessage> stringMessage = StringMessage::FromNetworkMessage(receivedMessage);
-			if (!stringMessage) {
-				return "Received malformed String message";
-			}
-
-			return "Received String: '" + (*stringMessage).string + "'";
-		}
-
-		case Tag::Number64: {
-			std::optional<Number64Message> n64Message = Number64Message::FromNetworkMessage(receivedMessage);
-			if (!n64Message) {
-				return "Received malformed Number64 message";
-			}
-
-			return "Received Number64: " + std::to_string((*n64Message).number);
-		}
-
-		case Tag::StartStream: return "Received StartVideoStream";
-		case Tag::StopStream: return "Received EndVideoStream";
-		case Tag::StreamFrame: return "Received StreamFrame";
+		case Tag::Hello:		return std::format("Received Hello ({} bytes)", byteCount);
+		case Tag::StartStream:	return std::format("Received StartVideoStream ({} bytes)", byteCount);
+		case Tag::StopStream:	return std::format("Received EndVideoStream ({} bytes)", byteCount);
+		case Tag::StreamFrame:	return std::format("Received StreamFrame ({} bytes)", byteCount);
 		default: return "Unhandled message type: " + std::to_string(static_cast<NetworkMessage::TagType>(receivedMessage.tag));
 	}
 }

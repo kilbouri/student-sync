@@ -1,17 +1,21 @@
 #pragma once
 #include "../networkmessage/networkmessage.h"
 
-class HelloMessage {
-public:
+struct HelloMessage {
+	std::string username;
+
 	static std::optional<HelloMessage> FromNetworkMessage(const NetworkMessage& netMessage) noexcept {
 		if (netMessage.tag != NetworkMessage::Tag::Hello) {
 			return std::nullopt;
 		}
 
-		return HelloMessage();
+		std::string uname{ reinterpret_cast<const char*>(netMessage.data.data()), netMessage.data.size() };
+		return HelloMessage{
+			.username = uname
+		};
 	}
 
-	NetworkMessage ToNetworkMessage() noexcept {
+	NetworkMessage ToNetworkMessage() const noexcept {
 		return NetworkMessage(NetworkMessage::Tag::Hello);
 	}
 };

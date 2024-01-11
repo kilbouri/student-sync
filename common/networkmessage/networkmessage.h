@@ -17,9 +17,8 @@ int64_t ntohll_signed(int64_t value);
 		x(Ok)            \
 		x(StartStream)   \
 		x(StreamFrame)   \
-		x(StopStream)    \
-		x(String)        \
-		x(Number64)
+		x(StopStream)
+
 #define CreateEnum(name) name,
 enum class NetworkMessageTag : uint8_t { TagValues(CreateEnum) };
 
