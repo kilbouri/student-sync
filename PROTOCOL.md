@@ -5,7 +5,7 @@ This document outlines the protocol of communications for the Student-Sync softw
 ## Message Types
 
 Student-Sync uses Tag-Length-Value (TLV) encoded messaging. This is chosen as it provides a relatively small overhead 
-while also enabling the transmission of raw binary data, without needing to encod it to a text-based format (such as Base64).
+while also enabling the transmission of raw binary data, without needing to encode it to a text-based format (such as Base64).
 
 The structure of a single message is as follows:
 
