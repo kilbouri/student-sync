@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <functional>
 
 #include "../win32includes.h"
 #include "../common/socket/socket.h"
@@ -9,19 +10,23 @@
 
 class Client {
 public:
-	Client();
+	struct Connection;
+	using ConnectionHandler = std::function<void(Connection)>;
 
-	bool Connect(std::string_view hostname, int portNumber);
-	bool Disconnect();
+	Client(std::string& hostname, int port, ConnectionHandler handler);
 
-	bool RequestVideoStream();
-	bool Register(std::string& username);
+	void Run();
+	bool Stop();
 
-	bool StartVideoStream();
-	bool SendVideoFrame();
-	bool EndVideoStream();
+	TCPSocket::SocketInfo GetClientInfo();
+	TCPSocket::SocketInfo GetRemoteInfo();
 
 	~Client();
 private:
+	TCPSocket socket;
+	ConnectionHandler handler;
+};
+
+struct Client::Connection {
 	TCPSocket socket;
 };

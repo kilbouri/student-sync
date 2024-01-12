@@ -65,9 +65,10 @@ protected:
 	void ConnectionHandler(Server::Connection& connection);
 
 	// Window events (defined in serverwindow.events.cpp)
-	void OnClose(wxCloseEvent& event);
-	void OnDetails(wxCommandEvent& event);
 	void OnShowPreferences(wxCommandEvent& event);
+	void OnAbout(wxCommandEvent& event);
+	void OnExit(wxCommandEvent& event);
+	void OnClose(wxCloseEvent& event);
 
 	// Server-sent events (defined in serverwindow.events.cpp)
 	void OnClientConnected(wxThreadEvent& event);

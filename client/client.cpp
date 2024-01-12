@@ -9,53 +9,45 @@
 #include "../common/networkmessage/networkmessage.h"
 #include "../common/messages/streamframemessage.h"
 
-Client::Client() : socket(TCPSocket{}) {}
-
-bool Client::Connect(std::string_view hostname, int portNumber) {
-	return socket.Connect(hostname, portNumber);
+Client::Client(std::string& hostname, int port, ConnectionHandler handler)
+	: socket(TCPSocket{})
+	, handler{ handler }
+{
+	if (!socket.Connect(hostname, port)) {
+		throw "Failed to connect to server at " + hostname + ":" + std::to_string(port);
+	}
 }
 
-bool Client::Disconnect() {
+void Client::Run() {
+	// wow much complicated!
+
+	this->handler(Connection{
+		.socket = this->socket
+	});
+}
+
+bool Client::Stop() {
 	return socket.Close();
 }
 
-bool Client::StartVideoStream() {
-	// video frames are required to be in PNG format. Maybe in the future we will swap over to BMP to perform temporal compression
-	std::optional<std::vector<byte>> firstFrame = DisplayCapturer::CaptureScreen(DisplayCapturer::Format::PNG);
-	if (!firstFrame) {
-		return false;
+TCPSocket::SocketInfo Client::GetClientInfo() {
+	auto info = socket.GetBoundSocketInfo();
+	if (!info) {
+		throw "Failed to get local socket info";
 	}
 
-	return NetworkMessage(NetworkMessage::Tag::StartStream, std::move(*firstFrame)).Send(socket);
+	return *info;
 }
 
-bool Client::Register(std::string& username) {
-	if (!HelloMessage{ username }.ToNetworkMessage().Send(socket)) {
-		return false;
+TCPSocket::SocketInfo Client::GetRemoteInfo() {
+	auto info = socket.GetPeerSocketInfo();
+	if (!info) {
+		throw "Failed to get remote socket info";
 	}
 
-	auto reply = NetworkMessage::TryReceive(socket);
-	return reply && (reply->tag == NetworkMessage::Tag::Ok);
-}
-
-bool Client::SendVideoFrame() {
-	// video frames are required to be in PNG format. Maybe in the future we will swap over to BMP to perform temporal compression
-	std::optional<StreamFrameMessage> message = StreamFrameMessage::FromDisplay(DisplayCapturer::Format::PNG);
-	if (!message) {
-		return false;
-	}
-
-	return std::move(*message).ToNetworkMessage().Send(socket);
-}
-
-bool Client::EndVideoStream() {
-	return NetworkMessage(NetworkMessage::Tag::StopStream).Send(socket);
-}
-
-bool Client::RequestVideoStream() {
-	return true;
+	return *info;
 }
 
 Client::~Client() {
-	socket.Close();
+	Stop();
 }

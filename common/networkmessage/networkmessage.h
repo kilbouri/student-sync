@@ -12,12 +12,19 @@
 int64_t htonll_signed(int64_t value);
 int64_t ntohll_signed(int64_t value);
 
-#define TagValues(x) \
-		x(Hello)         \
-		x(Ok)            \
-		x(StartStream)   \
-		x(StreamFrame)   \
-		x(StopStream)
+// Hello: initial message sent by the client upon connecting
+// Ok: the server has registered the client
+// GetStreamParams: the server would like to know the client's stream preferences
+// StreamParams: the client's stream preferences
+// InitializeStream: the server wants the client to start streaming with the provided preferences
+// StreamFrame: a single frame of the stream
+#define TagValues(x)	\
+	x(Hello)			\
+	x(Ok)				\
+	x(GetStreamParams)	\
+	x(StreamParams)		\
+	x(InitializeStream)	\
+	x(StreamFrame)
 
 #define CreateEnum(name) name,
 enum class NetworkMessageTag : uint8_t { TagValues(CreateEnum) };
@@ -35,6 +42,7 @@ struct NetworkMessage {
 	using Value = std::vector<uint8_t>;
 
 	static constexpr bool IsValidTag(TagType);
+	static constexpr std::string TagName(Tag);
 
 	Tag tag;
 	Value data;
@@ -63,3 +71,21 @@ struct NetworkMessage {
 	/// </summary>
 	bool Send(Socket& socket);
 };
+
+constexpr bool NetworkMessage::IsValidTag(TagType tag) {
+#define CreateSwitch(name) case static_cast<TagType>(NetworkMessage::Tag::name): return true;
+	switch (tag) {
+		TagValues(CreateSwitch)
+		default: return false;
+	}
+#undef CreateSwitch
+}
+
+constexpr std::string NetworkMessage::TagName(Tag tag) {
+#define CreateSwitch(name) case NetworkMessage::Tag::name: return #name;
+	switch (tag) {
+		TagValues(CreateSwitch)
+		default: return "Invalid Tag";
+	}
+#undef CreateSwitch
+}

@@ -1,44 +1,45 @@
 #include "clientwindow.h"
 #include "../clientpreferenceseditor/clientpreferenceseditor.h"
 
-void ClientWindow::OnExit(wxCommandEvent& event) {
-	Close(true);
-}
+#include <format>
 
-void ClientWindow::OnAbout(wxCommandEvent& event) {
-	wxMessageBox("You're in the client software poggers!", "About this Software", wxOK | wxICON_INFORMATION);
-}
-
-void ClientWindow::OnShowPreferences(wxCommandEvent& event)
-{
+void ClientWindow::OnShowPreferences(wxCommandEvent& event) {
 	ClientPreferencesEditor editor{ ClientPreferencesManager::GetInstance().GetPreferences(), this };
 	editor.ShowModal();
 }
 
-// wxTimer::Notify
-void ClientWindow::Notify() {
-	client.SendVideoFrame();
+void ClientWindow::OnAbout(wxCommandEvent& event) {
+	TCPSocket::SocketInfo localConnection = client->GetClientInfo();
+	TCPSocket::SocketInfo remoteConnection = client->GetRemoteInfo();
+
+	std::string message = "";
+	message += std::format("Local connection: {}:{}\n", localConnection.Address, localConnection.Port);
+	message += std::format("Remote connection: {}:{}\n", remoteConnection.Address, remoteConnection.Port);
+	message += "wxWidgets: " wxVERSION_NUM_DOT_STRING;
+
+	wxMessageBox(message);
 }
 
-void ClientWindow::OnStartStream(wxCommandEvent& event) {
-	if (!client.StartVideoStream()) {
-		wxMessageBox("Failed to start stream", "StudentSync - Client", wxICON_WARNING | wxOK);
-		return;
-	}
-
-	constexpr int targetFrameRate = 2;
-	wxTimer::Start(1000 / targetFrameRate);
+void ClientWindow::OnExit(wxCommandEvent& event) {
+	Close(true);
 }
 
-void ClientWindow::OnSendNextFrame(wxCommandEvent& event) {
-	if (!client.SendVideoFrame()) {
-		wxMessageBox("Failed to send frame", "StudentSync - Client", wxICON_WARNING | wxOK);
+void ClientWindow::OnClose(wxCloseEvent& event) {
+	client->Stop();
+
+	if (clientThread && clientThread->joinable()) {
+		clientThread->join();
 	}
+
+	Destroy();	
 }
 
-void ClientWindow::OnEndStream(wxCommandEvent& event) {
-	wxTimer::Stop();
-	if (!client.EndVideoStream()) {
-		wxMessageBox("Failed to end stream", "StudentSync - Client", wxICON_WARNING | wxOK);
-	}
+void ClientWindow::OnClientPushLog(wxThreadEvent& event) {
+	wxString message = event.GetPayload<wxString>();
+	this->GetStatusBar()->SetLabel(message);
+}
+
+void ClientWindow::OnRegistrationFailed(wxThreadEvent& event) {
+	wxLogFatalError("Failed to register with remote server.");
+	this->Close();
 }

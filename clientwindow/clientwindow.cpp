@@ -1,45 +1,46 @@
 #include "clientwindow.h"
 #include "clientwindow.events.cpp"
+#include "clientwindow.thread.cpp"
 
 #include <wx/numdlg.h>
 
-ClientWindow::ClientWindow(wxString title, std::string_view serverHostname, int serverPort)
-	: wxFrame(NULL, wxID_ANY, title), client{ Client{} }
+#define DefineEvent(evtName) wxDEFINE_EVENT(evtName, wxThreadEvent);
+Events(DefineEvent)
+
+ClientWindow::ClientWindow(wxString title, std::string& hostname, int port)
+	: wxFrame(NULL, wxID_ANY, title)
+	, client{ nullptr }
+	, clientThread{ std::nullopt }
 {
 	wxMenu* menuFile = new wxMenu;
 	menuFile->Append(ID_ShowPreferences, "Preferences...\tCtrl-,", "Edit client preferences");
 	menuFile->AppendSeparator();
+	menuFile->Append(wxID_ABOUT);
 	menuFile->Append(wxID_EXIT);
 
-	wxMenu* menuStream = new wxMenu;
-	menuStream->Append(ID_StartStream, "&Begin Streaming\tCtrl-B", "Start streaming your screen to the Server");
-	menuStream->Append(ID_NextFrame, "Send &Frame\tCtrl-F", "Send another video frame to the Server");
-	menuStream->Append(ID_EndStream, "&End Streaming\tCtrl-E", "Stop streaming your screen to the Server");
-
-	wxMenu* menuHelp = new wxMenu;
-	menuHelp->Append(wxID_ABOUT);
-
 	wxMenuBar* menuBar = new wxMenuBar;
-	menuBar->Append(menuFile, "&File");
-	menuBar->Append(menuStream, "&Stream");
-	menuBar->Append(menuHelp, "&Help");
+	menuBar->Append(menuFile, "File");
 
 	SetMenuBar(menuBar);
 
-	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnStartStream, this, ID_StartStream);
-	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnSendNextFrame, this, ID_NextFrame);
-	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnEndStream, this, ID_EndStream);
+	wxStatusBar* statusBar = new wxStatusBar(this);
+	statusBar->SetLabel("All quiet...");
+	SetStatusBar(statusBar);
 
+	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnShowPreferences, this, ID_ShowPreferences);
 	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnAbout, this, wxID_ABOUT);
 	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnExit, this, wxID_EXIT);
-	wxFrame::Bind(wxEVT_MENU, &ClientWindow::OnShowPreferences, this, ID_ShowPreferences);
+	wxFrame::Bind(wxEVT_CLOSE_WINDOW, &ClientWindow::OnClose, this);
 
-	if (!client.Connect(serverHostname, serverPort)) {
-		wxLogFatalError("Failed to connect to server");
+	// Client event bindings
+	wxFrame::Bind(CLIENT_EVT_REGISTRATION_FAILED, &ClientWindow::OnRegistrationFailed, this);
+
+	// create a Client instance
+	{
+		using namespace std::placeholders;
+		client = std::make_unique<Client>(hostname, port, std::bind(&ClientWindow::ConnectionHandler, this, _1));
 	}
 
-	std::string username = ClientPreferencesManager::GetInstance().GetPreferences().displayName;
-	if (!client.Register(username)) {
-		wxLogFatalError("Failed to register with server");
-	}
+	// start the thread
+	clientThread = std::jthread(std::bind(&ClientWindow::ThreadEntry, this));
 }

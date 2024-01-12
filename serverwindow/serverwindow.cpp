@@ -23,11 +23,13 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 
 	// GUI Building
 	wxMenu* menuFile = new wxMenu;
-	menuFile->Append(ID_Details, "Server &Details...\tCtrl+D", "Server Connection Details");
-	menuFile->Append(ID_ShowPreferences, "Preferences...\tCtrl+,");
+	menuFile->Append(ID_ShowPreferences, "Preferences...\tCtrl-,", "Edit server preferences");
+	menuFile->AppendSeparator();
+	menuFile->Append(wxID_ABOUT);
+	menuFile->Append(wxID_EXIT);
 
 	wxMenuBar* menuBar = new wxMenuBar;
-	menuBar->Append(menuFile, "&File");
+	menuBar->Append(menuFile, "File");
 
 	SetMenuBar(menuBar);
 
@@ -78,8 +80,9 @@ ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
 	this->Centre(wxBOTH);
 
 	// Window event bindings
-	Bind(wxEVT_MENU, &ServerWindow::OnDetails, this, ID_Details);
 	Bind(wxEVT_MENU, &ServerWindow::OnShowPreferences, this, ID_ShowPreferences);
+	Bind(wxEVT_MENU, &ServerWindow::OnAbout, this, wxID_ABOUT);
+	Bind(wxEVT_MENU, &ServerWindow::OnExit, this, wxID_EXIT);
 	Bind(wxEVT_CLOSE_WINDOW, &ServerWindow::OnClose, this);
 
 	// Server event bindings

@@ -5,9 +5,30 @@
 #include "../serverpreferenceseditor/serverpreferenceseditor.h"
 
 #pragma region Window Events
+void ServerWindow::OnShowPreferences(wxCommandEvent& event) {
+	ServerPreferencesEditor editor{ ServerPreferencesManager::GetInstance().GetPreferences(), this };
+	editor.ShowModal();
+}
+
+void ServerWindow::OnAbout(wxCommandEvent& event) {
+	TCPSocket::SocketInfo localConnection = server->GetServerInfo();
+
+	std::string message = "";
+	message += "Hostname: " + localConnection.Address + "\n";
+	message += "Port: " + std::to_string(localConnection.Port) + "\n";
+	message += "wxWidgets: " wxVERSION_NUM_DOT_STRING;
+
+	wxMessageBox(message);
+}
+
+void ServerWindow::OnExit(wxCommandEvent& event) {
+	this->Close();
+}
+
 void ServerWindow::OnClose(wxCloseEvent& event) {
 	// we MUST wait for the thread to stop. The thread assumes this object
 	// has not been destroyed while it is running.
+
 	wxThread* thread = GetThread();
 	if (thread && thread->IsRunning()) {
 		std::unique_lock<std::mutex> lock(shutdownLock);
@@ -24,22 +45,6 @@ void ServerWindow::OnClose(wxCloseEvent& event) {
 	}
 
 	Destroy();
-}
-
-void ServerWindow::OnDetails(wxCommandEvent& event) {
-	TCPSocket::SocketInfo localConnection = server->GetServerInfo();
-
-	std::string message = "";
-	message += "Hostname: " + localConnection.Address + "\n";
-	message += "Port: " + std::to_string(localConnection.Port) + "\n";
-	message += "wxWidgets: " wxVERSION_NUM_DOT_STRING;
-
-	wxMessageBox(message);
-}
-
-void ServerWindow::OnShowPreferences(wxCommandEvent& event) {
-	ServerPreferencesEditor editor{ ServerPreferencesManager::GetInstance().GetPreferences(), this };
-	editor.ShowModal();
 }
 #pragma endregion
 
@@ -63,7 +68,6 @@ void ServerWindow::OnClientRegistered(wxThreadEvent& event) {
 }
 
 void ServerWindow::OnServerPushLog(wxThreadEvent& event) {
-	// eheh, I love this type system... not... WHY CAN I NOT FORCE A TYPE FOR THE PAYLOAD OF THE EVENT WTF
 	wxString message = event.GetPayload<wxString>();
 	this->SetLastLogMessage(message.ToStdString());
 

@@ -8,7 +8,6 @@ event->SetPayload(wxString(message));							\
 wxQueueEvent(this, event);										\
 }
 
-wxString CreateLogMessage(NetworkMessage& receivedMessage);
 wxBitmap BitmapFromByteVector(std::vector<byte> data);
 
 // Despite the name of this function, it is defining the entry for the server thread.
@@ -27,6 +26,9 @@ void* ServerWindow::Entry() {
 void ServerWindow::ConnectionHandler(Server::Connection& con) {
 	std::unique_lock<std::mutex> lock(shutdownLock, std::try_to_lock);
 	if (!lock.owns_lock()) {
+		// most of the time we will acquire the lock. We can tell the compiler that we expect not to fall into this branch.
+		[[unlikely]]
+
 		// we did not acquire the lock. This means that we MUST NOT create a future (we are in the process of shutting down)
 		con.Terminate();
 		return;
@@ -108,10 +110,9 @@ void ServerWindow::ClientDisconnected(Server::Connection& connection) {
 }
 
 bool ServerWindow::MessageReceived(NetworkMessage& receivedMessage) {
+	PUSH_LOG_MESSAGE(std::format("Received {} message ({} bytes)", NetworkMessage::TagName(receivedMessage.tag), receivedMessage.data.size()));
+
 	using Tag = NetworkMessage::Tag;
-
-	PUSH_LOG_MESSAGE(CreateLogMessage(receivedMessage));
-
 	switch (receivedMessage.tag) {
 		case Tag::StreamFrame:	return StreamFrameMessageHandler(receivedMessage);
 		default: return false;
@@ -135,19 +136,6 @@ bool ServerWindow::StreamFrameMessageHandler(NetworkMessage& message) {
 
 	wxQueueEvent(this, event);
 	return true;
-}
-
-wxString CreateLogMessage(NetworkMessage& receivedMessage) {
-	using Tag = NetworkMessage::Tag;
-	size_t byteCount = receivedMessage.data.size();
-
-	switch (receivedMessage.tag) {
-		case Tag::Hello:		return std::format("Received Hello ({} bytes)", byteCount);
-		case Tag::StartStream:	return std::format("Received StartVideoStream ({} bytes)", byteCount);
-		case Tag::StopStream:	return std::format("Received EndVideoStream ({} bytes)", byteCount);
-		case Tag::StreamFrame:	return std::format("Received StreamFrame ({} bytes)", byteCount);
-		default: return "Unhandled message type: " + std::to_string(static_cast<NetworkMessage::TagType>(receivedMessage.tag));
-	}
 }
 
 // TODO: could this be handled on another thread then moved over the thread boundary?

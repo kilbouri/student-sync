@@ -37,9 +37,6 @@ private:
 };
 
 struct Server::Connection {
-	// This reference is always safe. When the server is stopped or destroyed,
-	// it will also destroy all of its Connections. Thus if a Connection exists,
-	// then the server also still exists.
 	TCPSocket socket = TCPSocket::InvalidSocket();
 	unsigned long identifier;
 

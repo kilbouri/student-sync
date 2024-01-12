@@ -33,7 +33,7 @@ bool Socket::Shutdown(Direction direction) {
 
 bool Socket::Close() {
 	// closing an invalid socket is vacuous.
-	if (*underlyingSocket == INVALID_SOCKET) {
+	if (!IsValid()) {
 		return true;
 	}
 
@@ -76,7 +76,7 @@ Socket::IOResult Socket::WriteAllBytes(const byte* buffer, size_t nBytes) {
 		}
 
 		bytesSent += writeResult;
-	} while (bytesSent < nBytes);
+	} while (bytesSent < nBytes && IsValid());
 
 	return IOResult::Success;
 }
@@ -84,29 +84,25 @@ Socket::IOResult Socket::WriteAllBytes(const byte* buffer, size_t nBytes) {
 Socket::IOResult Socket::ReadAllBytes(byte* buffer, size_t nBytes) {
 	size_t bytesRead = 0;
 
-	//! somehow, the first message is causing an error. The cause is the socket having
-	//! the underlyingSocket become nullptr while we are still reading.
-	//! First place to look is to see if we are accidentally missing a return code below.
-
 	do {
 		// We can read any number of bytes in range [remaining, INT_MAX] at once
 		size_t remaining = nBytes - bytesRead;
 		int readableBytes = static_cast<int>(std::min<size_t>(remaining, std::numeric_limits<int>::max()));
 
 		int readResult = ReadBytes(buffer + bytesRead, readableBytes);
-		switch (readResult) {
-			case 0:
-				this->Close();
-				return IOResult::ConnectionClosed;
-			case SOCKET_ERROR:
-				return IOResult::Error;
-			default:
-				bytesRead += readResult;
-				break;
+		int lastError = WSAGetLastError();
+		if (readResult == 0 || (readResult == SOCKET_ERROR && lastError == WSAECONNRESET)) {
+			this->Close();
+			return IOResult::ConnectionClosed;
 		}
-	} while (bytesRead < nBytes);
+		else if (readResult == SOCKET_ERROR) {
+			return IOResult::Error;
+		}
 
-	return IOResult::Success;
+		bytesRead += readResult;
+	} while (bytesRead < nBytes && IsValid());
+
+	return IOResult::Success;		
 }
 
 const SOCKET Socket::GetDescriptor() const {
@@ -114,7 +110,7 @@ const SOCKET Socket::GetDescriptor() const {
 }
 
 bool Socket::IsValid() const {
-	return *underlyingSocket != INVALID_SOCKET;
+	return underlyingSocket && *underlyingSocket != INVALID_SOCKET;
 }
 
 TCPSocket::TCPSocket() : Socket(socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) {}

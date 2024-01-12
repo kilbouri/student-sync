@@ -118,7 +118,8 @@ std::optional<wxFrame*> DoClientStartup() {
 		return std::nullopt;
 	}
 
-	return new ClientWindow("StudentSync - Client", addressCtrl->GetValue().ToStdString(), portValue);
+	std::string hostname = addressCtrl->GetValue().ToStdString();
+	return new ClientWindow("StudentSync - Client", hostname, portValue);
 }
 
 std::optional<wxFrame*> DoServerStartup() {

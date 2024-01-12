@@ -8,15 +8,6 @@ int64_t ntohll_signed(int64_t value) {
 	return static_cast<int64_t>(ntohll(static_cast<uint64_t>(value)));
 }
 
-constexpr bool NetworkMessage::IsValidTag(TagType tag) {
-#define CreateSwitch(name) case static_cast<TagType>(NetworkMessage::Tag::name): return true;
-	switch (tag) {
-		TagValues(CreateSwitch)
-		default: return false;
-	}
-#undef CreateSwitch
-}
-
 NetworkMessage::NetworkMessage(Tag dataType, Value data) : tag{ dataType }, data{ data } {}
 
 std::optional<NetworkMessage> NetworkMessage::TryReceive(Socket& socket) {
