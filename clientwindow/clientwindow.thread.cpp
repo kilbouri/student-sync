@@ -1,10 +1,11 @@
 // included in clientwindow.cpp
 
 #include "clientwindow.h"
+
 #include <thread>
+
 #include "../clientpreferencesmanager/clientpreferencesmanager.h"
-#include "../common/messages/hellomessage.h"
-#include "../common/messages/okmessage.h"
+#include "../common/message/message.h"
 
 #define PUSH_LOG_MESSAGE(message)								\
 {																\

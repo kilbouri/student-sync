@@ -8,9 +8,7 @@
 #include "../server/server.h"
 #include "../common/socket/socket.h"
 #include "../common/videostreamwindow/videostreamwindow.h"
-#include "../common/messages/hellomessage.h"
-#include "../common/messages/okmessage.h"
-#include "../common/messages/streamframemessage.h"
+#include "../common/message/message.h"
 
 
 #define Events(x) \

@@ -5,9 +5,7 @@
 #include <string>
 
 #include "../common/socket/socket.h"
-#include "../common/messages/hellomessage.h"
-#include "../common/networkmessage/networkmessage.h"
-#include "../common/messages/streamframemessage.h"
+#include "../common/message/message.h"
 
 Client::Client(std::string& hostname, int port, ConnectionHandler handler)
 	: socket(TCPSocket{})
