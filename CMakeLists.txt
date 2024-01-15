@@ -29,6 +29,7 @@ set(CLASSES
 	"modeselectdialog/modeselectdialog"
 	"serverpreferenceseditor/serverpreferenceseditor"
 	"serverpreferencesmanager/serverpreferencesmanager"
+	"serversession/serversession"
 )
 
 # Elements in this set are a standalone header

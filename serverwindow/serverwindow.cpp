@@ -8,141 +8,144 @@
 #include "serverwindow.thread.cpp"
 #include "serverwindow.events.cpp"
 
-#define DefineEvent(evtName) wxDEFINE_EVENT(evtName, wxThreadEvent);
-Events(DefineEvent)
 
-ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
-	: wxFrame(NULL, wxID_ANY, title), server{ nullptr }
-{
-	statusBar = new wxStatusBar(this);
-	statusBar->SetFieldsCount(2);
+namespace StudentSync::Server {
+	#define DefineEvent(evtName) wxDEFINE_EVENT(evtName, wxThreadEvent);
+	Events(DefineEvent);
 
-	this->SetConnectedClientsCounter(0);
-	this->SetLastLogMessage("All quiet...");
-	this->SetStatusBar(statusBar);
 
-	// GUI Building
-	wxMenu* menuFile = new wxMenu;
-	menuFile->Append(ID_ShowPreferences, "Preferences...\tCtrl-,", "Edit server preferences");
-	menuFile->AppendSeparator();
-	menuFile->Append(wxID_ABOUT);
-	menuFile->Append(wxID_EXIT);
+	ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
+		: wxFrame(NULL, wxID_ANY, title), server{ nullptr }
+	{
+		statusBar = new wxStatusBar(this);
+		statusBar->SetFieldsCount(2);
 
-	wxMenuBar* menuBar = new wxMenuBar;
-	menuBar->Append(menuFile, "File");
+		this->SetConnectedClientsCounter(0);
+		this->SetLastLogMessage("All quiet...");
+		this->SetStatusBar(statusBar);
 
-	SetMenuBar(menuBar);
+		// GUI Building
+		wxMenu* menuFile = new wxMenu;
+		menuFile->Append(ID_ShowPreferences, "Preferences...\tCtrl-,", "Edit server preferences");
+		menuFile->AppendSeparator();
+		menuFile->Append(wxID_ABOUT);
+		menuFile->Append(wxID_EXIT);
 
-	wxBoxSizer* rootSizer = new wxBoxSizer(wxVERTICAL);
+		wxMenuBar* menuBar = new wxMenuBar;
+		menuBar->Append(menuFile, "File");
 
-	splitter = new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSP_3D | wxSP_LIVE_UPDATE);
-	splitter->SetMinimumPaneSize(std::max(1, this->GetCharWidth() * 12));
+		SetMenuBar(menuBar);
 
-	sidebar = new wxScrolledWindow(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHSCROLL | wxVSCROLL);
-	sidebar->SetScrollRate(5, 5);
-	sidebar->SetBackgroundColour(wxColour(238, 238, 238));
+		wxBoxSizer* rootSizer = new wxBoxSizer(wxVERTICAL);
 
-	wxBoxSizer* sidebarItemsSizer = new wxBoxSizer(wxVERTICAL);
+		splitter = new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSP_3D | wxSP_LIVE_UPDATE);
+		splitter->SetMinimumPaneSize(std::max(1, this->GetCharWidth() * 12));
 
-	// add sidebar items here...
-	sidebarText = new wxStaticText(sidebar, wxID_ANY, "Clients will appear here in the future.");
-	sidebarText->SetMinSize(wxSize{ 5 * this->GetCharWidth(), sidebarText->GetMinHeight() });
-	sidebarItemsSizer->Add(sidebarText, 1, wxEXPAND);
+		sidebar = new wxScrolledWindow(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHSCROLL | wxVSCROLL);
+		sidebar->SetScrollRate(5, 5);
+		sidebar->SetBackgroundColour(wxColour(238, 238, 238));
 
-	sidebar->SetSizer(sidebarItemsSizer);
-	sidebar->Layout();
+		wxBoxSizer* sidebarItemsSizer = new wxBoxSizer(wxVERTICAL);
 
-	mainContentPanel = new wxPanel(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxBORDER_NONE);
+		// add sidebar items here...
+		sidebarText = new wxStaticText(sidebar, wxID_ANY, "Clients will appear here in the future.");
+		sidebarText->SetMinSize(wxSize{ 5 * this->GetCharWidth(), sidebarText->GetMinHeight() });
+		sidebarItemsSizer->Add(sidebarText, 1, wxEXPAND);
 
-	wxBoxSizer* mainContentSizer = new wxBoxSizer(wxVERTICAL);
+		sidebar->SetSizer(sidebarItemsSizer);
+		sidebar->Layout();
 
-	streamView = new VideoFrameBitmap(mainContentPanel, wxID_ANY);
-	streamView->SetScaleMode(VideoFrameBitmap::ScaleMode::Scale_AspectFit);
-	streamView->SetBackgroundColour(wxColor{ 24, 24, 24 });
+		mainContentPanel = new wxPanel(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxBORDER_NONE);
 
-	mainContentSizer->Add(streamView, 1, wxEXPAND);
+		wxBoxSizer* mainContentSizer = new wxBoxSizer(wxVERTICAL);
 
-	mainContentPanel->SetSizer(mainContentSizer);
-	mainContentPanel->Layout();
+		streamView = new VideoFrameBitmap(mainContentPanel, wxID_ANY);
+		streamView->SetScaleMode(VideoFrameBitmap::ScaleMode::Scale_AspectFit);
+		streamView->SetBackgroundColour(wxColor{ 24, 24, 24 });
 
-	constexpr double defaultSidebarProportion = 0.33;
-	const int defaultSidebarPosition = wxRound(defaultSidebarProportion * this->GetClientSize().GetWidth());
-	splitter->SplitVertically(sidebar, mainContentPanel, defaultSidebarPosition);
+		mainContentSizer->Add(streamView, 1, wxEXPAND);
 
-	rootSizer->Add(splitter, 1, wxEXPAND);
+		mainContentPanel->SetSizer(mainContentSizer);
+		mainContentPanel->Layout();
 
-	this->SetMinClientSize(this->FromDIP(wxSize{ 250, 200 }));
-	this->SetSize(this->FromDIP(wxSize{ 500, 400 }));
+		constexpr double defaultSidebarProportion = 0.33;
+		const int defaultSidebarPosition = wxRound(defaultSidebarProportion * this->GetClientSize().GetWidth());
+		splitter->SplitVertically(sidebar, mainContentPanel, defaultSidebarPosition);
 
-	this->SetDoubleBuffered(true);
-	this->SetSizer(rootSizer);
-	this->Layout();
-	this->Centre(wxBOTH);
+		rootSizer->Add(splitter, 1, wxEXPAND);
 
-	// Window event bindings
-	Bind(wxEVT_MENU, &ServerWindow::OnShowPreferences, this, ID_ShowPreferences);
-	Bind(wxEVT_MENU, &ServerWindow::OnAbout, this, wxID_ABOUT);
-	Bind(wxEVT_MENU, &ServerWindow::OnExit, this, wxID_EXIT);
-	Bind(wxEVT_CLOSE_WINDOW, &ServerWindow::OnClose, this);
+		this->SetMinClientSize(this->FromDIP(wxSize{ 250, 200 }));
+		this->SetSize(this->FromDIP(wxSize{ 500, 400 }));
 
-	// Server event bindings
-	Bind(SERVER_EVT_PUSH_LOG, &ServerWindow::OnServerPushLog, this);
-	Bind(SERVER_EVT_CLIENT_CONNECT, &ServerWindow::OnClientConnected, this);
-	Bind(SERVER_EVT_CLIENT_DISCONNECT, &ServerWindow::OnClientDisconnected, this);
-	Bind(SERVER_EVT_CLIENT_REGISTERED, &ServerWindow::OnClientRegistered, this);
-	Bind(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED, &ServerWindow::OnClientStreamFrameReceived, this);
+		this->SetDoubleBuffered(true);
+		this->SetSizer(rootSizer);
+		this->Layout();
+		this->Centre(wxBOTH);
 
-	// Start server
-	if (!StartServerThread(hostname, port)) {
-		wxLogFatalError("Failed to start server");
-	}
-}
+		// Window event bindings
+		Bind(wxEVT_MENU, &ServerWindow::OnShowPreferences, this, ID_ShowPreferences);
+		Bind(wxEVT_MENU, &ServerWindow::OnAbout, this, wxID_ABOUT);
+		Bind(wxEVT_MENU, &ServerWindow::OnExit, this, wxID_EXIT);
+		Bind(wxEVT_CLOSE_WINDOW, &ServerWindow::OnClose, this);
 
-bool ServerWindow::StartServerThread(std::string& hostname, int port) {
-	// todo: we are recommended to use std::jthread instead!
+		// Server event bindings
+		Bind(SERVER_EVT_PUSH_LOG, &ServerWindow::OnServerPushLog, this);
+		Bind(SERVER_EVT_CLIENT_CONNECT, &ServerWindow::OnClientConnected, this);
+		Bind(SERVER_EVT_CLIENT_DISCONNECT, &ServerWindow::OnClientDisconnected, this);
+		Bind(SERVER_EVT_CLIENT_REGISTERED, &ServerWindow::OnClientRegistered, this);
+		Bind(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED, &ServerWindow::OnClientStreamFrameReceived, this);
 
-	// create a thread for the server to run on
-	if (CreateThread(wxTHREAD_JOINABLE) != wxTHREAD_NO_ERROR) {
-		return false; // failed to create thread
+		// Start server
+		if (!StartServerThread(hostname, port)) {
+			wxLogFatalError("Failed to start server");
+		}
 	}
 
-	// We have a thread, lets make sure we have a valid Server instance for it to use
-	auto handler = std::bind(&ServerWindow::ConnectionHandler, this, std::placeholders::_1);
-	server = std::make_unique<Server>(hostname, port, handler);
+	bool ServerWindow::StartServerThread(std::string& hostname, int port) {
+		// todo: we are recommended to use std::jthread instead!
 
-	return GetThread()->Run() == wxTHREAD_NO_ERROR;
-}
+		// create a thread for the server to run on
+		if (CreateThread(wxTHREAD_JOINABLE) != wxTHREAD_NO_ERROR) {
+			return false; // failed to create thread
+		}
 
-void ServerWindow::SetConnectedClientsCounter(int numClients) {
-	const bool plural = numClients != 1;
-	this->statusBar->SetStatusText(std::format(
-		"{} client{} connected",
-		numClients,
-		numClients == 1 ? "" : "s"
-	), 0);
-}
+		// We have a thread, lets make sure we have a valid Server instance for it to use
+		server = std::make_unique<Server>(hostname, port);
 
-void ServerWindow::SetLastLogMessage(std::string lastMessage) {
-	this->statusBar->SetStatusText(lastMessage, 1);
-}
-
-void ServerWindow::RefreshClientList() {
-	std::string newText = "";
-
-	// todo: is there a better way to sort this stuff?
-	std::vector<ClientInfo> sortedClients;
-	sortedClients.reserve(this->clients.size());
-
-	for (auto const& [_, client] : clients) { sortedClients.push_back(client); }
-	std::sort(sortedClients.begin(), sortedClients.end(), [](ClientInfo const& first, ClientInfo const& second) -> bool {
-		return (first.username == second.username)
-			? first.identifier < second.identifier
-			: first.username < second.username;
-	});
-
-	for (auto const& [identifier, username] : sortedClients) {
-		newText += std::format("{} (id: {}) \n", username, identifier);
+		return GetThread()->Run() == wxTHREAD_NO_ERROR;
 	}
 
-	sidebarText->SetLabel(newText);
+	void ServerWindow::SetConnectedClientsCounter(int numClients) {
+		const bool plural = numClients != 1;
+		this->statusBar->SetStatusText(std::format(
+			"{} client{} connected",
+			numClients,
+			numClients == 1 ? "" : "s"
+		), 0);
+	}
+
+	void ServerWindow::SetLastLogMessage(std::string lastMessage) {
+		this->statusBar->SetStatusText(lastMessage, 1);
+	}
+
+	void ServerWindow::RefreshClientList() {
+		std::string newText = "";
+
+		// todo: is there a better way to sort this stuff?
+		std::vector<ClientInfo> sortedClients;
+		sortedClients.reserve(this->clients.size());
+
+		for (auto const& [_, client] : clients) { sortedClients.push_back(client); }
+		std::sort(sortedClients.begin(), sortedClients.end(), [](ClientInfo const& first, ClientInfo const& second) -> bool {
+			return (first.username == second.username)
+				? first.identifier < second.identifier
+				: first.username < second.username;
+		});
+
+		for (auto const& [identifier, username] : sortedClients) {
+			newText += std::format("{} (id: {}) \n", username, identifier);
+		}
+
+		sidebarText->SetLabel(newText);
+	}
 }

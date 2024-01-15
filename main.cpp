@@ -5,6 +5,8 @@
 #include "clientwindow/clientwindow.h"
 #include "serverwindow/serverwindow.h"
 
+using StudentSync::Server::ServerWindow;
+
 constexpr int DEFAULT_PORT_NUMBER = 1000;
 
 class App : public wxApp {
