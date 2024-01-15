@@ -18,13 +18,15 @@ int64_t ntohll_signed(int64_t value);
 // StreamParams: the client's stream preferences
 // InitializeStream: the server wants the client to start streaming with the provided preferences
 // StreamFrame: a single frame of the stream
+// EndStream: the client should stop sending frames
 #define TagValues(x)	\
 	x(Hello)			\
 	x(Ok)				\
 	x(GetStreamParams)	\
 	x(StreamParams)		\
 	x(InitializeStream)	\
-	x(StreamFrame)
+	x(StreamFrame)      \
+	x(EndStream)
 
 #define CreateEnum(name) name,
 enum class NetworkMessageTag : uint8_t { TagValues(CreateEnum) };
