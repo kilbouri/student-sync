@@ -39,9 +39,7 @@ set(EXTRA_HEADERS
 	"common/task/task.h"
 	"common/managedhandle/managedhandle.h"
 	"common/socket/socket.h"
-	"common/messages/hellomessage.h"
-	"common/messages/okmessage.h"
-	"common/messages/streamframemessage.h"
+	"common/message/message.h"
 	"common/preferenceseditor/preferenceseditor.h"
 )
 
