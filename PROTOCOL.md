@@ -42,6 +42,7 @@ will occur:
 4. Client: `StreamFrame`, carrying a single frame of the stream, of resolution not exceeding that received in the preceeding `InitializeStream` message.
 5. Continue from 4 once 1000/FPS milliseconds have passed since the last `StreamFrame` message was sent.
 6. Server, at any time after `InitializeStream`: `EndStream` at which point the client must break out of the loop above.
+7. Client, in response to `EndStream`: `Ok`. Any message received by the server after the server sent `EndStream` that is not `Ok` MUST be ignored.
 
 Implementation-specific communication may occur when the above is not in progress. Note, however, that this extra communication may be ignored
 or cause the other party to close the connection if they are not expecting such communication.
