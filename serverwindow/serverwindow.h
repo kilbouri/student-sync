@@ -27,8 +27,8 @@ namespace StudentSync::Server {
 	class ServerWindow : public wxFrame, public wxThreadHelper {
 	public:
 		struct ClientInfo {
-			unsigned long identifier;
-			std::string username;
+			unsigned long identifier = 0;
+			std::string username = "";
 		};
 
 		enum {
@@ -48,7 +48,7 @@ namespace StudentSync::Server {
 		// Window elements
 		wxSplitterWindow* splitter;
 		wxScrolledWindow* sidebar;
-		wxStaticText* sidebarText; // this is a bodge, we should make this a box sizer of specialized components
+		wxBoxSizer* sidebarItems;
 		wxPanel* mainContentPanel;
 		VideoFrameBitmap* streamView;
 		wxStatusBar* statusBar;
@@ -76,6 +76,5 @@ namespace StudentSync::Server {
 		// Server Thread elements (defined in serverwindow.thread.cpp)
 		bool StartServerThread(std::string& hostname, int port);
 		void* Entry() override; // Inherited via wxThreadHelper
-
 	};
 }

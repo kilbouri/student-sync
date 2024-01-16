@@ -45,14 +45,10 @@ namespace StudentSync::Server {
 		sidebar->SetScrollRate(5, 5);
 		sidebar->SetBackgroundColour(wxColour(238, 238, 238));
 
-		wxBoxSizer* sidebarItemsSizer = new wxBoxSizer(wxVERTICAL);
+		sidebarItems = new wxBoxSizer(wxVERTICAL);
+		sidebarItems->Add(new wxStaticText(sidebar, wxID_ANY, "No Clients"), 1, wxEXPAND);
 
-		// add sidebar items here...
-		sidebarText = new wxStaticText(sidebar, wxID_ANY, "Clients will appear here in the future.");
-		sidebarText->SetMinSize(wxSize{ 5 * this->GetCharWidth(), sidebarText->GetMinHeight() });
-		sidebarItemsSizer->Add(sidebarText, 1, wxEXPAND);
-
-		sidebar->SetSizer(sidebarItemsSizer);
+		sidebar->SetSizer(sidebarItems);
 		sidebar->Layout();
 
 		mainContentPanel = new wxPanel(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL | wxBORDER_NONE);
@@ -129,8 +125,6 @@ namespace StudentSync::Server {
 	}
 
 	void ServerWindow::RefreshClientList() {
-		std::string newText = "";
-
 		// todo: is there a better way to sort this stuff?
 		std::vector<ClientInfo> sortedClients;
 		sortedClients.reserve(this->clients.size());
@@ -142,10 +136,16 @@ namespace StudentSync::Server {
 				: first.username < second.username;
 		});
 
+
+		this->Freeze();
+		sidebarItems->Clear(true);
+
 		for (auto const& [identifier, username] : sortedClients) {
-			newText += std::format("{} (id: {}) \n", username, identifier);
+			std::string label = std::format("{} (id: {}) \n", username, identifier);
+			wxStaticText* text = new wxStaticText(sidebar, wxID_ANY, label);
+			sidebarItems->Add(text);
 		}
 
-		sidebarText->SetLabel(newText);
+		this->Thaw();
 	}
 }
