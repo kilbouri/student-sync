@@ -1,47 +1,122 @@
 #include "serversession.h"
 
 #include <functional>
+#include "../common/message/message.h"
+
+using namespace StudentSync::Common;
 
 namespace StudentSync::Server {
 	Session::Session(TCPSocket&& socket)
 		: lock{ std::mutex() }
 		, notifier{ std::condition_variable() }
 		, socket{ std::move(socket) }
-		, state{ State::Idle }
-		, lastState{ State::Idle }
+		, __state{ State::Idle }
 		, executor{ nullptr }
 	{
 		executor = std::make_unique<std::jthread>(std::bind(&Session::ThreadEntry, this));
 	}
 
-	void Session::SetState(State state) {
-		{
-			std::scoped_lock<std::mutex> guard{ lock };
-			this->lastState = this->state;
-			this->state = state;
+	bool Session::SetState(State state) {
+		std::unique_lock<std::mutex> guard{ lock };
+		bool terminated = __state == State::Terminated;
+		if (!terminated) {
+			__state = state;
 		}
+		guard.unlock();
 
 		notifier.notify_all();
+		return !terminated;
 	}
 
 	void Session::Join() {
-		{
-			std::scoped_lock<std::mutex> guard{ lock };
-			if (this->state != State::Terminated) {
-				throw "Session::Join must only be called while the Session is in the Terminated state!";
-			}
+		std::unique_lock<std::mutex> guard{ lock };
+		if (__state != State::Terminated) {
+			throw "Session::Join must only be called while the Session is in the Terminated state!";
 		}
+		guard.unlock();
 
 		executor->join();
 	}
 
+	void Session::Terminate() {
+		std::scoped_lock<std::mutex> guard{ lock };
+		__state = State::Terminated;
+		socket.Close();
+	}
+
+	Session::State Session::GetState() {
+		std::scoped_lock<std::mutex> guard{ lock };
+		return __state;
+	}
+
 	void Session::ThreadEntry() {
-		std::unique_lock guard{ lock };
+		auto hello = Messages::TryReceive<Messages::Hello>(socket);
+		if (!hello) {
+			return this->Terminate();
+		}
 
-		while (this->state != State::Terminated) {
-			notifier.wait_for(guard, std::chrono::seconds(5));
+		// todo: call an event handler to deal with the client registering
 
-			// todo: do stuff with updated state...
+		if (!Messages::Ok{}.ToNetworkMessage().Send(socket)) {
+			return this->Terminate();
+		}
+
+		// We store a copy of the state so that we don't have to contend the lock.
+		// We, then, are assuming that our state will not change within a single
+		// iteration.
+		State currentState = State::Idle;
+		while ((currentState = GetState()) != State::Terminated) {
+			// wait until we have a state update
+			std::unique_lock guard{ lock };
+			notifier.wait(guard);
+			currentState = __state;
+			guard.unlock();
+
+			if (currentState == State::Streaming) {
+				// start streaming (which will come back to this method
+				// when the state stops being Streaming in the future)
+				this->ThreadStreaming();
+			}
+		}
+
+		// session termination/cleanup (occurs under lock)
+		return this->Terminate();
+	}
+
+	void Session::ThreadStreaming() {
+		if (!Messages::GetStreamParams{}.ToNetworkMessage().Send(socket)) {
+			return this->Terminate();
+		}
+
+		auto clientParams = Messages::TryReceive<Messages::StreamParams>(socket);
+		if (!clientParams) {
+			return this->Terminate();
+		}
+
+		// todo: make this take into account local preferences
+		Messages::InitializeStream initMessage{
+			.frameRate = std::min(60l, clientParams->frameRate),
+			.resolution = clientParams->resolution
+		};
+		if (!initMessage.ToNetworkMessage().Send(socket)) {
+			return this->Terminate();
+		}
+
+		// We store a copy of the state so that we don't have to contend the lock.
+		// We, then, are assuming that our state will not change within a single
+		// iteration.
+		State state = State::Idle;
+		while ((state = GetState()) == State::Streaming) {
+			auto frame = Messages::TryReceive<Messages::StreamFrame>(socket);
+			if (!frame) {
+				break;
+			}
+
+			// todo: interact with the frame message...
+		}
+
+		if (!Messages::EndStream{}.ToNetworkMessage().Send(socket)) {
+			return this->Terminate();
 		}
 	}
 }

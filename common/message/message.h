@@ -11,12 +11,14 @@
 #include "streamframe.h"
 #include "endstream.h"
 
-template <typename TMessage>
-static inline std::optional<TMessage> TryReceiveMessage(TCPSocket& socket) {
-	const std::optional<NetworkMessage> netMessage = NetworkMessage::TryReceive(socket);
-	if (!netMessage) {
-		return std::nullopt;
-	}
+namespace StudentSync::Common::Messages {
+	template <typename TMessage>
+	static inline std::optional<TMessage> TryReceive(TCPSocket& socket) {
+		const std::optional<NetworkMessage> netMessage = NetworkMessage::TryReceive(socket);
+		if (!netMessage) {
+			return std::nullopt;
+		}
 
-	return TMessage::FromNetworkMessage(*netMessage);
+		return TMessage::FromNetworkMessage(*netMessage);
+	}
 }

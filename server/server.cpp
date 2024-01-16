@@ -10,8 +10,7 @@
 #include <coroutine>
 
 namespace StudentSync::Server {
-	Server::Server(std::string& hostname, int port)
-		: serverSocket{ TCPSocket{} }
+	Server::Server(std::string& hostname, int port) : serverSocket{ TCPSocket{} }
 	{
 		if (!serverSocket.Bind(hostname, port)) {
 			throw "Server failed to bind to " + hostname + ":" + std::to_string(port);
@@ -31,7 +30,6 @@ namespace StudentSync::Server {
 			}
 
 			sessions.emplace_back(std::make_unique<Session>(std::move(*client)));
-			continue;
 		}
 	}
 

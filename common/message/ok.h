@@ -1,16 +1,18 @@
 #pragma once
 #include "../networkmessage/networkmessage.h"
 
-struct OkMessage {
-	static std::optional<OkMessage> FromNetworkMessage(const NetworkMessage& netMessage) noexcept {
-		if (netMessage.tag != NetworkMessage::Tag::Ok) {
-			return std::nullopt;
+namespace StudentSync::Common::Messages {
+	struct Ok {
+		static std::optional<Ok> FromNetworkMessage(const NetworkMessage& netMessage) noexcept {
+			if (netMessage.tag != NetworkMessage::Tag::Ok) {
+				return std::nullopt;
+			}
+
+			return Ok{};
 		}
 
-		return OkMessage{};
-	}
-
-	NetworkMessage ToNetworkMessage() const noexcept {
-		return NetworkMessage(NetworkMessage::Tag::Ok);
-	}
-};
+		NetworkMessage ToNetworkMessage() const noexcept {
+			return NetworkMessage(NetworkMessage::Tag::Ok);
+		}
+	};
+}

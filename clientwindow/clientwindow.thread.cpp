@@ -7,6 +7,8 @@
 #include "../clientpreferencesmanager/clientpreferencesmanager.h"
 #include "../common/message/message.h"
 
+using namespace StudentSync::Common;
+
 #define PUSH_LOG_MESSAGE(message)								\
 {																\
 wxThreadEvent* event = new wxThreadEvent(CLIENT_EVT_PUSH_LOG);	\
@@ -21,13 +23,13 @@ void ClientWindow::ThreadEntry() {
 void ClientWindow::ConnectionHandler(Client::Connection connection) {
 	std::string username = ClientPreferencesManager::GetInstance().GetPreferences().displayName;
 
-	if (!HelloMessage{ username }.ToNetworkMessage().Send(connection.socket)) {
+	if (!Messages::Hello{ username }.ToNetworkMessage().Send(connection.socket)) {
 		PUSH_LOG_MESSAGE("Registration failed (failed to send Hello)");
 		return wxQueueEvent(this, new wxThreadEvent(CLIENT_EVT_REGISTRATION_FAILED));
 	}
 
-	auto reply = NetworkMessage::TryReceive(connection.socket);
-	if (!reply || reply->tag != NetworkMessage::Tag::Ok) {
+	auto okReply = Messages::TryReceive<Messages::Ok>(connection.socket);
+	if (!okReply) {
 		PUSH_LOG_MESSAGE("Registration failed (reply was not Ok)");
 		return wxQueueEvent(this, new wxThreadEvent(CLIENT_EVT_REGISTRATION_FAILED));
 	}
