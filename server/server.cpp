@@ -10,7 +10,9 @@
 #include <coroutine>
 
 namespace StudentSync::Server {
-	Server::Server(std::string& hostname, int port) : serverSocket{ TCPSocket{} }
+	Server::Server(std::string& hostname, int port, std::shared_ptr<Session::EventDispatcher> eventDispatcher)
+		: serverSocket{ TCPSocket{} }
+		, dispatcher{ eventDispatcher }
 	{
 		if (!serverSocket.Bind(hostname, port)) {
 			throw "Server failed to bind to " + hostname + ":" + std::to_string(port);
@@ -18,6 +20,8 @@ namespace StudentSync::Server {
 	}
 
 	void Server::Run() {
+		unsigned long sessionId = 0;
+
 		if (!serverSocket.Listen(TCPSocket::MaxConnectionQueueLength)) {
 			throw "Server failed to listen";
 		}
@@ -29,7 +33,11 @@ namespace StudentSync::Server {
 				continue;
 			}
 
-			sessions.emplace_back(std::make_unique<Session>(std::move(*client)));
+			sessions.emplace_back(std::make_unique<Session>(
+				sessionId,
+				std::move(*client),
+				dispatcher
+			));
 		}
 	}
 
@@ -46,10 +54,6 @@ namespace StudentSync::Server {
 
 		// don't forget to clear the session list :)
 		sessions.clear();
-	}
-
-	int Server::GetConnectionCount() const {
-		return sessions.size();
 	}
 
 	TCPSocket::SocketInfo Server::GetServerInfo() const {

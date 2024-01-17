@@ -2,23 +2,44 @@
 
 #include <mutex>
 #include <condition_variable>
-
+#include <functional>
+#include "../common/message/message.h"
 #include "../common/socket/socket.h"
 
 namespace StudentSync::Server {
 	struct Session {
+		struct EventDispatcher {
+			/// <summary>
+			/// Called after the Session is created, but before it begins executing.
+			/// </summary>
+			virtual void SessionStarted(Session const& session) = 0;
+
+			/// <summary>
+			/// Called after the Session has ended. The state will always be Terminated
+			/// and the socket will always be closed.
+			/// </summary>
+			virtual void SessionEnded(Session const& session) = 0;
+
+			/// <summary>
+			/// Called immediately after a client has registered.
+			/// </summary>
+			virtual void ClientRegistered(Session const& session, StudentSync::Common::Messages::Hello const& message) = 0;
+		};
+
 		enum class State {
 			Idle,
 			Streaming,
 			Terminated
 		};
 
+		const unsigned long identifier;
+
 		/// <summary>
 		/// Creates a new server session. The session begins executing
 		/// immediately on a new thread.
 		/// </summary>
 		/// <param name="socket">The TCP Socket the client is connected on. Must be moved in.</param>
-		Session(TCPSocket&& socket);
+		Session(unsigned long identifier, TCPSocket&& socket, std::shared_ptr<EventDispatcher> dispatcher);
 
 		/// <summary>
 		/// Thread-safely sets the state of the session, and wakes up the
@@ -43,7 +64,7 @@ namespace StudentSync::Server {
 		Session& operator=(const Session&) = delete;	// Copy assignment
 		Session(Session&&) = delete;					// Move constructor
 		Session& operator=(Session&&) = delete;			// Move assignment
-
+		~Session() noexcept;
 	private:
 		TCPSocket socket;
 
@@ -57,6 +78,8 @@ namespace StudentSync::Server {
 		std::mutex lock;
 		std::condition_variable notifier;
 		std::unique_ptr<std::jthread> executor; // this is a unique_ptr so that we can late-initialize it
+
+		std::shared_ptr<EventDispatcher> dispatcher;
 
 		/// <summary>
 		/// Thread-safely sets the state to Terminated and closes the socket.

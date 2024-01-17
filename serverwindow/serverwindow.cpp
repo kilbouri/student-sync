@@ -3,24 +3,24 @@
 #include <queue>
 #include <optional>
 #include <format>
+#include <ranges>
+#include <algorithm>
 
 #include "serverwindow.h"
 #include "serverwindow.thread.cpp"
 #include "serverwindow.events.cpp"
-
+#include "serverwindow.eventdispatcher.cpp"
 
 namespace StudentSync::Server {
 	#define DefineEvent(evtName) wxDEFINE_EVENT(evtName, wxThreadEvent);
 	Events(DefineEvent);
 
-
 	ServerWindow::ServerWindow(wxString title, std::string& hostname, int port)
-		: wxFrame(NULL, wxID_ANY, title), server{ nullptr }
+		: wxFrame(NULL, wxID_ANY, title), server{ nullptr }, clients{}
 	{
 		statusBar = new wxStatusBar(this);
 		statusBar->SetFieldsCount(2);
 
-		this->SetConnectedClientsCounter(0);
 		this->SetLastLogMessage("All quiet...");
 		this->SetStatusBar(statusBar);
 
@@ -33,7 +33,6 @@ namespace StudentSync::Server {
 
 		wxMenuBar* menuBar = new wxMenuBar;
 		menuBar->Append(menuFile, "File");
-
 		SetMenuBar(menuBar);
 
 		wxBoxSizer* rootSizer = new wxBoxSizer(wxVERTICAL);
@@ -85,11 +84,13 @@ namespace StudentSync::Server {
 		Bind(wxEVT_CLOSE_WINDOW, &ServerWindow::OnClose, this);
 
 		// Server event bindings
-		Bind(SERVER_EVT_PUSH_LOG, &ServerWindow::OnServerPushLog, this);
 		Bind(SERVER_EVT_CLIENT_CONNECT, &ServerWindow::OnClientConnected, this);
 		Bind(SERVER_EVT_CLIENT_DISCONNECT, &ServerWindow::OnClientDisconnected, this);
 		Bind(SERVER_EVT_CLIENT_REGISTERED, &ServerWindow::OnClientRegistered, this);
 		Bind(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED, &ServerWindow::OnClientStreamFrameReceived, this);
+
+		this->RefreshClientList();
+		this->RefreshConnectionCount();
 
 		// Start server
 		if (!StartServerThread(hostname, port)) {
@@ -106,18 +107,9 @@ namespace StudentSync::Server {
 		}
 
 		// We have a thread, lets make sure we have a valid Server instance for it to use
-		server = std::make_unique<Server>(hostname, port);
-
+		auto dispatcher = std::make_shared<EventDispatcher>(this);
+		server = std::make_unique<Server>(hostname, port, dispatcher);
 		return GetThread()->Run() == wxTHREAD_NO_ERROR;
-	}
-
-	void ServerWindow::SetConnectedClientsCounter(int numClients) {
-		const bool plural = numClients != 1;
-		this->statusBar->SetStatusText(std::format(
-			"{} client{} connected",
-			numClients,
-			numClients == 1 ? "" : "s"
-		), 0);
 	}
 
 	void ServerWindow::SetLastLogMessage(std::string lastMessage) {
@@ -136,7 +128,6 @@ namespace StudentSync::Server {
 				: first.username < second.username;
 		});
 
-
 		this->Freeze();
 		sidebarItems->Clear(true);
 
@@ -147,5 +138,15 @@ namespace StudentSync::Server {
 		}
 
 		this->Thaw();
+	}
+
+	void ServerWindow::RefreshConnectionCount() {
+		const size_t numClients = this->clients.size();
+		const bool plural = numClients != 1;
+		this->statusBar->SetStatusText(std::format(
+			"{} client{} connected",
+			numClients,
+			numClients == 1 ? "" : "s"
+		), 0);
 	}
 }

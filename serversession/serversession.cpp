@@ -6,13 +6,16 @@
 using namespace StudentSync::Common;
 
 namespace StudentSync::Server {
-	Session::Session(TCPSocket&& socket)
-		: lock{ std::mutex() }
+	Session::Session(unsigned long identifier, TCPSocket&& socket, std::shared_ptr<EventDispatcher> dispatcher)
+		: identifier{ identifier }
+		, lock{ std::mutex() }
 		, notifier{ std::condition_variable() }
 		, socket{ std::move(socket) }
 		, __state{ State::Idle }
 		, executor{ nullptr }
+		, dispatcher{ dispatcher }
 	{
+		dispatcher->SessionStarted(*this);
 		executor = std::make_unique<std::jthread>(std::bind(&Session::ThreadEntry, this));
 	}
 
@@ -42,6 +45,8 @@ namespace StudentSync::Server {
 		std::scoped_lock<std::mutex> guard{ lock };
 		__state = State::Terminated;
 		socket.Close();
+
+		dispatcher->SessionEnded(*this);
 	}
 
 	Session::State Session::GetState() {
@@ -55,7 +60,7 @@ namespace StudentSync::Server {
 			return this->Terminate();
 		}
 
-		// todo: call an event handler to deal with the client registering
+		dispatcher->ClientRegistered(*this, *hello);
 
 		if (!Messages::Ok{}.ToNetworkMessage().Send(socket)) {
 			return this->Terminate();
@@ -117,6 +122,13 @@ namespace StudentSync::Server {
 
 		if (!Messages::EndStream{}.ToNetworkMessage().Send(socket)) {
 			return this->Terminate();
+		}
+	}
+
+	Session::~Session() noexcept {
+		// if we are destroyed prematurely, make sure we perform a proper termination
+		if (GetState() != State::Terminated) {
+			Terminate();
 		}
 	}
 }

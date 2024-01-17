@@ -43,30 +43,27 @@ namespace StudentSync::Server {
 
 	#pragma region Server-sent Events
 	void ServerWindow::OnClientConnected(wxThreadEvent& event) {
-		ClientInfo client = event.GetPayload<ClientInfo>();
-		this->clients[client.identifier] = client;
+		unsigned long identifier = event.GetPayload<unsigned long>();
+		this->clients[identifier] = ClientInfo{
+			.identifier = identifier,
+			.username = "Connecting...",
+		};
+
 		this->RefreshClientList();
+		this->RefreshConnectionCount();
 	}
 
 	void ServerWindow::OnClientDisconnected(wxThreadEvent& event) {
 		unsigned long identifier = event.GetPayload<unsigned long>();
 		this->clients.erase(identifier);
 		this->RefreshClientList();
+		this->RefreshConnectionCount();
 	}
 
 	void ServerWindow::OnClientRegistered(wxThreadEvent& event) {
 		ClientInfo client = event.GetPayload<ClientInfo>();
 		this->clients[client.identifier] = client;
 		this->RefreshClientList();
-	}
-
-	void ServerWindow::OnServerPushLog(wxThreadEvent& event) {
-		wxString message = event.GetPayload<wxString>();
-		this->SetLastLogMessage(message.ToStdString());
-
-		if (this->server) {
-			this->SetConnectedClientsCounter(this->server->GetConnectionCount());
-		}
 	}
 
 	void ServerWindow::OnClientStartStream(wxThreadEvent& event) {

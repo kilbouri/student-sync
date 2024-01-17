@@ -10,9 +10,6 @@
 #include "../common/videostreamwindow/videostreamwindow.h"
 #include "../common/message/message.h"
 
-
-
-
 namespace StudentSync::Server {
 	#define Events(x) \
 		x(SERVER_EVT_PUSH_LOG)						/* a server log is being pushed from server to window */ \
@@ -34,6 +31,19 @@ namespace StudentSync::Server {
 		enum {
 			ID_Details,
 			ID_ShowPreferences
+		};
+
+		struct EventDispatcher : Session::EventDispatcher {
+
+			EventDispatcher(ServerWindow* window);
+
+			// Inherited via EventDispatcher
+			void SessionStarted(Session const& session) override;
+			void SessionEnded(Session const& session) override;
+			void ClientRegistered(Session const& session, StudentSync::Common::Messages::Hello const& message) override;
+
+		private:
+			ServerWindow* window;
 		};
 
 		ServerWindow(wxString title, std::string& hostname, int port);
@@ -63,15 +73,14 @@ namespace StudentSync::Server {
 		void OnClientConnected(wxThreadEvent& event);
 		void OnClientDisconnected(wxThreadEvent& event);
 		void OnClientRegistered(wxThreadEvent& event);
-		void OnServerPushLog(wxThreadEvent& event);
 		void OnClientStartStream(wxThreadEvent& event);
 		void OnClientStreamFrameReceived(wxThreadEvent& event);
 		void OnClientEndStream(wxThreadEvent& event);
 
 		// Helpers I guess
-		void SetConnectedClientsCounter(int numClients);
 		void SetLastLogMessage(std::string lastMessage);
 		void RefreshClientList(); // todo: I'd like to make the client list its own component
+		void RefreshConnectionCount();
 
 		// Server Thread elements (defined in serverwindow.thread.cpp)
 		bool StartServerThread(std::string& hostname, int port);
