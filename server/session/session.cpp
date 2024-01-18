@@ -61,7 +61,7 @@ namespace StudentSync::Server {
 
 		dispatcher->ClientRegistered(*this, *hello);
 
-		if (!Message::Ok{}.ToNetworkMessage().Send(socket)) {
+		if (!Message::Ok{}.ToTLVMessage().Send(socket)) {
 			return this->Terminate();
 		}
 
@@ -88,7 +88,7 @@ namespace StudentSync::Server {
 	}
 
 	void Session::ThreadStreaming() {
-		if (!Message::GetStreamParams{}.ToNetworkMessage().Send(socket)) {
+		if (!Message::GetStreamParams{}.ToTLVMessage().Send(socket)) {
 			return this->Terminate();
 		}
 
@@ -102,7 +102,7 @@ namespace StudentSync::Server {
 			.frameRate = std::min(60l, clientParams->frameRate),
 			.resolution = clientParams->resolution
 		};
-		if (!initMessage.ToNetworkMessage().Send(socket)) {
+		if (!initMessage.ToTLVMessage().Send(socket)) {
 			return this->Terminate();
 		}
 
@@ -119,7 +119,7 @@ namespace StudentSync::Server {
 			// todo: interact with the frame message...
 		}
 
-		if (!Message::EndStream{}.ToNetworkMessage().Send(socket)) {
+		if (!Message::EndStream{}.ToTLVMessage().Send(socket)) {
 			return this->Terminate();
 		}
 	}

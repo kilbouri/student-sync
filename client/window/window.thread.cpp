@@ -25,7 +25,7 @@ namespace StudentSync::Client {
 	void Window::ConnectionHandler(Client::Connection connection) {
 		std::string username = PreferencesManager::GetInstance().GetPreferences().displayName;
 
-		if (!Message::Hello{ username }.ToNetworkMessage().Send(connection.socket)) {
+		if (!Message::Hello{ username }.ToTLVMessage().Send(connection.socket)) {
 			PUSH_LOG_MESSAGE("Registration failed (failed to send Hello)");
 			return wxQueueEvent(this, new wxThreadEvent(CLIENT_EVT_REGISTRATION_FAILED));
 		}

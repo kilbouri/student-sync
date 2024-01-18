@@ -5,7 +5,7 @@ namespace StudentSync::Networking::Message {
 	struct Hello {
 		std::string username;
 
-		static std::optional<Hello> FromNetworkMessage(const TLVMessage& netMessage) noexcept {
+		static std::optional<Hello> FromTLVMessage(const TLVMessage& netMessage) noexcept {
 			if (netMessage.tag != TLVMessage::Tag::Hello) {
 				return std::nullopt;
 			}
@@ -16,7 +16,7 @@ namespace StudentSync::Networking::Message {
 			};
 		}
 
-		TLVMessage ToNetworkMessage() const noexcept {
+		TLVMessage ToTLVMessage() const noexcept {
 			TLVMessage::Value value{ username.begin(), username.end() };
 			return TLVMessage(TLVMessage::Tag::Hello, value);
 		}

@@ -8,7 +8,7 @@ namespace StudentSync::Networking::Message {
 		long frameRate;
 		Common::ScreenResolution resolution;
 
-		static std::optional<StreamParams> FromNetworkMessage(const TLVMessage& netMessage) noexcept {
+		static std::optional<StreamParams> FromTLVMessage(const TLVMessage& netMessage) noexcept {
 			if (netMessage.tag != TLVMessage::Tag::StreamParams) {
 				return std::nullopt;
 			}
@@ -37,7 +37,7 @@ namespace StudentSync::Networking::Message {
 			};
 		}
 
-		TLVMessage ToNetworkMessage() const noexcept {
+		TLVMessage ToTLVMessage() const noexcept {
 			int32_t fps = htonl(frameRate);
 			uint32_t width = htonl(resolution.width);
 			uint32_t height = htonl(resolution.height);

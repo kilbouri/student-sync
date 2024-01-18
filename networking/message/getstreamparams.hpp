@@ -3,7 +3,7 @@
 
 namespace StudentSync::Networking::Message {
 	struct GetStreamParams {
-		static std::optional<GetStreamParams> FromNetworkMessage(const TLVMessage& netMessage) noexcept {
+		static std::optional<GetStreamParams> FromTLVMessage(const TLVMessage& netMessage) noexcept {
 			if (netMessage.tag != TLVMessage::Tag::GetStreamParams) {
 				return std::nullopt;
 			}
@@ -11,7 +11,7 @@ namespace StudentSync::Networking::Message {
 			return GetStreamParams{};
 		}
 
-		TLVMessage ToNetworkMessage() const noexcept {
+		TLVMessage ToTLVMessage() const noexcept {
 			return TLVMessage(TLVMessage::Tag::GetStreamParams);
 		}
 	};

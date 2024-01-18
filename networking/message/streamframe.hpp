@@ -24,7 +24,7 @@ namespace StudentSync::Networking::Message {
 			return StreamFrame(format, std::move(*imageData));
 		}
 
-		static std::optional<StreamFrame> FromNetworkMessage(const TLVMessage& netMessage) noexcept {
+		static std::optional<StreamFrame> FromTLVMessage(const TLVMessage& netMessage) noexcept {
 			if (netMessage.tag != TLVMessage::Tag::StreamFrame || netMessage.data.size() < sizeof(DisplayCapturer::Format)) {
 				return std::nullopt;
 			}
@@ -49,7 +49,7 @@ namespace StudentSync::Networking::Message {
 			return StreamFrame(format, imageData);
 		}
 
-		TLVMessage ToNetworkMessage() const noexcept {
+		TLVMessage ToTLVMessage() const noexcept {
 			size_t imageDataSize = imageData.size() * sizeof(decltype(imageData)::value_type);
 			size_t formatSize = sizeof(format); // 8 bits, no endianness conversion needed
 

@@ -8,7 +8,7 @@ namespace StudentSync::Networking::Message {
 		long frameRate;
 		Common::ScreenResolution resolution;
 
-		static std::optional<InitializeStream> FromNetworkMessage(const TLVMessage& netMessage) noexcept {
+		static std::optional<InitializeStream> FromTLVMessage(const TLVMessage& netMessage) noexcept {
 			if (netMessage.tag != TLVMessage::Tag::InitializeStream) {
 				return std::nullopt;
 			}
@@ -17,7 +17,7 @@ namespace StudentSync::Networking::Message {
 			TLVMessage copy{ netMessage };
 			copy.tag = TLVMessage::Tag::StreamParams;
 
-			auto streamParams = StreamParams::FromNetworkMessage(netMessage);
+			auto streamParams = StreamParams::FromTLVMessage(netMessage);
 			if (!streamParams) {
 				return std::nullopt;
 			}
@@ -28,7 +28,7 @@ namespace StudentSync::Networking::Message {
 			};
 		}
 
-		TLVMessage ToNetworkMessage() const noexcept {
+		TLVMessage ToTLVMessage() const noexcept {
 			// In a realm where magic intertwines,
 			// A wizard with skills of unique designs.
 			// StreamParams, plain and true,
@@ -38,7 +38,7 @@ namespace StudentSync::Networking::Message {
 			// The message shifted, as if in a trance.
 			// InitializeStream, born in the night,
 			// Magic's embrace, weaving code just right.
-			TLVMessage message = StreamParams{ .frameRate = frameRate, .resolution = resolution }.ToNetworkMessage();
+			TLVMessage message = StreamParams{ .frameRate = frameRate, .resolution = resolution }.ToTLVMessage();
 			message.tag = TLVMessage::Tag::InitializeStream;
 			return message;
 		}

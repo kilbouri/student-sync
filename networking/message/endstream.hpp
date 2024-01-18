@@ -6,7 +6,7 @@
 
 namespace StudentSync::Networking::Message {
 	struct EndStream {
-		static std::optional<EndStream> FromNetworkMessage(const TLVMessage& netMessage) noexcept {
+		static std::optional<EndStream> FromTLVMessage(const TLVMessage& netMessage) noexcept {
 			if (netMessage.tag != TLVMessage::Tag::EndStream) {
 				return std::nullopt;
 			}
@@ -14,7 +14,7 @@ namespace StudentSync::Networking::Message {
 			return EndStream{};
 		}
 
-		TLVMessage ToNetworkMessage() const noexcept {
+		TLVMessage ToTLVMessage() const noexcept {
 			return TLVMessage(TLVMessage::Tag::EndStream);
 		}
 	};

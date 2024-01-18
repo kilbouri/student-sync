@@ -3,7 +3,7 @@
 
 namespace StudentSync::Networking::Message {
 	struct Ok {
-		static std::optional<Ok> FromNetworkMessage(const TLVMessage& netMessage) noexcept {
+		static std::optional<Ok> FromTLVMessage(const TLVMessage& netMessage) noexcept {
 			if (netMessage.tag != TLVMessage::Tag::Ok) {
 				return std::nullopt;
 			}
@@ -11,7 +11,7 @@ namespace StudentSync::Networking::Message {
 			return Ok{};
 		}
 
-		TLVMessage ToNetworkMessage() const noexcept {
+		TLVMessage ToTLVMessage() const noexcept {
 			return TLVMessage(TLVMessage::Tag::Ok);
 		}
 	};

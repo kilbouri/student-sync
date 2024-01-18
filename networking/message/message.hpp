@@ -21,6 +21,6 @@ namespace StudentSync::Networking::Message {
 			return std::nullopt;
 		}
 
-		return TMessage::FromNetworkMessage(*netMessage);
+		return TMessage::FromTLVMessage(*netMessage);
 	}
 }
