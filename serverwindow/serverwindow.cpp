@@ -38,7 +38,7 @@ namespace StudentSync::Server {
 		wxBoxSizer* rootSizer = new wxBoxSizer(wxVERTICAL);
 
 		splitter = new wxSplitterWindow(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSP_3D | wxSP_LIVE_UPDATE);
-		splitter->SetMinimumPaneSize(std::max(1, this->GetCharWidth() * 12));
+		splitter->SetMinimumPaneSize(this->GetCharWidth() * 16 + 1);
 
 		sidebar = new wxScrolledWindow(splitter, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxHSCROLL | wxVSCROLL);
 		sidebar->SetScrollRate(5, 5);
@@ -133,8 +133,8 @@ namespace StudentSync::Server {
 
 		for (auto const& [identifier, username] : sortedClients) {
 			std::string label = std::format("{} (id: {}) \n", username, identifier);
-			wxStaticText* text = new wxStaticText(sidebar, wxID_ANY, label);
-			sidebarItems->Add(text);
+			wxButton* clickyMcClickerson = new wxButton(sidebar, wxID_ANY, label);
+			sidebarItems->Add(clickyMcClickerson, 0, wxEXPAND, 0);
 		}
 
 		this->Thaw();
