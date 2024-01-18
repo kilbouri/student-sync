@@ -1,7 +1,6 @@
 ﻿# CMakeList.txt : CMake project for comp-4990-project, include source and define
 # project specific logic here.
-#
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 3.12)
 
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
@@ -27,7 +26,7 @@ set(CLASSES
 	"networking/socket/socket"
 	"networking/socket/tcpsocket"
 	"networking/tlvmessage/tlvmessage"
-	
+
 	"server/preferenceseditor/preferenceseditor"
 	"server/preferencesmanager/preferencesmanager"
 	"server/server/server" # lol
@@ -49,25 +48,23 @@ set(EXTRA_HEADERS
 )
 
 # Elements in this set can be whatever, as long as they aren't a class nor a header
-set(EXTRA_SOURCES 
-	"main.cpp" 
+set(EXTRA_SOURCES
+	"main.cpp"
 	"appManifest.manifest"
 )
 
-add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1) # stupid warning spam removal
 add_executable(
 	${PROJECT_NAME} WIN32
 	${EXTRA_HEADERS}
 	${EXTRA_SOURCES}
 )
 
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
+
 foreach(class ${CLASSES})
 	target_sources(${PROJECT_NAME} PRIVATE "${class}.hpp" "${class}.cpp")
 endforeach()
 
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
-endif()
 
 # Add wxWidgets library
 # Config info: https://docs.wxwidgets.org/latest/overview_cmake.html#cmake_options
