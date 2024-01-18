@@ -12,40 +12,47 @@ endif()
 set(PROJECT_NAME "comp-4990-project")
 project(${PROJECT_NAME})
 
-# Elements in this set have both a header and a cpp source file.
+# Elements in this set have both .hpp and .cpp files
 set(CLASSES
-	"server/server"
-	"serverwindow/serverwindow"
-	"client/client"
-	"clientwindow/clientwindow"
-	"clientpreferenceseditor/clientpreferenceseditor"
-	"clientpreferencesmanager/clientpreferencesmanager"
-	"common/screenresolution/screenresolution"
-	"common/socket/socket"
+	"client/client/client" # lol
+	"client/preferenceseditor/preferenceseditor"
+	"client/preferencesmanager/preferencesmanager"
+	"client/window/window"
+
 	"common/displaycapturer/displaycapturer"
-	"common/networkmessage/networkmessage"
-	"common/videostreamwindow/videostreamwindow"
-	"common/videostreamwindow/videoframebitmap"
-	"modeselectdialog/modeselectdialog"
-	"serverpreferenceseditor/serverpreferenceseditor"
-	"serverpreferencesmanager/serverpreferencesmanager"
-	"serversession/serversession"
+	"common/modeselectdialog/modeselectdialog"
+	"common/screenresolution/screenresolution"
+	"common/dynamicbitmap/dynamicbitmap"
+
+	"networking/socket/socket"
+	"networking/socket/tcpsocket"
+	"networking/tlvmessage/tlvmessage"
+	
+	"server/preferenceseditor/preferenceseditor"
+	"server/preferencesmanager/preferencesmanager"
+	"server/server/server" # lol
+	"server/session/session"
+	"server/window/window"
+	"server/window/eventdispatcher/eventdispatcher"
 )
 
-# Elements in this set are a standalone header
+# Elements in this set are header-only
 set(EXTRA_HEADERS
+	"common/appinfo/appinfo.hpp"
+	"common/generator/generator.hpp"
+	"common/preferenceseditor/preferenceseditor.hpp"
+	"common/task/task.hpp"
+
+	"networking/message/message.hpp"
+
 	"win32includes.h"
-	"common/appinfo/appinfo.h"
-	"common/generator/generator.h"
-	"common/task/task.h"
-	"common/managedhandle/managedhandle.h"
-	"common/socket/socket.h"
-	"common/message/message.h"
-	"common/preferenceseditor/preferenceseditor.h"
 )
 
-# Elements in this set are standalone source files.
-set(EXTRA_SOURCES "main.cpp" "appManifest.manifest")
+# Elements in this set can be whatever, as long as they aren't a class nor a header
+set(EXTRA_SOURCES 
+	"main.cpp" 
+	"appManifest.manifest"
+)
 
 add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1) # stupid warning spam removal
 add_executable(
@@ -55,7 +62,7 @@ add_executable(
 )
 
 foreach(class ${CLASSES})
-	target_sources(${PROJECT_NAME} PRIVATE "${class}.h" "${class}.cpp")
+	target_sources(${PROJECT_NAME} PRIVATE "${class}.hpp" "${class}.cpp")
 endforeach()
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)

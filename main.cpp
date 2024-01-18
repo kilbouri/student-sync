@@ -1,11 +1,12 @@
 ﻿#include <wx/numdlg.h>
 
 #include "win32includes.h"
-#include "modeselectdialog/modeselectdialog.h"
-#include "clientwindow/clientwindow.h"
-#include "serverwindow/serverwindow.h"
+#include "client/window/window.hpp"
+#include "server/window/window.hpp"
+#include "common/modeselectdialog/modeselectdialog.hpp"
 
-using StudentSync::Server::ServerWindow;
+using namespace StudentSync;
+using namespace StudentSync::Common;
 
 constexpr int DEFAULT_PORT_NUMBER = 1000;
 
@@ -23,6 +24,7 @@ typedef struct {
 	std::wstring friendlyName;
 	std::vector<std::string> ipAddresses;
 } SystemInterface;
+
 std::optional<std::vector<SystemInterface>> GetNetworkAdapters();
 
 std::optional<wxFrame*> DoClientStartup();
@@ -121,7 +123,7 @@ std::optional<wxFrame*> DoClientStartup() {
 	}
 
 	std::string hostname = addressCtrl->GetValue().ToStdString();
-	return new ClientWindow("StudentSync - Client", hostname, portValue);
+	return new Client::Window("StudentSync - Client", hostname, portValue);
 }
 
 std::optional<wxFrame*> DoServerStartup() {
@@ -197,7 +199,7 @@ std::optional<wxFrame*> DoServerStartup() {
 
 	std::string address = optionToAddress.at(options[interfaceChoice->GetSelection()]);
 
-	return new ServerWindow("StudentSync - Server", address, port);
+	return new Server::Window("StudentSync - Server", address, port);
 }
 
 // Retrieves information about all IPv4-compatible interfaces on the host.
