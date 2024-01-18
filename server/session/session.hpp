@@ -26,6 +26,11 @@ namespace StudentSync::Server {
 			/// Called immediately after a client has registered.
 			/// </summary>
 			virtual void ClientRegistered(Session const& session, Networking::Message::Hello const& message) = 0;
+
+			/// <summary>
+			/// Called upon receipt of a video frame.
+			/// </summary>
+			virtual void ClientFrameReceived(Session const& session, Networking::Message::StreamFrame const& message) = 0;
 		};
 
 		enum class State {
@@ -54,9 +59,17 @@ namespace StudentSync::Server {
 		bool SetState(State state);
 
 		/// <summary>
+		/// Thread-safely sets the state to Terminated and closes the socket.
+		/// Does not automatically join the thread. The caller should call Join()
+		/// at their earliest convenience afterwards.
+		/// </summary>
+		void Terminate();
+
+		/// <summary>
 		/// Blocks until the thread the session is executing on has completed.
 		/// It is an exception to call this method while the state is anything
-		/// other than Terminated.
+		/// other than Terminated. This method may block indefinitely if Terminate()
+		/// has not been called previously.
 		/// </summary>
 		void Join();
 
@@ -73,7 +86,7 @@ namespace StudentSync::Server {
 		// The __ prefix here makes references to this variable uglier. Because
 		// direct access is not a good idea unless you hold the session lock. So,
 		// usually, you want GetState or SetState since they automatically obtain
-		// a lock. Actually, if you hold a lock, you should use GetStateUnlocked.
+		// a lock.
 		State __state;
 
 		// The lock and notifier guard `socket` and `state`
@@ -82,11 +95,6 @@ namespace StudentSync::Server {
 		std::unique_ptr<std::jthread> executor; // this is a unique_ptr so that we can late-initialize it
 
 		std::shared_ptr<EventDispatcher> dispatcher;
-
-		/// <summary>
-		/// Thread-safely sets the state to Terminated and closes the socket.
-		/// </summary>
-		void Terminate();
 
 		/// <summary>
 		/// Thread-safely reads the current state of the session.

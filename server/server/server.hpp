@@ -16,6 +16,7 @@ namespace StudentSync::Server {
 		void Run();
 		void Stop();
 
+		std::optional<std::shared_ptr<Session>> GetSession(unsigned long sessionId) const;
 		Networking::TCPSocket::SocketInfo GetServerInfo() const;
 
 		~Server();
@@ -23,6 +24,6 @@ namespace StudentSync::Server {
 		Networking::TCPSocket serverSocket;
 
 		std::shared_ptr<Session::EventDispatcher> dispatcher;
-		std::vector<std::unique_ptr<Session>> sessions;
+		std::vector<std::shared_ptr<Session>> sessions;
 	};
 }

@@ -35,7 +35,7 @@ namespace StudentSync::Server {
 				continue;
 			}
 
-			sessions.emplace_back(std::make_unique<Session>(
+			sessions.emplace_back(std::make_shared<Session>(
 				sessionId,
 				std::move(*client),
 				dispatcher
@@ -47,7 +47,7 @@ namespace StudentSync::Server {
 		serverSocket.Close();
 
 		for (auto& session : sessions) {
-			session->SetState(Session::State::Terminated);
+			session->Terminate();
 		}
 
 		for (auto& session : sessions) {
@@ -56,6 +56,16 @@ namespace StudentSync::Server {
 
 		// don't forget to clear the session list :)
 		sessions.clear();
+	}
+
+	std::optional<std::shared_ptr<Session>> Server::GetSession(unsigned long sessionId) const {
+		for (auto const& session : sessions) {
+			if (session->identifier == sessionId) {
+				return session;
+			}
+		}
+
+		return std::nullopt;
 	}
 
 	TCPSocket::SocketInfo Server::GetServerInfo() const {

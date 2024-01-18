@@ -116,7 +116,7 @@ namespace StudentSync::Server {
 				break;
 			}
 
-			// todo: interact with the frame message...
+			dispatcher->ClientFrameReceived(*this, *frame);
 		}
 
 		if (!Message::EndStream{}.ToTLVMessage().Send(socket)) {

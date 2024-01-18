@@ -29,4 +29,13 @@ namespace StudentSync::Server {
 		event->SetPayload(payload);
 		wxQueueEvent(window, event);
 	}
+
+	void EventDispatcher::ClientFrameReceived(Session const& session, Networking::Message::StreamFrame const& message) {
+		wxMemoryInputStream imageDataStream{ message.imageData.data(), message.imageData.size() };
+		wxBitmap image{ wxImage{imageDataStream} }; // todo: do we need to cram this into a wxBitmap? Maybe we can draw wxImages directly?
+
+		wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED);
+		event->SetPayload(image);
+		wxQueueEvent(window, event);
+	}
 }

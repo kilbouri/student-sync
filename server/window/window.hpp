@@ -63,6 +63,7 @@ namespace StudentSync::Server {
 		void OnClientStartStream(wxThreadEvent& event);
 		void OnClientStreamFrameReceived(wxThreadEvent& event);
 		void OnClientEndStream(wxThreadEvent& event);
+		void OnClientClicked(wxCommandEvent& event, unsigned long sessiondId);
 
 		// Helpers I guess
 		void SetLastLogMessage(std::string lastMessage);

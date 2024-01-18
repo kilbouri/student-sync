@@ -138,6 +138,11 @@ namespace StudentSync::Server {
 		for (auto const& [identifier, username] : sortedClients) {
 			std::string label = std::format("{} (id: {}) \n", username, identifier);
 			wxButton* clickyMcClickerson = new wxButton(sidebar, wxID_ANY, label);
+
+			clickyMcClickerson->Bind(wxEVT_BUTTON, [this, identifier](wxCommandEvent& event) {
+				OnClientClicked(event, identifier);
+			});
+
 			sidebarItems->Add(clickyMcClickerson, 0, wxEXPAND, 0);
 		}
 
@@ -146,11 +151,11 @@ namespace StudentSync::Server {
 
 	void Window::RefreshConnectionCount() {
 		const size_t numClients = this->clients.size();
-		const bool plural = numClients != 1;
+		const bool isPlural = numClients != 1;
 		this->statusBar->SetStatusText(std::format(
 			"{} client{} connected",
 			numClients,
-			plural ? "s" : ""
+			isPlural ? "s" : ""
 		), 0);
 	}
 
@@ -162,6 +167,6 @@ namespace StudentSync::Server {
 		// server this thread is running.
 
 		server->Run();
-		return 0;
+		return nullptr;
 	}
 }

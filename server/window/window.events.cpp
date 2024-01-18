@@ -1,9 +1,12 @@
 #include "window.hpp"
 
+#include <format>
+
 #include "../preferencesmanager/preferencesmanager.hpp"
 #include "../preferenceseditor/preferenceseditor.hpp"
 
 using namespace StudentSync::Networking;
+
 namespace StudentSync::Server {
 	void Window::OnShowPreferences(wxCommandEvent& event) {
 		PreferencesEditor editor{ PreferencesManager::GetInstance().GetPreferences(), this };
@@ -74,5 +77,19 @@ namespace StudentSync::Server {
 
 	void Window::OnClientEndStream(wxThreadEvent& event) {
 		this->streamView->ClearBitmap();
+	}
+
+	void Window::OnClientClicked(wxCommandEvent& event, unsigned long sessionId) {
+		ClientInfo const& info = clients.at(sessionId);
+		auto const& foundSession = server->GetSession(sessionId);
+
+		wxMessageBox(std::format("OnClientClicked for '{}' (id: {}) ({} session)", info.username, sessionId, foundSession ? "have" : "no"));
+
+		if (!foundSession) {
+			return;
+		}
+
+		auto const& session = *foundSession;
+		session->SetState(Session::State::Streaming); // start streaming
 	}
 }
