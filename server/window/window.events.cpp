@@ -35,48 +35,72 @@ namespace StudentSync::Server {
 		wxThread* thread = GetThread();
 		if (thread && thread->IsRunning()) {
 			// Stopping the server will block until all sessions have terminated.
+			this->LogInfo("Stopping server...");
 			server->Stop();
+			this->LogInfo("Server stopped, waiting for thread to join...");
 			thread->Wait();
 		}
 
 		Destroy();
 	}
 
-	void Window::OnClientConnected(wxThreadEvent& event) {
-		unsigned long identifier = event.GetPayload<unsigned long>();
-		this->clients[identifier] = ClientInfo{
-			.identifier = identifier,
-			.username = "Connecting...",
-		};
-
-		this->RefreshClientList();
-		this->RefreshConnectionCount();
+	void Window::OnServerPushLog(wxThreadEvent& event) {
+		std::string payload = event.GetPayload<std::string>();
+		this->LogInfo(payload);
 	}
 
-	void Window::OnClientDisconnected(wxThreadEvent& event) {
+	void Window::OnClientConnected(wxThreadEvent& event) {
 		unsigned long identifier = event.GetPayload<unsigned long>();
-		this->clients.erase(identifier);
+
+		ClientInfo newClient{
+			.identifier = identifier,
+			.username = "Unknown",
+		};
+
+		const auto foundSession = server->GetSession(identifier);
+		if (foundSession) {
+			TCPSocket::SocketInfo clientInfo = (*foundSession)->GetPeerInfo();
+			newClient.username = std::format("{}:{}", clientInfo.Address, clientInfo.Port);
+		}
+
+		this->clients[identifier] = newClient;
+
+		this->LogInfo(std::format("{} connected (id: {})", newClient.username, newClient.identifier));
 		this->RefreshClientList();
 		this->RefreshConnectionCount();
 	}
 
 	void Window::OnClientRegistered(wxThreadEvent& event) {
 		ClientInfo client = event.GetPayload<ClientInfo>();
+
 		this->clients[client.identifier] = client;
+
+		const auto foundSession = server->GetSession(client.identifier);
+		std::string ipAddress = "Unknown";
+
+		if (foundSession) {
+			TCPSocket::SocketInfo clientInfo = (*foundSession)->GetPeerInfo();
+			ipAddress = std::format("{}:{}", clientInfo.Address, clientInfo.Port);
+		}
+
+		this->LogInfo(std::format("{} (id: {}) registered as {}", ipAddress, client.identifier, client.username));
 		this->RefreshClientList();
 	}
 
-	void Window::OnClientStartStream(wxThreadEvent& event) {
-		this->streamView->ClearBitmap();
+	void Window::OnClientDisconnected(wxThreadEvent& event) {
+		unsigned long identifier = event.GetPayload<unsigned long>();
+
+		ClientInfo client = ClientInfo{ clients.at(identifier) };
+		this->clients.erase(identifier);
+
+		this->LogInfo(std::format("{} disconnected (id: {})", client.username, client.identifier));
+		this->RefreshClientList();
+		this->RefreshConnectionCount();
 	}
 
 	void Window::OnClientStreamFrameReceived(wxThreadEvent& event) {
 		wxBitmap nextFrame = event.GetPayload<wxBitmap>();
 		this->streamView->SetBitmap(nextFrame);
-	}
-
-	void Window::OnClientEndStream(wxThreadEvent& event) {
-		this->streamView->ClearBitmap();
 	}
 
 	void Window::OnClientClicked(wxCommandEvent& event, unsigned long sessionId) {

@@ -57,18 +57,18 @@ namespace StudentSync::Server {
 		void OnClose(wxCloseEvent& event);
 
 		// Server-sent events (defined in serverwindow.events.cpp)
+		void OnServerPushLog(wxThreadEvent& event);
 		void OnClientConnected(wxThreadEvent& event);
-		void OnClientDisconnected(wxThreadEvent& event);
 		void OnClientRegistered(wxThreadEvent& event);
-		void OnClientStartStream(wxThreadEvent& event);
+		void OnClientDisconnected(wxThreadEvent& event);
 		void OnClientStreamFrameReceived(wxThreadEvent& event);
-		void OnClientEndStream(wxThreadEvent& event);
 		void OnClientClicked(wxCommandEvent& event, unsigned long sessiondId);
 
 		// Helpers I guess
-		void SetLastLogMessage(std::string lastMessage);
 		void RefreshClientList(); // todo: I'd like to make the client list its own component
 		void RefreshConnectionCount();
+		void LogInfo(std::string message);
+
 
 		// Server Thread elements (defined in serverwindow.thread.cpp)
 		bool StartServerThread(std::string& hostname, int port);

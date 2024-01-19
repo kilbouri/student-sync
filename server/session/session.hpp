@@ -17,8 +17,8 @@ namespace StudentSync::Server {
 			virtual void SessionStarted(Session const& session) = 0;
 
 			/// <summary>
-			/// Called after the Session has ended. The state will always be Terminated
-			/// and the socket will always be closed.
+			/// Called after the Session has ended, but before it may be cleaned up.
+			/// The state will always be Terminated and the socket will always be closed.
 			/// </summary>
 			virtual void SessionEnded(Session const& session) = 0;
 
@@ -50,13 +50,11 @@ namespace StudentSync::Server {
 
 		/// <summary>
 		/// Thread-safely sets the state of the session, and wakes up the
-		/// session's thread if required. If the session is already in the
-		/// Terminated state, this method will only wake the thread, regardless
-		/// of the state being changed. In that case the method will return false.
+		/// session's thread if required. It is an exception to set the
+		/// state to Terminated with this method. Use Terminate() instead.
 		/// </summary>
-		/// <param name="state">The new state</param>
-		/// <returns>true if the state change happened, otherwise false.</returns>
-		bool SetState(State state);
+		/// <param name="state">The new state. Cannot be Terminated.</param>
+		void SetState(State state);
 
 		/// <summary>
 		/// Thread-safely sets the state to Terminated and closes the socket.
@@ -72,6 +70,11 @@ namespace StudentSync::Server {
 		/// has not been called previously.
 		/// </summary>
 		void Join();
+
+		/// <summary>
+		/// Get the socket info of the Session's client socket.
+		/// </summary>
+		Networking::TCPSocket::SocketInfo GetPeerInfo() const;
 
 		// Since the executor captures `this`, the object
 		// MUST NEVER be moved or copied.

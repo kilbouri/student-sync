@@ -1,5 +1,7 @@
 #include "eventdispatcher.hpp"
 
+#include <format>
+
 using namespace StudentSync::Networking;
 
 namespace StudentSync::Server {

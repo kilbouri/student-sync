@@ -25,7 +25,6 @@ namespace StudentSync::Server {
 		statusBar = new wxStatusBar(this);
 		statusBar->SetFieldsCount(2);
 
-		this->SetLastLogMessage("All quiet...");
 		this->SetStatusBar(statusBar);
 
 		// GUI Building
@@ -88,6 +87,7 @@ namespace StudentSync::Server {
 		Bind(wxEVT_CLOSE_WINDOW, &Window::OnClose, this);
 
 		// Server event bindings
+		Bind(SERVER_EVT_PUSH_LOG, &Window::OnServerPushLog, this);
 		Bind(SERVER_EVT_CLIENT_CONNECT, &Window::OnClientConnected, this);
 		Bind(SERVER_EVT_CLIENT_DISCONNECT, &Window::OnClientDisconnected, this);
 		Bind(SERVER_EVT_CLIENT_REGISTERED, &Window::OnClientRegistered, this);
@@ -114,10 +114,6 @@ namespace StudentSync::Server {
 		auto dispatcher = std::make_shared<EventDispatcher>(this);
 		server = std::make_unique<Server>(hostname, port, dispatcher);
 		return GetThread()->Run() == wxTHREAD_NO_ERROR;
-	}
-
-	void Window::SetLastLogMessage(std::string lastMessage) {
-		this->statusBar->SetStatusText(lastMessage, 1);
 	}
 
 	void Window::RefreshClientList() {
@@ -157,6 +153,10 @@ namespace StudentSync::Server {
 			numClients,
 			isPlural ? "s" : ""
 		), 0);
+	}
+
+	void Window::LogInfo(std::string message) {
+		this->statusBar->SetStatusText(message, 1);
 	}
 
 	// wxThreadHelper::Entry
