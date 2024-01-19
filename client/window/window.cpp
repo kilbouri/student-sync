@@ -21,20 +21,19 @@ namespace StudentSync::Client {
 
 		wxMenuBar* menuBar = new wxMenuBar;
 		menuBar->Append(menuFile, "File");
-
 		SetMenuBar(menuBar);
 
-		wxStatusBar* statusBar = new wxStatusBar(this);
-		statusBar->SetLabel("All quiet...");
+		statusBar = new wxStatusBar(this);
 		SetStatusBar(statusBar);
 
-		wxFrame::Bind(wxEVT_MENU, &Window::OnShowPreferences, this, ID_ShowPreferences);
-		wxFrame::Bind(wxEVT_MENU, &Window::OnAbout, this, wxID_ABOUT);
-		wxFrame::Bind(wxEVT_MENU, &Window::OnExit, this, wxID_EXIT);
-		wxFrame::Bind(wxEVT_CLOSE_WINDOW, &Window::OnClose, this);
+		Bind(wxEVT_MENU, &Window::OnShowPreferences, this, ID_ShowPreferences);
+		Bind(wxEVT_MENU, &Window::OnAbout, this, wxID_ABOUT);
+		Bind(wxEVT_MENU, &Window::OnExit, this, wxID_EXIT);
+		Bind(wxEVT_CLOSE_WINDOW, &Window::OnClose, this);
 
 		// Client event bindings
-		wxFrame::Bind(CLIENT_EVT_REGISTRATION_FAILED, &Window::OnRegistrationFailed, this);
+		Bind(CLIENT_EVT_REGISTRATION_FAILED, &Window::OnRegistrationFailed, this);
+		Bind(CLIENT_EVT_PUSH_LOG, &Window::OnClientPushLog, this);
 
 		// create a Client instance
 		{

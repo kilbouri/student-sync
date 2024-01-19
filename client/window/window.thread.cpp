@@ -25,6 +25,12 @@ namespace StudentSync::Client {
 	void Window::ConnectionHandler(Client::Connection connection) {
 		std::string username = PreferencesManager::GetInstance().GetPreferences().displayName;
 
+		TCPSocket::SocketInfo peerInfo = connection.socket
+			.GetPeerSocketInfo()
+			.value_or(TCPSocket::SocketInfo{ .Address = "unknown",.Port = 0 });
+
+		PUSH_LOG_MESSAGE(std::format("Connected to {}:{}", peerInfo.Address, peerInfo.Port));
+
 		if (!Message::Hello{ username }.ToTLVMessage().Send(connection.socket)) {
 			PUSH_LOG_MESSAGE("Registration failed (failed to send Hello)");
 			return wxQueueEvent(this, new wxThreadEvent(CLIENT_EVT_REGISTRATION_FAILED));
@@ -35,6 +41,8 @@ namespace StudentSync::Client {
 			PUSH_LOG_MESSAGE("Registration failed (reply was not Ok)");
 			return wxQueueEvent(this, new wxThreadEvent(CLIENT_EVT_REGISTRATION_FAILED));
 		}
+
+		PUSH_LOG_MESSAGE(std::format("Registered successfully as {}", username));
 
 		while (connection.socket.IsValid()) {
 			auto message = TLVMessage::TryReceive(connection.socket);

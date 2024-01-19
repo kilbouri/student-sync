@@ -18,7 +18,6 @@ namespace StudentSync::Client {
 
 	void Client::Run() {
 		// wow much complicated!
-
 		this->handler(Connection{
 			.socket = this->socket
 		});

@@ -22,6 +22,9 @@ namespace StudentSync::Client {
 		Window(wxString title, std::string& serverHostname, int serverPort);
 
 	private:
+		// Window elements
+		wxStatusBar* statusBar;
+
 		// this pointer is owned by the window before the client thread is started,
 		// at which point ownership now belongs to the client thread.
 		//! Once the client thread is running, the window thread MUST NOT use the pointer
