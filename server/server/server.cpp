@@ -36,7 +36,7 @@ namespace StudentSync::Server {
 			}
 
 			sessions.emplace_back(std::make_shared<Session>(
-				sessionId,
+				++sessionId,
 				std::move(*client),
 				dispatcher
 			));
