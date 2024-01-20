@@ -8,8 +8,8 @@ if (POLICY CMP0141)
   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
 
-set(PROJECT_NAME "comp-4990-project")
-project(${PROJECT_NAME})
+
+project("student-sync" VERSION 1.0.0)
 
 # Elements in this set have both .hpp and .cpp files
 set(CLASSES
@@ -66,6 +66,10 @@ foreach(class ${CLASSES})
 	target_sources(${PROJECT_NAME} PRIVATE "${class}.hpp" "${class}.cpp")
 endforeach()
 
+# Add cpp::result library
+# Repository: https://github.com/bitwizeshift/result
+add_subdirectory(libs/result)
+target_include_directories(${PROJECT_NAME} PRIVATE libs/result/include)
 
 # Add wxWidgets library
 # Config info: https://docs.wxwidgets.org/latest/overview_cmake.html#cmake_options
