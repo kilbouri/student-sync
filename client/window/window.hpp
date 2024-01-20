@@ -4,6 +4,7 @@
 #include <thread>
 
 #include "../client/client.hpp"
+#include "../../common/timer/timer.hpp"
 #include "../../networking/tlvmessage/tlvmessage.hpp"
 
 namespace StudentSync::Client {
@@ -25,9 +26,6 @@ namespace StudentSync::Client {
 		// Window elements
 		wxStatusBar* statusBar;
 
-		// this pointer is owned by the window before the client thread is started,
-		// at which point ownership now belongs to the client thread.
-		//! Once the client thread is running, the window thread MUST NOT use the pointer
 		std::unique_ptr<Client> client;
 		std::optional<std::jthread> clientThread;
 
@@ -44,6 +42,8 @@ namespace StudentSync::Client {
 		// Client elements (defined in clientwindow.thread.cpp)
 		void ThreadEntry();
 		void ConnectionHandler(Client::Connection connection);
-		void MessageReceived(Client::Connection const& connection, Networking::TLVMessage& message);
+		void MessageReceived(Client::Connection& connection, Networking::TLVMessage& message);
+		void OnStreamTick();
+		void PushLogMessage(std::string);
 	};
 }

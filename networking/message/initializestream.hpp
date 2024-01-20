@@ -17,7 +17,7 @@ namespace StudentSync::Networking::Message {
 			TLVMessage copy{ netMessage };
 			copy.tag = TLVMessage::Tag::StreamParams;
 
-			auto streamParams = StreamParams::FromTLVMessage(netMessage);
+			auto streamParams = StreamParams::FromTLVMessage(copy);
 			if (!streamParams) {
 				return std::nullopt;
 			}

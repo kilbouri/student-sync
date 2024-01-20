@@ -19,9 +19,10 @@ set(CLASSES
 	"client/window/window"
 
 	"common/displaycapturer/displaycapturer"
+	"common/dynamicbitmap/dynamicbitmap"
 	"common/modeselectdialog/modeselectdialog"
 	"common/screenresolution/screenresolution"
-	"common/dynamicbitmap/dynamicbitmap"
+	"common/timer/timer"
 
 	"networking/socket/socket"
 	"networking/socket/tcpsocket"

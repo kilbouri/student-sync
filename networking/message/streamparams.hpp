@@ -44,7 +44,9 @@ namespace StudentSync::Networking::Message {
 
 			constexpr size_t requiredSize = sizeof(fps) + sizeof(width) + sizeof(height);
 
-			TLVMessage::Value value{ requiredSize, 0 };
+			TLVMessage::Value value;
+			value.resize(requiredSize, 0);
+
 			uint8_t* dataPtr = value.data();
 
 			std::memcpy(dataPtr, &fps, sizeof(fps));
