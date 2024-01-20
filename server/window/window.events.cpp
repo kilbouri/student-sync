@@ -7,6 +7,8 @@
 
 using namespace StudentSync::Networking;
 
+//! All methods defined in this file MUST execute solely on the MAIN GUI THREAD.
+
 namespace StudentSync::Server {
 	void Window::OnShowPreferences(wxCommandEvent& event) {
 		PreferencesEditor editor{ PreferencesManager::GetInstance().GetPreferences(), this };
@@ -107,13 +109,18 @@ namespace StudentSync::Server {
 		ClientInfo const& info = clients.at(sessionId);
 		auto const& foundSession = server->GetSession(sessionId);
 
-		wxMessageBox(std::format("OnClientClicked for '{}' (id: {}) ({} session)", info.username, sessionId, foundSession ? "have" : "no"));
-
 		if (!foundSession) {
 			return;
 		}
 
 		auto const& session = *foundSession;
-		session->SetState(Session::State::Streaming); // start streaming
+		bool nowStreaming = session->ToggleStreaming();
+
+		this->LogInfo(std::format(
+			"{} (id: {}) is {} streaming",
+			info.username,
+			info.identifier,
+			nowStreaming ? "now" : "no longer"
+		));
 	}
 }

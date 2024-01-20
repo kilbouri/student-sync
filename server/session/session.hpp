@@ -49,12 +49,12 @@ namespace StudentSync::Server {
 		Session(unsigned long identifier, Networking::TCPSocket&& socket, std::shared_ptr<EventDispatcher> dispatcher);
 
 		/// <summary>
-		/// Thread-safely sets the state of the session, and wakes up the
-		/// session's thread if required. It is an exception to set the
-		/// state to Terminated with this method. Use Terminate() instead.
+		/// Thread-safely sets the state of the session to either Idle or Streaming,
+		/// depending on its current state. Streaming -> Idle and vice versa.
+		/// When the session is terminated, no change takes place and false is always returned.
 		/// </summary>
-		/// <param name="state">The new state. Cannot be Terminated.</param>
-		void SetState(State state);
+		/// <returns>whether or not the session is now in the Streaming state</returns>
+		bool ToggleStreaming();
 
 		/// <summary>
 		/// Thread-safely sets the state to Terminated and closes the socket.
@@ -90,6 +90,8 @@ namespace StudentSync::Server {
 		// direct access is not a good idea unless you hold the session lock. So,
 		// usually, you want GetState or SetState since they automatically obtain
 		// a lock.
+		// We could wrap this in an atomic, but then we would have to accept that
+		// the state may be Terminated while the socket is not closed or vice versa.
 		State __state;
 
 		// The lock and notifier guard `socket` and `state`
@@ -100,7 +102,7 @@ namespace StudentSync::Server {
 		std::shared_ptr<EventDispatcher> dispatcher;
 
 		/// <summary>
-		/// Thread-safely reads the current state of the session.
+		/// Thread-safe helper to read the current state of the session.
 		/// </summary>
 		/// <returns>A copy of the current state</returns>
 		State GetState();

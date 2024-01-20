@@ -18,16 +18,24 @@ namespace StudentSync::Server {
 		executor = std::make_unique<std::jthread>(std::bind(&Session::ThreadEntry, this));
 	}
 
-	void Session::SetState(State state) {
-		if (state == State::Terminated) {
-			throw "Cannot SetState() to Terminated. Use Terminate() instead.";
+	bool Session::ToggleStreaming() {
+		std::unique_lock<std::mutex> guard{ lock };
+
+		if (__state == State::Terminated) {
+			return false;
 		}
 
-		std::unique_lock<std::mutex> guard{ lock };
-		__state = state;
-		guard.unlock();
+		const bool wasIdle = __state == State::Idle;
+		if (wasIdle) {
+			__state = State::Streaming;
+		}
+		else {
+			__state = State::Idle;
+		}
 
+		guard.unlock();
 		notifier.notify_all();
+		return wasIdle;
 	}
 
 	void Session::Join() {
@@ -35,8 +43,8 @@ namespace StudentSync::Server {
 		if (__state != State::Terminated) {
 			throw "Session::Join must only be called while the Session is in the Terminated state!";
 		}
-		guard.unlock();
 
+		guard.unlock();
 		executor->join();
 	}
 
@@ -47,19 +55,17 @@ namespace StudentSync::Server {
 	}
 
 	void Session::Terminate() {
-		// have we already terminated?
-		if (GetState() == State::Terminated) {
+		std::unique_lock<std::mutex> guard{ lock };
+		if (__state == State::Terminated) {
 			return;
 		}
 
-		{
-			std::scoped_lock<std::mutex> guard{ lock };
-			__state = State::Terminated;
-			socket.Close();
-		}
+		__state = State::Terminated;
+		socket.Close();
 
+		guard.unlock();
 		dispatcher->SessionEnded(*this);
-		notifier.notify_all(); // we may need to wake the thread to get it to terminate
+		notifier.notify_all();
 	}
 
 	Session::State Session::GetState() {
