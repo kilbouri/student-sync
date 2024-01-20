@@ -8,7 +8,6 @@ if (POLICY CMP0141)
   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
 
-
 project("student-sync" VERSION 1.0.0)
 
 # Elements in this set have both .hpp and .cpp files
@@ -66,6 +65,15 @@ foreach(class ${CLASSES})
 	target_sources(${PROJECT_NAME} PRIVATE "${class}.hpp" "${class}.cpp")
 endforeach()
 
+add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1)
+
+# Use address sanitizer in debug builds
+if(CMAKE_BUILD_TYPE MATCHES "Debug")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+  target_link_options(${PROJECT_NAME} BEFORE PUBLIC -fsanitize=undefined PUBLIC -fsanitize=address)
+endif()
+
 # Add cpp::result library
 # Repository: https://github.com/bitwizeshift/result
 add_subdirectory(libs/result)
@@ -77,4 +85,4 @@ set(wxBUILD_SHARED OFF)
 set(wxUSE_STL ON)
 set(wxBUILD_COMPATIBILITY "3.1")
 add_subdirectory(libs/wxWidgets)
-target_link_libraries(${PROJECT_NAME} wx::net wx::core wx::base)
+target_link_libraries(${PROJECT_NAME} PUBLIC wx::net wx::core wx::base)

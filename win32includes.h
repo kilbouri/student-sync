@@ -1,8 +1,5 @@
 #pragma once
 
-// Shut the FUCK up Windows!
-#define _CRT_SECURE_NO_WARNINGS 1
-
 #pragma comment(lib, "Ws2_32.lib") // this indicates the WinSock2 DLL is needed
 #pragma comment(lib, "gdiplus.lib") // this indicates the GDI+ DLL is needed
 #pragma comment(lib, "IPHLPAPI.lib") // this indicates the IP Helper API DLL is needed

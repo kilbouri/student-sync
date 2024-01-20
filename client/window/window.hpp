@@ -43,7 +43,7 @@ namespace StudentSync::Client {
 		void ThreadEntry();
 		void ConnectionHandler(Client::Connection connection);
 		void MessageReceived(Client::Connection& connection, Networking::TLVMessage& message);
-		void OnStreamTick();
+		void ThreadStreaming(Client::Connection& connection);
 		void PushLogMessage(std::string);
 	};
 }

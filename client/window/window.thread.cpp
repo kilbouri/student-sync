@@ -55,13 +55,13 @@ namespace StudentSync::Client {
 			message.data.size()
 		));
 
-		// todo: this is a hack, lets not do that
-
-		if (message.tag != TLVMessage::Tag::GetStreamParams) {
-			return;
+		if (message.tag == TLVMessage::Tag::GetStreamParams) {
+			// server is asking to start streaming
+			ThreadStreaming(connection);
 		}
+	}
 
-		// the server is starting a stream
+	void Window::ThreadStreaming(Client::Connection& connection) {
 		auto& prefs = PreferencesManager::GetInstance().GetPreferences();
 		Message::StreamParams params{
 			.frameRate = prefs.maxFrameRate,
@@ -75,13 +75,13 @@ namespace StudentSync::Client {
 		));
 
 		if (!params.ToTLVMessage().Send(connection.socket)) {
-			PushLogMessage("Sending failed");
+			PushLogMessage("Failed to send StreamParams reply to GetStreamParams");
 			return;
 		}
 
 		auto reply = Message::TryReceive<Message::InitializeStream>(connection.socket);
 		if (!reply) {
-			PushLogMessage("Server reply invalid");
+			PushLogMessage("Server reply was not InitializeStream");
 			return;
 		}
 
@@ -91,6 +91,7 @@ namespace StudentSync::Client {
 			reply->frameRate
 		));
 
+		// Begin sending frames at regular interval on a background thread
 		Common::Timer streamTimer{
 			[&connection]() { // sending a message may mutate state, thus we need the closure to also be mutable
 				auto message = Message::StreamFrame::FromDisplay(Common::DisplayCapturer::Format::PNG);
@@ -101,8 +102,15 @@ namespace StudentSync::Client {
 			std::chrono::milliseconds(1000 / reply->frameRate)
 		};
 
-		// Await stop message
+		// Block this thread until we receive a stop message
+		// todo: we really, really need some sort of non-blocking read support in this program, jesus
 		auto stop = Message::TryReceive<Message::EndStream>(connection.socket);
+
+		// we're going to stop anyway, because any other message breaks protocol, 
+		// but we can check if its a graceful stop or not
+		streamTimer.Stop();
+
+
 		if (stop) {
 			streamTimer.Stop();
 		}
