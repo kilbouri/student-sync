@@ -86,3 +86,12 @@ set(wxUSE_STL ON)
 set(wxBUILD_COMPATIBILITY "3.1")
 add_subdirectory(libs/wxWidgets)
 target_link_libraries(${PROJECT_NAME} PUBLIC wx::net wx::core wx::base)
+
+# Find FFmpeg package
+find_package(FFmpeg REQUIRED)
+
+# Include directories
+target_include_directories(${PROJECT_NAME} PRIVATE ${FFMPEG_INCLUDE_DIRS})
+
+# Link against FFmpeg libraries
+target_link_libraries(${PROJECT_NAME} PRIVATE ${FFMPEG_LIBRARIES} avformat avcodec avutil swscale)
