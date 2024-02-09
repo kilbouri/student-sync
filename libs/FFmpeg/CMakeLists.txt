@@ -1,12 +1,11 @@
-# CMakeLists.txt in libs/FFmpeg directory
+set(FFMPEG_SOURCE_URL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip")
 
-# Specify the minimum CMake version
-cmake_minimum_required(VERSION 3.12)
+set(SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(ARCHIVE_NAME my_archive.zip)
+set(URL "https://example.com/my_archive.zip")
 
-# Set FFmpeg options
-set(FFMPEG_BUILD_SHARED OFF)  # Adjust as needed
-set(FFMPEG_USE_STL ON)        # Adjust as needed
-set(FFMPEG_BUILD_COMPATIBILITY "3.1")  # Adjust as needed
+# Download the file
+file(DOWNLOAD ${URL} ${SOURCES_DIR}/${ARCHIVE_NAME})
 
-# Add FFmpeg library
-add_subdirectory(libs/FFmpeg)
+# Unzip the file
+file(ARCHIVE_EXTRACT INPUT ${SOURCES_DIR}/${ARCHIVE_NAME} DESTINATION ${SOURCES_DIR})

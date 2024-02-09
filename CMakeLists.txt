@@ -71,7 +71,7 @@ add_compile_definitions(_CRT_SECURE_NO_WARNINGS=1)
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
-  target_link_options(${PROJECT_NAME} BEFORE PUBLIC -fsanitize=undefined PUBLIC -fsanitize=address)
+  target_link_options(${PROJECT_NAME} BEFORE PUBLIC -fsanitize=address)
 endif()
 
 # Add cpp::result library
@@ -88,10 +88,12 @@ add_subdirectory(libs/wxWidgets)
 target_link_libraries(${PROJECT_NAME} PUBLIC wx::net wx::core wx::base)
 
 # Find FFmpeg package
-find_package(FFmpeg REQUIRED)
+set(FFMPEG_ROOT "libs/ffmpeg")
+find_package(FFmpeg REQUIRED COMPONENTS AVCODEC AVFORMAT AVUTIL SWSCALE)
 
-# Include directories
-target_include_directories(${PROJECT_NAME} PRIVATE ${FFMPEG_INCLUDE_DIRS})
+# Include FFmpeg headers
+include_directories(${FFMPEG_INCLUDE_DIRS})
 
-# Link against FFmpeg libraries
-target_link_libraries(${PROJECT_NAME} PRIVATE ${FFMPEG_LIBRARIES} avformat avcodec avutil swscale)
+# Link FFmpeg libraries
+link_directories(${FFMPEG_LIBRARIES})
+target_link_libraries(YourTargetName ${FFMPEG_LIBRARIES})
