@@ -1,5 +1,2 @@
 .vs/
 out/
-!libs/ffmpeg
-
-!libs/ffmpeg/CMakeLists.txt

@@ -94,17 +94,59 @@ target_link_libraries(${PROJECT_NAME} PUBLIC wx::net wx::core wx::base)
 set(CMAKE_CXX_FLAGS "-D__STDC_CONSTANT_MACROS ${CMAKE_CXX_FLAGS}")
 
 # Set the path to the FFmpeg library directory within the project
-set(FFMPEG_LIB_DIR "${CMAKE_SOURCE_DIR}/libs/FFmpeg/lib")
+set(FFMPEG_DIR "${CMAKE_SOURCE_DIR}/libs/FFmpeg")
+set(FFMPEG_LIB_DIR "${FFMPEG_DIR}/lib")
+set(FFMPEG_HEADER_DIR "${FFMPEG_DIR}/include")
 
 # Find FFmpeg components
+find_path(AVCODEC_INCLUDE libavcodec/avcodec.h PATHS ${FFMPEG_HEADER_DIR})
+find_path(AVFORMAT_INCLUDE libavformat/avformat.h PATHS ${FFMPEG_HEADER_DIR})
+find_path(AVUTIL_INCLUDE libavutil/avutil.h PATHS ${FFMPEG_HEADER_DIR})
+find_path(AVDEVICE_INCLUDE libavdevice/avdevice.h PATHS ${FFMPEG_HEADER_DIR})
 find_library(AVCODEC_LIBRARY avcodec PATHS ${FFMPEG_LIB_DIR})
 find_library(AVFORMAT_LIBRARY avformat PATHS ${FFMPEG_LIB_DIR})
 find_library(AVUTIL_LIBRARY avutil PATHS ${FFMPEG_LIB_DIR})
 find_library(AVDEVICE_LIBRARY avdevice PATHS ${FFMPEG_LIB_DIR})
+
+
 
 # Check if all FFmpeg components are found
 if(NOT AVCODEC_LIBRARY OR NOT AVFORMAT_LIBRARY OR NOT AVUTIL_LIBRARY OR NOT AVDEVICE_LIBRARY)
     message(FATAL_ERROR "FFmpeg not found. Please check the path to your FFmpeg libraries.")
 endif()
 
-target_link_libraries(${PROJECT_NAME} PUBLIC ${AVCODEC_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${AVDEVICE_LIBRARY})
+if (NOT AVCODEC_INCLUDE OR NOT AVFORMAT_INCLUDE OR NOT AVUTIL_INCLUDE OR NOT AVDEVICE_INCLUDE)
+	message(FATAL_ERROR "FFmpeg includes not found. Please check the path to your FFmpeg includes.")
+endif()
+
+target_include_directories(
+	${PROJECT_NAME} PUBLIC
+	${AVCODEC_INCLUDE}
+	${AVFORMAT_INCLUDE}
+	${AVUTIL_INCLUDE}
+	${AVDEVICE_INCLUDE}
+)
+
+target_link_libraries(
+	${PROJECT_NAME} PUBLIC 
+	${AVCODEC_LIBRARY} 
+	${AVFORMAT_LIBRARY} 
+	${AVUTIL_LIBRARY} 
+	${AVDEVICE_LIBRARY}
+)
+
+set(FFMPEG_DLLS
+	"${FFMPEG_DIR}/bin/avcodec-60.dll"
+	"${FFMPEG_DIR}/bin/avformat-60.dll"
+	"${FFMPEG_DIR}/bin/avutil-58.dll"
+	"${FFMPEG_DIR}/bin/swresample-4.dll"
+)
+
+foreach(DLL_FILE ${FFMPEG_DLLS})
+    add_custom_command(
+        TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${DLL_FILE} $<TARGET_FILE_DIR:${PROJECT_NAME}>
+        COMMENT "Copying ${DLL_FILE} to output directory"
+    )
+endforeach()
