@@ -87,6 +87,7 @@ set(wxBUILD_COMPATIBILITY "3.1")
 add_subdirectory(libs/wxWidgets)
 target_link_libraries(${PROJECT_NAME} PUBLIC wx::net wx::core wx::base)
 
+<<<<<<< Updated upstream
 # Find FFmpeg package
 set(FFMPEG_ROOT "libs/ffmpeg")
 find_package(FFmpeg REQUIRED COMPONENTS AVCODEC AVFORMAT AVUTIL SWSCALE)
@@ -97,3 +98,31 @@ include_directories(${FFMPEG_INCLUDE_DIRS})
 # Link FFmpeg libraries
 link_directories(${FFMPEG_LIBRARIES})
 target_link_libraries(YourTargetName ${FFMPEG_LIBRARIES})
+=======
+# Add Ffmpeg, apparently it doesnt support find_package !!!! cause ofc
+# Info here: https://stackoverflow.com/questions/50760024/cmake-configuration-for-ffmpeg-in-c-project
+# and here: https://ffmpeg-api.com/learn
+
+cmake_minimum_required(VERSION 3.12)
+project(decode_encode)
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_FLAGS "-D__STDC_CONSTANT_MACROS")
+
+# Set the path to the FFmpeg library directory within the project
+set(FFMPEG_LIB_DIR "${CMAKE_SOURCE_DIR}/libs/FFmpeg/lib")
+
+# Find FFmpeg components
+find_library(AVCODEC_LIBRARY avcodec PATHS ${FFMPEG_LIB_DIR})
+find_library(AVFORMAT_LIBRARY avformat PATHS ${FFMPEG_LIB_DIR})
+find_library(AVUTIL_LIBRARY avutil PATHS ${FFMPEG_LIB_DIR})
+find_library(AVDEVICE_LIBRARY avdevice PATHS ${FFMPEG_LIB_DIR})
+
+# Check if all FFmpeg components are found
+if(NOT AVCODEC_LIBRARY OR NOT AVFORMAT_LIBRARY OR NOT AVUTIL_LIBRARY OR NOT AVDEVICE_LIBRARY)
+    message(FATAL_ERROR "FFmpeg not found. Please check the path to your FFmpeg libraries.")
+endif()
+
+add_executable(decode_encode main.cpp)
+target_link_libraries(decode_encode PRIVATE ${AVCODEC_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${AVDEVICE_LIBRARY})
+>>>>>>> Stashed changes
