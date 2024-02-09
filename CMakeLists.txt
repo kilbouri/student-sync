@@ -87,18 +87,6 @@ set(wxBUILD_COMPATIBILITY "3.1")
 add_subdirectory(libs/wxWidgets)
 target_link_libraries(${PROJECT_NAME} PUBLIC wx::net wx::core wx::base)
 
-<<<<<<< Updated upstream
-# Find FFmpeg package
-set(FFMPEG_ROOT "libs/ffmpeg")
-find_package(FFmpeg REQUIRED COMPONENTS AVCODEC AVFORMAT AVUTIL SWSCALE)
-
-# Include FFmpeg headers
-include_directories(${FFMPEG_INCLUDE_DIRS})
-
-# Link FFmpeg libraries
-link_directories(${FFMPEG_LIBRARIES})
-target_link_libraries(YourTargetName ${FFMPEG_LIBRARIES})
-=======
 # Add Ffmpeg, apparently it doesnt support find_package !!!! cause ofc
 # Info here: https://stackoverflow.com/questions/50760024/cmake-configuration-for-ffmpeg-in-c-project
 # and here: https://ffmpeg-api.com/learn
@@ -125,4 +113,3 @@ endif()
 
 add_executable(decode_encode main.cpp)
 target_link_libraries(decode_encode PRIVATE ${AVCODEC_LIBRARY} ${AVFORMAT_LIBRARY} ${AVUTIL_LIBRARY} ${AVDEVICE_LIBRARY})
->>>>>>> Stashed changes
