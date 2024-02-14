@@ -1,0 +1,5 @@
+*.lib -text
+*.lib.a -text
+*.def -text
+*.dll.a -text
+*.pc -text

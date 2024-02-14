@@ -41,6 +41,7 @@ namespace StudentSync::Server {
 
 		// Main Thread ONLY elements
 		std::unordered_map<unsigned long, ClientInfo> clients;
+		std::optional <unsigned long> currentStreamingClient;
 
 		// Window elements
 		wxSplitterWindow* splitter;

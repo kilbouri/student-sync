@@ -103,12 +103,10 @@ find_path(AVCODEC_INCLUDE libavcodec/avcodec.h PATHS ${FFMPEG_HEADER_DIR})
 find_path(AVFORMAT_INCLUDE libavformat/avformat.h PATHS ${FFMPEG_HEADER_DIR})
 find_path(AVUTIL_INCLUDE libavutil/avutil.h PATHS ${FFMPEG_HEADER_DIR})
 find_path(AVDEVICE_INCLUDE libavdevice/avdevice.h PATHS ${FFMPEG_HEADER_DIR})
-find_library(AVCODEC_LIBRARY avcodec PATHS ${FFMPEG_LIB_DIR})
-find_library(AVFORMAT_LIBRARY avformat PATHS ${FFMPEG_LIB_DIR})
-find_library(AVUTIL_LIBRARY avutil PATHS ${FFMPEG_LIB_DIR})
-find_library(AVDEVICE_LIBRARY avdevice PATHS ${FFMPEG_LIB_DIR})
-
-
+find_library(AVCODEC_LIBRARY avcodec.lib PATHS ${FFMPEG_LIB_DIR})
+find_library(AVFORMAT_LIBRARY avformat.lib PATHS ${FFMPEG_LIB_DIR})
+find_library(AVUTIL_LIBRARY avutil.lib PATHS ${FFMPEG_LIB_DIR})
+find_library(AVDEVICE_LIBRARY avdevice.lib PATHS ${FFMPEG_LIB_DIR})
 
 # Check if all FFmpeg components are found
 if(NOT AVCODEC_LIBRARY OR NOT AVFORMAT_LIBRARY OR NOT AVUTIL_LIBRARY OR NOT AVDEVICE_LIBRARY)
@@ -135,6 +133,8 @@ target_link_libraries(
 	${AVDEVICE_LIBRARY}
 )
 
+# Runtime FFmpeg DLL dependencies
+# idk what this looks like for non-Windows machines but hey we're only targeting Win32 anyway!
 set(FFMPEG_DLLS
 	"${FFMPEG_DIR}/bin/avcodec-60.dll"
 	"${FFMPEG_DIR}/bin/avformat-60.dll"

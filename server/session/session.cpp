@@ -112,7 +112,17 @@ namespace StudentSync::Server {
 			return this->Terminate();
 		}
 
-		auto clientParams = Message::TryReceive<Message::StreamParams>(socket);
+		// absorb all remaining StreamFrames, and store the next non-streamframe message
+		std::optional<TLVMessage> nextMessage;
+		while (true) {
+			nextMessage = TLVMessage::TryReceive(socket);
+			if (nextMessage && nextMessage->tag != TLVMessage::Tag::StreamFrame) {
+				break;
+			}
+		}
+
+		// all StreamFrames absorbed, we can now expect the next message must be a StreamParams
+		auto clientParams = Message::StreamParams::FromTLVMessage(*nextMessage);
 		if (!clientParams) {
 			return this->Terminate();
 		}
