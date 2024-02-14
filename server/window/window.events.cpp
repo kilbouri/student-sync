@@ -106,6 +106,31 @@ namespace StudentSync::Server {
 	}
 
 	void Window::OnClientClicked(wxCommandEvent& event, unsigned long sessionId) {
+		static auto logStreamingStateChange = [this](ClientInfo const& info, bool nowStreaming) {
+			this->LogInfo(std::format(
+				"{} (id: {}) is {} streaming",
+				info.username,
+				info.identifier,
+				nowStreaming ? "now" : "no longer"
+			));
+		};
+
+		// stop the current stream, if there is one
+		if (currentStreamingClient) {
+			auto currentSession = server->GetSession(*currentStreamingClient);
+			if (currentSession && (*currentSession)->StopStreaming()) {
+				logStreamingStateChange(clients.at(*currentStreamingClient), false);
+			}
+		}
+
+		// the user wanted to stop the current client streaming,
+		// we're pretty much done.
+		if (sessionId == currentStreamingClient) {
+			currentStreamingClient = std::nullopt;
+			return;
+		}
+
+		// the user wanted to start a new stream instead
 		ClientInfo const& info = clients.at(sessionId);
 		auto const& foundSession = server->GetSession(sessionId);
 
@@ -114,13 +139,17 @@ namespace StudentSync::Server {
 		}
 
 		auto const& session = *foundSession;
-		bool nowStreaming = session->ToggleStreaming();
-
-		this->LogInfo(std::format(
-			"{} (id: {}) is {} streaming",
-			info.username,
-			info.identifier,
-			nowStreaming ? "now" : "no longer"
-		));
+		bool nowStreaming = session->StartStreaming();
+		if (nowStreaming) {
+			currentStreamingClient = sessionId;
+			logStreamingStateChange(info, true);
+		}
+		else {
+			this->LogInfo(std::format(
+				"{} (id: {}) failed to start streaming",
+				info.username,
+				info.identifier
+			));
+		}
 	}
 }

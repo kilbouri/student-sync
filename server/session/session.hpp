@@ -49,6 +49,22 @@ namespace StudentSync::Server {
 		Session(unsigned long identifier, Networking::TCPSocket&& socket, std::shared_ptr<EventDispatcher> dispatcher);
 
 		/// <summary>
+		/// Thread-safely sets the state of the session to Streaming. If the Session is
+		/// in the Terminated state, no change takes place and false is returned. If
+		/// the Session is already in the Streaming state, then no change takes place
+		/// and true is returned.
+		/// </summary>
+		/// <returns>whether or not the session started streaming successfully.</returns>
+		bool StartStreaming();
+
+		/// <summary>
+		/// Thread-safely sets the state of the session to Idle. If the Session is
+		/// not in the Streaming state, no change takes place and false is returned.
+		/// </summary>
+		/// <returns>whether or not the session was previously streaming.</returns>
+		bool StopStreaming();
+
+		/// <summary>
 		/// Thread-safely sets the state of the session to either Idle or Streaming,
 		/// depending on its current state. Streaming -> Idle and vice versa.
 		/// When the session is terminated, no change takes place and false is always returned.

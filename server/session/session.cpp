@@ -18,8 +18,44 @@ namespace StudentSync::Server {
 		executor = std::make_unique<std::jthread>(std::bind(&Session::ThreadEntry, this));
 	}
 
+	bool Session::StartStreaming() {
+		std::unique_lock guard{ lock };
+
+		// Cannot start streaming in the terminated state
+		if (__state == State::Terminated) {
+			return false;
+		}
+
+		// Already streaming
+		if (__state == State::Streaming) {
+			return true;
+		}
+
+		__state = State::Streaming;
+		guard.unlock();
+		notifier.notify_all();
+		return true;
+	}
+
+	bool Session::StopStreaming() {
+		std::unique_lock guard{ lock };
+
+		if (__state == State::Terminated) {
+			return false;
+		}
+
+		if (__state != State::Streaming) {
+			return false;
+		}
+
+		__state = State::Idle;
+		guard.unlock();
+		notifier.notify_all();
+		return true;
+	}
+
 	bool Session::ToggleStreaming() {
-		std::unique_lock<std::mutex> guard{ lock };
+		std::unique_lock guard{ lock };
 
 		if (__state == State::Terminated) {
 			return false;
@@ -39,7 +75,7 @@ namespace StudentSync::Server {
 	}
 
 	void Session::Join() {
-		std::unique_lock<std::mutex> guard{ lock };
+		std::unique_lock guard{ lock };
 		if (__state != State::Terminated) {
 			throw "Session::Join must only be called while the Session is in the Terminated state!";
 		}
@@ -55,7 +91,7 @@ namespace StudentSync::Server {
 	}
 
 	void Session::Terminate() {
-		std::unique_lock<std::mutex> guard{ lock };
+		std::unique_lock guard{ lock };
 		if (__state == State::Terminated) {
 			return;
 		}
