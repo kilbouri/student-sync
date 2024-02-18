@@ -27,7 +27,7 @@ jobs:
 
       - name: Copy files into ZIP
         run: |
-          cd out/build/x64-release
+          cd build
           mkdir -p dist
           cp *.dll student-sync.exe dist/
           zip -r StudentSync_Win32.zip dist/
