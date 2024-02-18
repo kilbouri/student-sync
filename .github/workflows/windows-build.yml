@@ -16,8 +16,8 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Setup MSVC Build Tools
-        uses: microsoft/setup-msbuild@v1
+      # - name: Setup MSVC Build Tools
+      #   uses: microsoft/setup-msbuild@v2
 
       - name: Run CMake configure
         run: cmake -B build -S .
@@ -25,15 +25,9 @@ jobs:
       - name: Build project
         run: cmake --build build --config Release
 
-      - name: Copy files into ZIP
-        run: | # runs in Powershell
-          Set-Location build/Release
-          New-Item -Path dist -Type Directory
-          Copy-Item @("*.dll", "student-sync.exe") -Destination dist
-          Compress-Archive -Path dist/** -DestinationPath StudentSync_Win32.zip
-
       - name: Publish artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: StudentSync_Win32.zip
-          path: build/Release/StudentSync_Win32.zip
+          path: build/Release/*.{dll,exe} # Our RT deps are all DLLs or EXEs
+          compression-level: 0 # binary files don't benefit much from compression, so just skip it
