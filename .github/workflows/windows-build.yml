@@ -32,4 +32,4 @@ jobs:
           path: | # Our RT deps are all DLLs or EXEs
             build/Release/*.dll
             build/Release/*.exe
-          compression-level: 0 # binary files don't benefit much from compression, so just skip it
+          compression-level: 9 # somehow we benefit from compression, idk
