@@ -26,12 +26,11 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Copy files into ZIP
-        run: |
-          ls -Recurse
-          cd build/Release
-          mkdir -p dist
-          cp *.dll -Destination dist && cp student-sync.exe -Destination dist
-          zip -r StudentSync_Win32.zip dist/
+        run: | # runs in Powershell
+          Set-Location build/Release
+          New-Item -Path dist -Type Directory
+          Copy-Item @("*.dll", "student-sync.exe") -Destination dist
+          Compress-Archive -Path dist/** -DestinationPath StudentSync_Win32.zip
 
       - name: Publish artifact
         uses: actions/upload-artifact@v2
