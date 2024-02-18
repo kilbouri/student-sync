@@ -29,5 +29,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: StudentSync_Win32.zip
-          path: build/Release/*.{dll,exe} # Our RT deps are all DLLs or EXEs
+          path: | # Our RT deps are all DLLs or EXEs
+            build/Release/*.dll
+            build/Release/*.exe
           compression-level: 0 # binary files don't benefit much from compression, so just skip it
