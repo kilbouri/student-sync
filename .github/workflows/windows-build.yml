@@ -35,5 +35,5 @@ jobs:
       - name: Publish artifact
         uses: actions/upload-artifact@v2
         with:
-          name: StudentSync_Win32
-          path: StudentSync_Win32.zip
+          name: StudentSync_Win32.zip
+          path: build/Release/dist/StudentSync_Win32.zip
