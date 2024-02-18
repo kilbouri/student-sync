@@ -16,8 +16,9 @@ namespace StudentSync::Client {
 	Events(DeclareEvent);
 
 	struct Window : public wxFrame {
-		enum {
-			ID_ShowPreferences,
+		enum Id {
+			ShowPreferences,
+			TestFFmpeg
 		};
 
 		Window(wxString title, std::string& serverHostname, int serverPort);
@@ -30,6 +31,7 @@ namespace StudentSync::Client {
 		std::optional<std::jthread> clientThread;
 
 		// Window events (defined in clientwindow.events.cpp)
+		void OnTestFFmpegEncode(wxCommandEvent& event);
 		void OnShowPreferences(wxCommandEvent& event);
 		void OnAbout(wxCommandEvent& event);
 		void OnExit(wxCommandEvent& event);

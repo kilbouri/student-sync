@@ -1,4 +1,5 @@
 ﻿#include <wx/numdlg.h>
+#include <format>
 
 #include "ffmpegincludes.h"
 #include "win32includes.h"
@@ -38,8 +39,6 @@ bool App::OnInit() {
 		return false;
 	}
 
-
-
 	// Initialize WinSock2
 	int winsockStartupCode = Winsock2Startup();
 	if (winsockStartupCode == 1) {
@@ -54,6 +53,22 @@ bool App::OnInit() {
 		wxLogFatalError("Winsock2 startup failed");
 		return false;
 	}
+
+
+
+	MONITORENUMPROC callback = [](HMONITOR hMonitor, HDC _2, LPRECT _3, LPARAM infosPtr) {
+		wxLogMessage("Returning false from callback");
+		return FALSE;
+	};
+
+	int rc = EnumDisplayMonitors(nullptr, nullptr, callback, 0);
+	wxLogMessage(std::format("EnumDisplayMonitors returned {}", rc ? "true" : "false").c_str());
+
+
+
+
+
+
 
 	// Fire up the wxWidgets image handler(s)
 	wxImage::AddHandler(new wxPNGHandler());

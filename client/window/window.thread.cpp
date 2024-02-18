@@ -94,7 +94,7 @@ namespace StudentSync::Client {
 		// Begin sending frames at regular interval on a background thread
 		Common::Timer streamTimer{
 			[&connection]() { // sending a message may mutate state, thus we need the closure to also be mutable
-				auto message = Message::StreamFrame::FromDisplay(Common::DisplayCapturer::Format::PNG);
+				auto message = Message::StreamFrame::FromDisplay(Common::GDIPlusUtil::Encoding::PNG);
 				if (message) {
 					message->ToTLVMessage().Send(connection.socket);
 				}
@@ -106,7 +106,7 @@ namespace StudentSync::Client {
 		// todo: we really, really need some sort of non-blocking read support in this program, jesus
 		auto stop = Message::TryReceive<Message::EndStream>(connection.socket);
 
-		// we're going to stop anyway, because any other message breaks protocol, 
+		// we're going to stop anyway, because any other message breaks protocol,
 		// but we can check if its a graceful stop or not
 		streamTimer.Stop();
 
