@@ -29,6 +29,7 @@ jobs:
         run: |
           cd build
           mkdir -p dist
+          ls
           cp *.dll -Destination dist && cp student-sync.exe -Destination dist
           zip -r StudentSync_Win32.zip dist/
 
