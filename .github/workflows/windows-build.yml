@@ -36,4 +36,4 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: StudentSync_Win32.zip
-          path: build/Release/dist/StudentSync_Win32.zip
+          path: build/Release/StudentSync_Win32.zip
