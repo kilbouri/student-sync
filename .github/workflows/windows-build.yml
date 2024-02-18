@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+        with:
+          submodules: true
 
       - name: Setup MSVC Build Tools
         uses: microsoft/setup-msbuild@v1
