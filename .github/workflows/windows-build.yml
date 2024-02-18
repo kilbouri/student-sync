@@ -14,7 +14,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Setup MSVC Build Tools
         uses: microsoft/setup-msbuild@v1
