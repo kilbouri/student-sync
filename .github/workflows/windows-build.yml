@@ -27,9 +27,9 @@ jobs:
 
       - name: Copy files into ZIP
         run: |
+          ls -Recurse
           cd build/Release
           mkdir -p dist
-          ls -Recurse
           cp *.dll -Destination dist && cp student-sync.exe -Destination dist
           zip -r StudentSync_Win32.zip dist/
 
