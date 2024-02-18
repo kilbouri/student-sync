@@ -29,7 +29,7 @@ jobs:
         run: |
           cd build
           mkdir -p dist
-          cp *.dll student-sync.exe dist/
+          cp *.dll -Destination dist && cp student-sync.exe -Destination dist
           zip -r StudentSync_Win32.zip dist/
 
       - name: Publish artifact
