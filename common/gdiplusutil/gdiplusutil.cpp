@@ -66,6 +66,8 @@ namespace StudentSync::Common {
 	}
 
 	std::shared_ptr<Gdiplus::Bitmap> GDIPlusUtil::GetBitmap(int width, int height, PixelFormat pixelFormat) {
+		static_assert(static_cast<PixelFormat_t>(PixelFormat::RGB_24bpp) == PixelFormat24bppRGB);
+
 		auto bitmapPixelFormat = static_cast<std::underlying_type_t<PixelFormat>>(pixelFormat);
 		return std::make_shared<Gdiplus::Bitmap>(width, height, bitmapPixelFormat);
 	}
@@ -111,11 +113,12 @@ namespace StudentSync::Common {
 		// If we were not provided a bitmap, then we need to allocate one
 		// todo: restore use of EXISTING if possible
 		std::shared_ptr<Gdiplus::Bitmap> targetBitmap = GDIPlusUtil::GetBitmap(minWidth, minHeight, pixelFormat);
+		Gdiplus::Graphics bitmapGraphics{ targetBitmap.get() };
 
-		HBITMAP targetBitmapHandle;
-		if (targetBitmap->GetHBITMAP(defaultBackgroundColor, &targetBitmapHandle) != Gdiplus::Status::Ok) {
-			return cpp::fail(CaptureScreenError::UnableToObtainBitmapHandle);
-		}
+		SmartHandle<HDC> bitmapDC{
+			bitmapGraphics.GetHDC(),
+			[&](HDC& dc) { bitmapGraphics.ReleaseHDC(dc); }
+		};
 
 		for (auto const& monitor : monitors) {
 			// note: I'm not sure if monitor.name should be first or second argument.
@@ -130,22 +133,13 @@ namespace StudentSync::Common {
 				return cpp::fail(CaptureScreenError::FailedToCreateMonitorDC);
 			}
 
-			SmartHandle<HDC> memoryDC{
-				CreateCompatibleDC(*monitorDC),
-				[](HDC& dc) { DeleteDC(dc);  }
-			};
-
-			if (*memoryDC == nullptr) {
-				return cpp::fail(CaptureScreenError::FailedToCreateComptaibleDC);
-			}
-
 			const int targetX = monitor.displayRect.left - allMonitorsBoundingRect.left;
 			const int targetY = monitor.displayRect.top - allMonitorsBoundingRect.top;
 
 			const int width = monitor.displayRect.right - monitor.displayRect.left;
 			const int height = monitor.displayRect.bottom - monitor.displayRect.top;
 
-			if (BitBlt(*memoryDC, targetX, targetY, width, height, *monitorDC, 0, 0, SRCCOPY) == 0) {
+			if (BitBlt(*bitmapDC, targetX, targetY, width, height, *monitorDC, 0, 0, SRCCOPY) == 0) {
 				int lastError = GetLastError();
 				return cpp::fail(CaptureScreenError::DesktopCopyFailed);
 			}
