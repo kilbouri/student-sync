@@ -20,7 +20,7 @@ struct SmartHandle {
 	{}
 
 	~SmartHandle() {
-		deleter(&instance);
+		(*deleter)(instance);
 	}
 
 	T& operator*() {

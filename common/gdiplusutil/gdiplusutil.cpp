@@ -27,7 +27,7 @@ namespace StudentSync::Common {
 
 	//	return result;
 	//}
-	// 
+	//
 	//std::optional<std::vector<byte>> DisplayCapturer::CaptureScreen(DisplayCapturer::Encoding format) {
 	//	std::vector<MonitorInfo> monitors;
 	//	auto maybeMonitors = GetMonitors();
@@ -178,16 +178,19 @@ namespace StudentSync::Common {
 		RECT allMonitorsBoundingRect = std::transform_reduce(
 			monitors.begin() + 1, monitors.end(),
 			monitors[0].displayRect,
-			SmallestBoundingRect,
-			&MonitorInfo::displayRect
+			&SmallestBoundingRect,
+			[](MonitorInfo const& mon) { return mon.displayRect; }
 		);
 
-		long minWidth = allMonitorsBoundingRect.right - allMonitorsBoundingRect.left;
-		long minHeight = allMonitorsBoundingRect.bottom - allMonitorsBoundingRect.top;
+		long minWidthLong = allMonitorsBoundingRect.right - allMonitorsBoundingRect.left;
+		long minHeightLong = allMonitorsBoundingRect.bottom - allMonitorsBoundingRect.top;
 
-		if (minWidth > std::numeric_limits<int>::max() || minHeight > std::numeric_limits<int>::max()) {
+		if (minWidthLong > std::numeric_limits<int>::max() || minHeightLong > std::numeric_limits<int>::max()) {
 			return cpp::fail(CaptureScreenError::ScreenTooLargeToCapture);
 		}
+
+		int minWidth = static_cast<int>(minWidthLong);
+		int minHeight = static_cast<int>(minHeightLong);
 
 		// If we were provided a bitmap, we need to make sure its big enough and has the right pixel format
 		if (existingBitmap) {
@@ -201,11 +204,7 @@ namespace StudentSync::Common {
 		}
 
 		// If we were not provided a bitmap, then we need to allocate one
-		std::shared_ptr<Gdiplus::Bitmap> targetBitmap = (existingBitmap) ? existingBitmap : GDIPlusUtil::GetBitmap(
-			static_cast<int>(minWidth), static_cast<int>(minHeight),
-			pixelFormat
-		);
-
+		std::shared_ptr<Gdiplus::Bitmap> targetBitmap = (existingBitmap) ? existingBitmap : GDIPlusUtil::GetBitmap(minWidth, minHeight, pixelFormat);
 
 		HBITMAP targetBitmapHandle;
 		if (targetBitmap->GetHBITMAP(defaultBackgroundColor, &targetBitmapHandle) != Gdiplus::Status::Ok) {
