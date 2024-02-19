@@ -112,7 +112,7 @@ namespace StudentSync::Common::FFmpeg::Encoders {
 		switch (avcodec_send_frame(context.get(), frame.get())) {
 			case 0:
 				// we know the denominator of framerate is 1, so we don't need to worry about it
-				currentFrameIndex = (currentFrameIndex % context->framerate.num) + 1;
+				currentFrameIndex++;
 				return SendFrameResult::Success;
 
 			case AVERROR(EAGAIN): return SendFrameResult::OutputBufferFull;
@@ -130,7 +130,7 @@ namespace StudentSync::Common::FFmpeg::Encoders {
 			case 0:
 				// copy data into a vector
 				packetData.reserve(packet->size);
-				std::copy(packet->data, packet->data + packet->size, packetData.begin());
+				std::copy(packet->data, packet->data + packet->size, std::back_inserter(packetData));
 
 				av_packet_unref(packet.get());
 				return packetData;
@@ -139,6 +139,17 @@ namespace StudentSync::Common::FFmpeg::Encoders {
 			case AVERROR(EOF): return cpp::fail(ReceiveFrameError::FullyFlushed);
 			case AVERROR(EINVAL): return cpp::fail(ReceiveFrameError::InvalidState);
 			default: return cpp::fail(ReceiveFrameError::Unknown);
+		}
+	}
+
+	H264Encoder::FlushResult H264Encoder::Flush() {
+		switch (avcodec_send_frame(context.get(), nullptr)) {
+			case 0:
+				return FlushResult::Success;
+			case AVERROR(EAGAIN): return FlushResult::InsufficientInput; // I doubt this can happen
+			case AVERROR(EOF): return FlushResult::FullyFlushed;
+			case AVERROR(EINVAL): return FlushResult::InvalidState;
+			default: return FlushResult::Unknown;
 		}
 	}
 }

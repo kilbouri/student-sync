@@ -29,6 +29,8 @@ namespace StudentSync::Common::FFmpeg::Encoders {
 		ffmpeg_struct_ptr<AVPacket> packet;
 
 	public:
+		H264Encoder(int width, int height, int fps, AVPixelFormat incomingFormat = AVPixelFormat::AV_PIX_FMT_RGB24);
+
 		enum class SendFrameResult {
 			Success,
 			FrameNotWritable,
@@ -41,6 +43,8 @@ namespace StudentSync::Common::FFmpeg::Encoders {
 			UnknownError
 		};
 
+		SendFrameResult SendFrame(std::vector<uint8_t> const& imageData, bool forceKeyframe);
+
 		enum class ReceiveFrameError {
 			InsufficientInput,
 			FullyFlushed,
@@ -48,9 +52,28 @@ namespace StudentSync::Common::FFmpeg::Encoders {
 			Unknown
 		};
 
-		H264Encoder(int width, int height, int fps, AVPixelFormat incomingFormat = AVPixelFormat::AV_PIX_FMT_RGB24);
-
-		SendFrameResult SendFrame(std::vector<uint8_t> const& image, bool forceKeyframe = false);
 		cpp::result<std::vector<uint8_t>, ReceiveFrameError> ReceivePacket();
+
+		enum class FlushResult {
+			Success,
+			InsufficientInput,
+			FullyFlushed,
+			InvalidState,
+			Unknown,
+		};
+
+		FlushResult Flush();
+
+		// THIS IS A TEMPORARY BODGING MEASURE! DO NOT KEEP!
+		AVCodecContext* GetCodecContext() { return context.get(); }
+		AVPacket* ReceievePacketRaw() {
+			switch (avcodec_receive_packet(context.get(), packet.get())) {
+				case 0:
+					// copy data into a vector
+					return packet.get();
+				default:
+					return nullptr;
+			}
+		}
 	};
 }

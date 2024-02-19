@@ -18,7 +18,7 @@ namespace StudentSync::Common {
 		};
 
 		/// <summary>
-		/// An enumeration of GDI+ Pixel Formats. Enum values are 
+		/// An enumeration of GDI+ Pixel Formats. Enum values are
 		/// of exactly the same value as the corresponding format
 		/// in GDI+.
 		/// </summary>
@@ -39,6 +39,8 @@ namespace StudentSync::Common {
 			PARGB_64bpp = PixelFormat64bppPARGB,
 		};
 
+		using PixelFormat_t = std::underlying_type_t<PixelFormat>;
+
 		/// <summary>
 		/// Creates a new bitmap with the specified dimensions and pixel format
 		/// and returns a shared pointer to the bitmap object.
@@ -47,7 +49,7 @@ namespace StudentSync::Common {
 		/// <param name="height">The height in pixels of the new bitmap</param>
 		/// <param name="pixelFormat">The pxiel format for the new bitmap</param>
 		/// <returns>A shared pointer that manages the newly created bitmap object</returns>
-		std::shared_ptr<Gdiplus::Bitmap> GetBitmap(int width, int height, PixelFormat pixelFormat);
+		static std::shared_ptr<Gdiplus::Bitmap> GetBitmap(int width, int height, PixelFormat pixelFormat);
 
 		enum class CaptureScreenError {
 			NoMonitorsDetected, // no monitors were detected, or an error ocurred while enumerating them
@@ -55,6 +57,9 @@ namespace StudentSync::Common {
 			ProvidedBitmapTooSmall, // a bitmap was provided, but not big enough
 			PixelFormatMismatch, // a bitmap was provided, but its pixel format does not match the requested pixel format
 			UnableToObtainBitmapHandle, // failed to obtain an HBITMAP from the provided/created bitmap
+			FailedToCreateMonitorDC, // failed to create a DC for the monitor
+			FailedToCreateComptaibleDC, // failed to create a DC compatible with monitor to hold the bitmap
+			FailedToSelectMonitor, // SelectObject failed to select the HBITMAP into the drawing context
 			DesktopCopyFailed, // An error occurred during at least one BitBlt from the desktop to the bitmap
 		};
 
@@ -67,10 +72,26 @@ namespace StudentSync::Common {
 		/// in which case an appropriately sized bitmap will be created for you.</param>
 		/// <returns>An error if capturing fails, otherwise either the bitmap provided,
 		/// or a newly created bitmap, containing the current desktop image.</returns>
-		cpp::result<std::shared_ptr<Gdiplus::Bitmap>, CaptureScreenError> CaptureScreen(
+		static cpp::result<std::shared_ptr<Gdiplus::Bitmap>, CaptureScreenError> CaptureScreen(
 			PixelFormat pixelFormat,
-			Gdiplus::Color defaultBackgroundColor = Gdiplus::Color::Black,
+			Gdiplus::Color defaultBackgroundColor = Gdiplus::Color::Red,
 			std::shared_ptr<Gdiplus::Bitmap> existingBmp = nullptr
 		);
+
+		enum class GetPixelDataError {
+			BitmapTooBig, // The provided bitmap's width or height is greater than INT_MAX
+			BitmapLockFailed, // Failed to lock the bitmap for reading
+			BitmapUnlockFailed // Failed to unlock the bitmap after reading
+		};
+
+		static cpp::result<std::vector<uint8_t>, GetPixelDataError> GetPixelData(std::shared_ptr<Gdiplus::Bitmap> bitmap, PixelFormat format);
+
+		enum class EncodeBitmapError {
+			FailedToCreateStream,
+			FailedToGetHGlobalForStream,
+			FailedToLockStream
+		};
+
+		static cpp::result<std::vector<uint8_t>, EncodeBitmapError> EncodeBitmap(std::shared_ptr<Gdiplus::Bitmap> bitmap, Encoding encoding);
 	};
 }

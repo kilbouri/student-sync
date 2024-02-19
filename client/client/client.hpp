@@ -21,6 +21,7 @@ namespace StudentSync::Client {
 
 		~Client();
 	private:
+		bool connected;
 		Networking::TCPSocket socket;
 		std::function<void(Connection)> handler;
 	};

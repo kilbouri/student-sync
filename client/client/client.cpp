@@ -10,13 +10,19 @@ namespace StudentSync::Client {
 	Client::Client(std::string& hostname, int port, std::function<void(Connection)> handler)
 		: socket(TCPSocket{})
 		, handler{ handler }
+		, connected{ false }
 	{
-		if (!socket.Connect(hostname, port)) {
-			throw "Failed to connect to server at " + hostname + ":" + std::to_string(port);
+		if (socket.Connect(hostname, port)) {
+			connected = true;
 		}
 	}
 
 	void Client::Run() {
+		if (!connected) {
+			// todo: this connection failure should not be allowed to pass silently
+			return;
+		}
+
 		// wow much complicated!
 		this->handler(Connection{
 			.socket = this->socket

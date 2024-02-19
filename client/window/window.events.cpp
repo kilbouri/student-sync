@@ -1,7 +1,11 @@
+
 #include "window.hpp"
 
 #include <format>
 #include <wx/mstream.h>
+#include <fstream>
+#include <algorithm>
+#include <iterator>
 
 #include "../../common/timer/timer.hpp"
 #include "../../common/screenresolution/screenresolution.hpp"
@@ -9,22 +13,131 @@
 #include "../../common/gdiplusutil/gdiplusutil.hpp"
 #include "../preferenceseditor/preferenceseditor.hpp"
 
-using namespace StudentSync::Networking;
 using namespace StudentSync::Common;
 
 namespace StudentSync::Client {
-	void RecordClip(int seconds, int fps, std::string_view path) {
-		auto currentResolution = ScreenResolution::GetCurrentDisplayResolution();
-		FFmpeg::Encoders::H264Encoder encoder{ (int)currentResolution.width, (int)currentResolution.height, fps };
+	void RecordClip(int seconds, int fps, std::string path) {
+		using FFmpeg::Encoders::H264Encoder;
+		constexpr auto format = GDIPlusUtil::PixelFormat::RGB_24bpp;
+
+		auto desktop = GDIPlusUtil::CaptureScreen(format);
+		if (!desktop) {
+			wxLogFatalError("Failed to capture screen");
+			return;
+		}
+
+		const AVOutputFormat* outFormat = av_guess_format("mp4", nullptr, nullptr);
+		if (!outFormat) {
+			wxLogFatalError("Failed to guess output format for *.mp4");
+			return;
+		}
+
+		AVFormatContext* formatContext = nullptr;
+		if (avformat_alloc_output_context2(&formatContext, outFormat, nullptr, nullptr) < 0) {
+			wxLogFatalError("Failed to create format context");
+			return;
+		}
+
+		AVStream* stream = avformat_new_stream(formatContext, nullptr);
+		if (!stream) {
+			wxLogFatalError("Error creating new video stream");
+			return;
+		}
+
+		const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_H264);
+		if (!codec) {
+			wxLogFatalError("Failed to find H264 codec");
+			return;
+		}
+
+		H264Encoder encoder{
+			static_cast<int>((*desktop)->GetWidth()),
+			static_cast<int>((*desktop)->GetHeight()),
+			fps, AV_PIX_FMT_RGB24
+		};
+
+		stream->codecpar->codec_id = codec->id;
+		stream->codecpar->codec_type = AVMEDIA_TYPE_VIDEO;
+		stream->codecpar->format = AV_PIX_FMT_YUV420P; // Adjust according to your input video format
+		stream->codecpar->width = static_cast<int>((*desktop)->GetWidth()); // Adjust according to your input video width
+		stream->codecpar->height = static_cast<int>((*desktop)->GetHeight()); // Adjust according to your input video height
+
+		if (avcodec_parameters_to_context(encoder.GetCodecContext(), stream->codecpar) < 0) {
+			wxLogFatalError("Failed to copy codec parameters to codec context");
+			return;
+		}
+
+		if (!(formatContext->oformat->flags & AVFMT_NOFILE)) {
+			if (avio_open(&formatContext->pb, path.c_str(), AVIO_FLAG_WRITE) < 0) {
+				wxLogFatalError("Error opening output file");
+				return;
+			}
+		}
+
+		if (avformat_write_header(formatContext, nullptr) < 0) {
+			wxLogFatalError("Error writing header");
+			return;
+		}
+
+		const auto writeAllPackets = [&]() {
+			AVPacket* packet;
+			while ((packet = encoder.ReceievePacketRaw()) != nullptr) {
+				packet->stream_index = stream->index;
+				av_packet_rescale_ts(packet, encoder.GetCodecContext()->time_base, stream->time_base);
+
+				if (av_interleaved_write_frame(formatContext, packet) < 0) {
+					wxLogFatalError("Error writing packet");
+					return;
+				}
+
+				av_packet_unref(packet);
+			}
+		};
 
 		for (int i = 0; i < fps * seconds; ++i) {
-			std::vector<uint8_t> frame{};
+			auto pixelData = GDIPlusUtil::GetPixelData(*desktop, format);
+			if (!pixelData) {
+				wxLogFatalError("Failed to obtain pixel data from last screen capture. Error code: {}", static_cast<std::underlying_type_t<GDIPlusUtil::CaptureScreenError>>(pixelData.error()));
+				return;
+			}
 
-			wxMemoryInputStream memoryInStream{ frame.data(), frame.size() };
-			wxImage image{ memoryInStream, wxBitmapType::wxBITMAP_TYPE_ANY };
+			auto sendFrameResult = encoder.SendFrame(*pixelData, true);
+			if (sendFrameResult != H264Encoder::SendFrameResult::Success) {
+				wxLogFatalError(std::format("Failed to send frame to encoder. Error code: {}", static_cast<std::underlying_type_t<H264Encoder::SendFrameResult>>(sendFrameResult)).c_str());
+				return;
+			}
+
+			writeAllPackets();
+
+			// For debugging, write the bitmap to disk as well
+			#if 1
+			auto bitmapAsPng = GDIPlusUtil::EncodeBitmap(*desktop, GDIPlusUtil::Encoding::PNG);
+			if (!bitmapAsPng) {
+				wxLogWarning(std::format("Failed to encode frame {} as PNG", i).c_str());
+			}
+			else {
+				auto& bytes = bitmapAsPng.value();
+				std::ofstream file{ std::format("{}.{}.png", path, i), std::ios::binary };
+				std::copy(
+					bytes.begin(), bytes.end(),
+					std::ostreambuf_iterator(file)
+				);
+			}
+			#endif
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(1000 / fps));
+
+			// will we need another frame?
+			if ((i + 1) < fps * seconds) {
+				desktop = GDIPlusUtil::CaptureScreen(format, Gdiplus::Color::Black, desktop.value());
+			}
 		}
+
+		encoder.Flush();
+		writeAllPackets();
+
+		av_write_trailer(formatContext);
+		avformat_free_context(formatContext);
 	}
 
 	void Window::OnTestFFmpegEncode(wxCommandEvent& event) {
@@ -40,7 +153,7 @@ namespace StudentSync::Client {
 
 		// this is fucking stupid
 		std::string path{ saveLocationPrompt.GetPath().c_str() };
-		std::thread job = std::thread{ &RecordClip, 10, 30, path };
+		std::thread{ &RecordClip, 10, 30, path }.detach();
 	}
 
 	void Window::OnShowPreferences(wxCommandEvent& event) {
@@ -49,6 +162,8 @@ namespace StudentSync::Client {
 	}
 
 	void Window::OnAbout(wxCommandEvent& event) {
+		using namespace Networking;
+
 		TCPSocket::SocketInfo localConnection = client->GetClientInfo();
 		TCPSocket::SocketInfo remoteConnection = client->GetRemoteInfo();
 
