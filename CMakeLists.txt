@@ -42,6 +42,7 @@ set(EXTRA_HEADERS
 	"common/generator/generator.hpp"
 	"common/preferenceseditor/preferenceseditor.hpp"
 	"common/task/task.hpp"
+	"common/smarthandle/smarthandle.hpp"
 
 	"networking/message/message.hpp"
 

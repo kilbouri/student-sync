@@ -5,46 +5,13 @@
 #include <memory>
 #include <ranges>
 #include <numeric>
+#include <algorithm>
+
+#include "../smarthandle/smarthandle.hpp"
 
 // todo: this is incredibly unperformant and would cause a huge strain on the client device. We can absolutely do better:
 // https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/desktop-dup-api
 namespace StudentSync::Common {
-	//struct MonitorInfo {
-	//	RECT rect;
-	//	TCHAR name[CCHDEVICENAME];
-	//};
-
-	//std::optional<std::vector<MonitorInfo>> GetMonitors() {
-	//	// this needs to have static lifetime, since we can't capture it into the callback below
-	//	static std::vector<MonitorInfo> result = std::vector<MonitorInfo>();
-	//	result.clear();
-
-	//	MONITORENUMPROC callback = [](HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData) {
-	//		MONITORINFOEX monitorInfo = {};
-
-	//		// the size must be set to either sizeof(MONITORINFO) or sizeof(MONITORINFOEX).
-	//		// since we need the device name, we need the "extended" struct which is MONITORINFOEX.
-	//		monitorInfo.cbSize = sizeof(MONITORINFOEX);
-	//		GetMonitorInfo(hMonitor, &monitorInfo);
-
-	//		MonitorInfo thisMonitor = {
-	//			.rect = *lprcMonitor,
-	//			.name = {0},
-	//		};
-
-	//		std::memcpy(thisMonitor.name, monitorInfo.szDevice, CCHDEVICENAME);
-
-	//		result.push_back(thisMonitor);
-	//		return TRUE; // continues the enumeration
-	//	};
-
-	//	if (!EnumDisplayMonitors(nullptr, nullptr, callback, 0)) {
-	//		return std::nullopt;
-	//	}
-
-	//	return result;
-	//}
-
 	//CLSID getFormatCLSID(DisplayCapturer::Encoding format) {
 	//	using Format = DisplayCapturer::Encoding;
 
@@ -60,24 +27,7 @@ namespace StudentSync::Common {
 
 	//	return result;
 	//}
-
-	//constexpr RECT BoundingBoxOf(RECT a, RECT b) {
-	//	return RECT{
-	//		.left = std::min(a.left, b.left),
-	//		.top = std::min(a.top, b.top),
-	//		.right = std::max(a.right, b.right),
-	//		.bottom = std::max(a.bottom, b.bottom)
-	//	};
-	//}
-
-	//constexpr int WidthOfRect(RECT r) {
-	//	return r.right - r.left;
-	//}
-
-	//constexpr int HeightOfRect(RECT r) {
-	//	return r.bottom - r.top;
-	//}
-
+	// 
 	//std::optional<std::vector<byte>> DisplayCapturer::CaptureScreen(DisplayCapturer::Encoding format) {
 	//	std::vector<MonitorInfo> monitors;
 	//	auto maybeMonitors = GetMonitors();
@@ -163,10 +113,6 @@ namespace StudentSync::Common {
 	//}
 }
 
-struct Rectangle {
-
-};
-
 struct MonitorInfo {
 	RECT displayRect;
 	RECT workAreaRect;
@@ -183,7 +129,7 @@ std::vector<MonitorInfo> GetMonitors() {
 
 		MONITORINFOEX monitorInfo = {};
 		if (!GetMonitorInfo(hMonitor, &monitorInfo)) {
-			return FALSE; // My guess is this stops the enumeration, but I don't know for sure.
+			return FALSE; // stops enumeration and reports error
 		}
 
 		MonitorInfo thisMonitor = {
@@ -204,14 +150,110 @@ std::vector<MonitorInfo> GetMonitors() {
 	return infos;
 }
 
-
+RECT SmallestBoundingRect(RECT const& a, RECT const& b) {
+	return RECT{
+		.left = std::min(a.left, b.left),
+		.top = std::min(a.top, b.top),
+		.right = std::max(a.right, b.right),
+		.bottom = std::max(a.bottom, b.bottom),
+	};
+}
 
 namespace StudentSync::Common {
-	using namespace Gdiplus;
+	std::shared_ptr<Gdiplus::Bitmap> GDIPlusUtil::GetBitmap(int width, int height, PixelFormat pixelFormat) {
+		auto bitmapPixelFormat = static_cast<std::underlying_type_t<PixelFormat>>(pixelFormat);
+		return std::make_shared<Gdiplus::Bitmap>(width, height, bitmapPixelFormat);
+	}
 
-	cpp::result<std::shared_ptr<Bitmap>, GDIPlusUtil::CaptureScreenError> GDIPlusUtil::CaptureScreen(
-		std::shared_ptr<Bitmap> existingBitmap
+	cpp::result<std::shared_ptr<Gdiplus::Bitmap>, GDIPlusUtil::CaptureScreenError> GDIPlusUtil::CaptureScreen(
+		PixelFormat pixelFormat,
+		Gdiplus::Color defaultBackgroundColor,
+		std::shared_ptr<Gdiplus::Bitmap> existingBitmap
 	) {
-		return existingBitmap;
+		std::vector<MonitorInfo> monitors = GetMonitors();
+		if (monitors.size() == 0) {
+			return cpp::fail(CaptureScreenError::NoMonitorsDetected);
+		}
+
+		RECT allMonitorsBoundingRect = std::transform_reduce(
+			monitors.begin() + 1, monitors.end(),
+			monitors[0].displayRect,
+			SmallestBoundingRect,
+			&MonitorInfo::displayRect
+		);
+
+		long minWidth = allMonitorsBoundingRect.right - allMonitorsBoundingRect.left;
+		long minHeight = allMonitorsBoundingRect.bottom - allMonitorsBoundingRect.top;
+
+		if (minWidth > std::numeric_limits<int>::max() || minHeight > std::numeric_limits<int>::max()) {
+			return cpp::fail(CaptureScreenError::ScreenTooLargeToCapture);
+		}
+
+		// If we were provided a bitmap, we need to make sure its big enough and has the right pixel format
+		if (existingBitmap) {
+			if (existingBitmap->GetWidth() < minWidth || existingBitmap->GetHeight() < minHeight) {
+				return cpp::fail(CaptureScreenError::ProvidedBitmapTooSmall);
+			}
+
+			if (existingBitmap->GetPixelFormat() != static_cast<std::underlying_type_t<PixelFormat>>(pixelFormat)) {
+				return cpp::fail(CaptureScreenError::PixelFormatMismatch);
+			}
+		}
+
+		// If we were not provided a bitmap, then we need to allocate one
+		std::shared_ptr<Gdiplus::Bitmap> targetBitmap = (existingBitmap) ? existingBitmap : GDIPlusUtil::GetBitmap(
+			static_cast<int>(minWidth), static_cast<int>(minHeight),
+			pixelFormat
+		);
+
+
+		HBITMAP targetBitmapHandle;
+		if (targetBitmap->GetHBITMAP(defaultBackgroundColor, &targetBitmapHandle) != Gdiplus::Status::Ok) {
+			return cpp::fail(CaptureScreenError::UnableToObtainBitmapHandle);
+		}
+
+		SmartHandle<HDC> bitmapHDC{
+			CreateCompatibleDC(nullptr),
+			[](HDC& dc) { DeleteDC(dc); }
+		};
+
+		// we ignore the return value as we will be deleting the DC when we are done
+		SelectObject(*bitmapHDC, targetBitmapHandle);
+
+		#if 1 // I'm not sure which of these capture implementations work properly, so one is dead and the other isn't
+		for (auto const& monitor : monitors) {
+			const int monWidth = monitor.displayRect.right - monitor.displayRect.left;
+			const int monHeight = monitor.displayRect.bottom - monitor.displayRect.top;
+
+			const int targetX = monitor.displayRect.left - allMonitorsBoundingRect.left;
+			const int targetY = monitor.displayRect.top - allMonitorsBoundingRect.top;
+
+			// note: I'm not sure if monitor.name should be first or second argument.
+			// based on parameter names, I think second. The docs do not specify which is
+			// correct. If this code becomes problematic, try putting it as the first argument
+			SmartHandle<HDC> monitorHDC{
+				CreateDC(nullptr, monitor.deviceName, nullptr, nullptr),
+				[](HDC& dc) {DeleteDC(dc); }
+			};
+
+			if (!BitBlt(*bitmapHDC, targetX, targetY, monWidth, monHeight, *monitorHDC, 0, 0, SRCCOPY)) {
+				return cpp::fail(CaptureScreenError::DesktopCopyFailed);
+			}
+		}
+		#else
+		SmartHandle<HDC> monitorHDC{
+			GetDC(nullptr),
+			[](HDC& dc) { DeleteDC(dc); }
+		};
+
+		const int displayWidth = allMonitorsBoundingRect.right - allMonitorsBoundingRect.left;
+		const int displayHeight = allMonitorsBoundingRect.bottom - allMonitorsBoundingRect.top;
+
+		if (!BitBlt(*bitmapHDC, 0, 0, displayWidth, displayHeight, *monitorHDC, allMonitorsBoundingRect.left, allMonitorsBoundingRect.right, SRCCOPY)) {
+			return cpp::fail(CaptureScreenError::DesktopCopyFailed);
+		}
+		#endif
+
+		return targetBitmap;
 	}
 }

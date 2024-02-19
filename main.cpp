@@ -54,22 +54,6 @@ bool App::OnInit() {
 		return false;
 	}
 
-
-
-	MONITORENUMPROC callback = [](HMONITOR hMonitor, HDC _2, LPRECT _3, LPARAM infosPtr) {
-		wxLogMessage("Returning false from callback");
-		return FALSE;
-	};
-
-	int rc = EnumDisplayMonitors(nullptr, nullptr, callback, 0);
-	wxLogMessage(std::format("EnumDisplayMonitors returned {}", rc ? "true" : "false").c_str());
-
-
-
-
-
-
-
 	// Fire up the wxWidgets image handler(s)
 	wxImage::AddHandler(new wxPNGHandler());
 

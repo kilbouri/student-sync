@@ -10,8 +10,9 @@ namespace StudentSync::Common {
 	/// A coroutine type for lightweight, cooperative, concurrency. Tasks do not
 	/// begin executing until they are explicitly resumed or awaited.
 	/// </summary>
-	template <typename TResult> requires (std::is_void_v<TResult> || std::movable<TResult>)
-		struct Task {
+	template <typename TResult>
+		requires (std::is_void_v<TResult> || std::movable<TResult>)
+	struct Task {
 		struct promise_type;
 		using Handle = std::coroutine_handle<promise_type>;
 
