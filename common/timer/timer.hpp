@@ -34,11 +34,19 @@ namespace StudentSync::Common {
 
 	inline auto Timer::CreateJob(std::invocable auto function, std::chrono::milliseconds timeout) {
 		return [=]() {
+
 			while (!shouldStop.load()) {
+				auto startTime = std::chrono::steady_clock::now();
+
 				function();
 
-				// TODO: use chrono::steady_clock and account for function() execution time
-				std::this_thread::sleep_for(timeout);
+				auto endTime = std::chrono::steady_clock::now();
+				auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+
+				auto remainingTime = timeout - elapsedTime;
+				if (remainingTime > std::chrono::milliseconds(0)) {
+					std::this_thread::sleep_for(remainingTime);
+				}
 			}
 		};
 	}

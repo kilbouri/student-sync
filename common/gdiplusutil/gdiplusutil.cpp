@@ -150,6 +150,7 @@ namespace StudentSync::Common {
 
 	cpp::result<std::vector<uint8_t>, GDIPlusUtil::GetPixelDataError> GDIPlusUtil::GetPixelData(std::shared_ptr<Gdiplus::Bitmap> bitmap, PixelFormat format_) {
 		Gdiplus::PixelFormat format = static_cast<PixelFormat_t>(format_);
+		PixelFormat bitmapFormat = static_cast<PixelFormat>(bitmap->GetPixelFormat());
 
 		UINT width = bitmap->GetWidth();
 		UINT height = bitmap->GetHeight();
@@ -162,29 +163,35 @@ namespace StudentSync::Common {
 			return cpp::fail(GetPixelDataError::BitmapTooBig);
 		}
 
-		Gdiplus::BitmapData tempBuffer{};
+		Gdiplus::BitmapData bitmapData{};
 		Gdiplus::Rect fullRect{ 0, 0, static_cast<int>(width), static_cast<int>(height) };
-		if (bitmap->LockBits(&fullRect, Gdiplus::ImageLockModeRead, format, &tempBuffer) != Gdiplus::Status::Ok) {
+		if (bitmap->LockBits(&fullRect, Gdiplus::ImageLockModeRead, format, &bitmapData) != Gdiplus::Status::Ok) {
 			int lastError = GetLastError();
 			return cpp::fail(GetPixelDataError::BitmapLockFailed);
 		}
 
-		size_t bytesPerLine = 1ULL * tempBuffer.Width * (Gdiplus::GetPixelFormatSize(format) / 8);
-		uint8_t* tempBufferScan0 = reinterpret_cast<uint8_t*>(tempBuffer.Scan0);
-		int absStride = std::abs(tempBuffer.Stride);
+		struct RGB24PixelData {
+			uint8_t red, green, blue;
+		};
+
+		size_t bytesPerLine = 1ULL * bitmapData.Width * (Gdiplus::GetPixelFormatSize(format) / 8);
+		uint8_t* tempBufferScan0 = reinterpret_cast<uint8_t*>(bitmapData.Scan0);
+		RGB24PixelData* pixelData = reinterpret_cast<RGB24PixelData*>(bitmapData.Scan0);
+
+		int absStride = std::abs(bitmapData.Stride);
 
 		std::vector<uint8_t> data;
-		data.reserve(bytesPerLine * tempBuffer.Height);
+		data.reserve(bytesPerLine * bitmapData.Height);
 
-		size_t yStart = (tempBuffer.Stride < 0) ? tempBuffer.Height - 1 : 0;
-		int yStep = (tempBuffer.Stride < 0) ? -1 : 1;
+		size_t yStart = (bitmapData.Stride < 0) ? bitmapData.Height - 1 : 0;
+		int yStep = (bitmapData.Stride < 0) ? -1 : 1;
 
-		for (size_t y = yStart; y < tempBuffer.Height; y += yStep) {
+		for (size_t y = yStart; y < bitmapData.Height; y += yStep) {
 			const uint8_t* start = tempBufferScan0 + (y * absStride);
 			data.insert(data.end(), start, start + bytesPerLine);
 		}
 
-		if (bitmap->UnlockBits(&tempBuffer) != Gdiplus::Status::Ok) {
+		if (bitmap->UnlockBits(&bitmapData) != Gdiplus::Status::Ok) {
 			int lastError = GetLastError();
 			return cpp::fail(GetPixelDataError::BitmapUnlockFailed);
 		}

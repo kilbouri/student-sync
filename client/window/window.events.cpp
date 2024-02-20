@@ -50,10 +50,14 @@ namespace StudentSync::Client {
 			return;
 		}
 
+		AVPixelFormat ffmpegFormat = (std::endian::native == std::endian::little)
+			? AVPixelFormat::AV_PIX_FMT_BGR24
+			: AVPixelFormat::AV_PIX_FMT_RGB24;
+
 		H264Encoder encoder{
 			static_cast<int>((*desktop)->GetWidth()),
 			static_cast<int>((*desktop)->GetHeight()),
-			fps, AV_PIX_FMT_RGB24
+			fps, ffmpegFormat
 		};
 
 		stream->codecpar->codec_id = codec->id;
@@ -95,6 +99,10 @@ namespace StudentSync::Client {
 		};
 
 		for (int i = 0; i < fps * seconds; ++i) {
+			auto startTime = std::chrono::steady_clock::now();
+
+			desktop = GDIPlusUtil::CaptureScreen(format, Gdiplus::Color::Black, desktop.value());
+
 			auto pixelData = GDIPlusUtil::GetPixelData(*desktop, format);
 			if (!pixelData) {
 				wxLogFatalError("Failed to obtain pixel data from last screen capture. Error code: {}", static_cast<std::underlying_type_t<GDIPlusUtil::CaptureScreenError>>(pixelData.error()));
@@ -109,27 +117,12 @@ namespace StudentSync::Client {
 
 			writeAllPackets();
 
-			// For debugging, write the bitmap to disk as well
-			#if 1
-			auto bitmapAsPng = GDIPlusUtil::EncodeBitmap(*desktop, GDIPlusUtil::Encoding::PNG);
-			if (!bitmapAsPng) {
-				wxLogWarning(std::format("Failed to encode frame {} as PNG", i).c_str());
-			}
-			else {
-				auto& bytes = bitmapAsPng.value();
-				std::ofstream file{ std::format("{}.{}.png", path, i), std::ios::binary };
-				std::copy(
-					bytes.begin(), bytes.end(),
-					std::ostreambuf_iterator(file)
-				);
-			}
-			#endif
+			auto endTime = std::chrono::steady_clock::now();
+			auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+			auto remaining = std::chrono::milliseconds(1000 / fps) - elapsed;
 
-			std::this_thread::sleep_for(std::chrono::milliseconds(1000 / fps));
-
-			// will we need another frame?
-			if ((i + 1) < fps * seconds) {
-				desktop = GDIPlusUtil::CaptureScreen(format, Gdiplus::Color::Black, desktop.value());
+			if (remaining > std::chrono::milliseconds(0)) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(remaining));
 			}
 		}
 
@@ -138,6 +131,8 @@ namespace StudentSync::Client {
 
 		av_write_trailer(formatContext);
 		avformat_free_context(formatContext);
+
+		wxLogInfo("Test capture completed");
 	}
 
 	void Window::OnTestFFmpegEncode(wxCommandEvent& event) {
