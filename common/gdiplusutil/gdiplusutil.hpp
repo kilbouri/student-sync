@@ -74,7 +74,7 @@ namespace StudentSync::Common {
 		/// or a newly created bitmap, containing the current desktop image.</returns>
 		static cpp::result<std::shared_ptr<Gdiplus::Bitmap>, CaptureScreenError> CaptureScreen(
 			PixelFormat pixelFormat,
-			Gdiplus::Color defaultBackgroundColor = Gdiplus::Color::Red,
+			Gdiplus::Color defaultBackgroundColor = Gdiplus::Color::Black,
 			std::shared_ptr<Gdiplus::Bitmap> existingBmp = nullptr
 		);
 

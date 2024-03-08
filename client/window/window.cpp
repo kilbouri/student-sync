@@ -14,7 +14,6 @@ namespace StudentSync::Client {
 		, clientThread{ std::nullopt }
 	{
 		wxMenu* menuFile = new wxMenu;
-		menuFile->Append(Id::TestFFmpeg, "Test FFmpeg", "Record a 5-second video of the desktop");
 		menuFile->Append(Id::ShowPreferences, "Preferences...\tCtrl-,", "Edit client preferences");
 		menuFile->AppendSeparator();
 		menuFile->Append(wxID_ABOUT);
@@ -27,7 +26,6 @@ namespace StudentSync::Client {
 		statusBar = new wxStatusBar(this);
 		SetStatusBar(statusBar);
 
-		Bind(wxEVT_MENU, &Window::OnTestFFmpegEncode, this, Id::TestFFmpeg);
 		Bind(wxEVT_MENU, &Window::OnShowPreferences, this, Id::ShowPreferences);
 		Bind(wxEVT_MENU, &Window::OnAbout, this, wxID_ABOUT);
 		Bind(wxEVT_MENU, &Window::OnExit, this, wxID_EXIT);

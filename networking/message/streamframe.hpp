@@ -8,45 +8,51 @@
 // At some point we should add in extra info like resolution but what the hell why now
 namespace StudentSync::Networking::Message {
 	struct StreamFrame {
-		using DisplayCapturer = Common::GDIPlusUtil;
+	private:
+		using GDIPlusUtil = Common::GDIPlusUtil;
 
-		DisplayCapturer::Encoding format;
+	public:
+		GDIPlusUtil::Encoding format;
 		std::vector<uint8_t> imageData;
 
-		StreamFrame(DisplayCapturer::Encoding format, std::vector<uint8_t> imageData) : format{ format }, imageData{ imageData } {}
+		StreamFrame(GDIPlusUtil::Encoding format, std::vector<uint8_t> imageData) : format{ format }, imageData{ imageData } {}
 
-		static std::optional<StreamFrame> FromDisplay(DisplayCapturer::Encoding format) {
-			//std::optional<std::vector<uint8_t>> imageData = DisplayCapturer::CaptureScreen();
-			std::optional<std::vector<uint8_t>> imageData = std::vector<uint8_t>{};
+		static std::optional<StreamFrame> FromDisplay(GDIPlusUtil::Encoding format) {
+			auto imageData = GDIPlusUtil::CaptureScreen(GDIPlusUtil::PixelFormat::RGB_24bpp);
 			if (!imageData) {
 				return std::nullopt;
 			}
 
-			return StreamFrame(format, std::move(*imageData));
+			auto encodedData = GDIPlusUtil::EncodeBitmap(imageData.value(), format);
+			if (!encodedData) {
+				return std::nullopt;
+			}
+
+			return StreamFrame(format, std::move(*encodedData));
 		}
 
 		static std::optional<StreamFrame> FromTLVMessage(const TLVMessage& netMessage) noexcept {
-			if (netMessage.tag != TLVMessage::Tag::StreamFrame || netMessage.data.size() < sizeof(DisplayCapturer::Encoding)) {
+			if (netMessage.tag != TLVMessage::Tag::StreamFrame || netMessage.data.size() < sizeof(GDIPlusUtil::Encoding)) {
 				return std::nullopt;
 			}
 
 			// ------ read and process the image format
 
-			DisplayCapturer::Encoding format; // 8 bits, no endianness conversion needed
-			std::memcpy(&format, netMessage.data.data(), sizeof(DisplayCapturer::Encoding));
+			GDIPlusUtil::Encoding format; // 8 bits, no endianness conversion needed
+			std::memcpy(&format, netMessage.data.data(), sizeof(GDIPlusUtil::Encoding));
 
 			switch (format) {
-				case DisplayCapturer::Encoding::BMP:
-				case DisplayCapturer::Encoding::GIF:
-				case DisplayCapturer::Encoding::JPG:
-				case DisplayCapturer::Encoding::TIF:
-				case DisplayCapturer::Encoding::PNG:
+				case GDIPlusUtil::Encoding::BMP:
+				case GDIPlusUtil::Encoding::GIF:
+				case GDIPlusUtil::Encoding::JPG:
+				case GDIPlusUtil::Encoding::TIF:
+				case GDIPlusUtil::Encoding::PNG:
 					break;
 				default: return std::nullopt;
 			}
 
 			// ------ format ok, rest of message is image data
-			std::vector<uint8_t> imageData(netMessage.data.begin() + sizeof(DisplayCapturer::Encoding), netMessage.data.end());
+			std::vector<uint8_t> imageData(netMessage.data.begin() + sizeof(GDIPlusUtil::Encoding), netMessage.data.end());
 			return StreamFrame(format, imageData);
 		}
 

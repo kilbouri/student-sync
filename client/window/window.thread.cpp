@@ -103,17 +103,9 @@ namespace StudentSync::Client {
 		};
 
 		// Block this thread until we receive a stop message
-		// todo: we really, really need some sort of non-blocking read support in this program, jesus
 		auto stop = Message::TryReceive<Message::EndStream>(connection.socket);
-
-		// we're going to stop anyway, because any other message breaks protocol,
-		// but we can check if its a graceful stop or not
 		streamTimer.Stop();
-
-
-		if (stop) {
-			streamTimer.Stop();
-		}
+		PushLogMessage("Streaming stopped");
 	}
 
 	void Window::PushLogMessage(std::string message) {
