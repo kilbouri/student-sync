@@ -123,7 +123,7 @@ namespace StudentSync::Common::FFmpeg::Encoders {
 		}
 	}
 
-	cpp::result<std::vector<uint8_t>, H264Encoder::ReceiveFrameError> H264Encoder::ReceivePacket() {
+	cpp::result<std::vector<uint8_t>, H264Encoder::ReceivePacketError> H264Encoder::ReceivePacket() {
 		std::vector<uint8_t> packetData;
 
 		switch (avcodec_receive_packet(context.get(), packet.get())) {
@@ -135,17 +135,16 @@ namespace StudentSync::Common::FFmpeg::Encoders {
 				av_packet_unref(packet.get());
 				return packetData;
 
-			case AVERROR(EAGAIN): return cpp::fail(ReceiveFrameError::InsufficientInput);
-			case AVERROR(EOF): return cpp::fail(ReceiveFrameError::FullyFlushed);
-			case AVERROR(EINVAL): return cpp::fail(ReceiveFrameError::InvalidState);
-			default: return cpp::fail(ReceiveFrameError::Unknown);
+			case AVERROR(EAGAIN): return cpp::fail(ReceivePacketError::InsufficientInput);
+			case AVERROR(EOF): return cpp::fail(ReceivePacketError::FullyFlushed);
+			case AVERROR(EINVAL): return cpp::fail(ReceivePacketError::InvalidState);
+			default: return cpp::fail(ReceivePacketError::Unknown);
 		}
 	}
 
 	H264Encoder::FlushResult H264Encoder::Flush() {
 		switch (avcodec_send_frame(context.get(), nullptr)) {
-			case 0:
-				return FlushResult::Success;
+			case 0: return FlushResult::Success;
 			case AVERROR(EAGAIN): return FlushResult::InsufficientInput; // I doubt this can happen
 			case AVERROR(EOF): return FlushResult::FullyFlushed;
 			case AVERROR(EINVAL): return FlushResult::InvalidState;

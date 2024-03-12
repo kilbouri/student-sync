@@ -20,6 +20,7 @@ set(CLASSES
 	"common/gdiplusutil/gdiplusutil"
 	"common/dynamicbitmap/dynamicbitmap"
 	"common/ffmpeg/encoders/h264Encoder"
+	"common/ffmpeg/decoders/h264Decoder"
 	"common/modeselectdialog/modeselectdialog"
 	"common/screenresolution/screenresolution"
 	"common/timer/timer"

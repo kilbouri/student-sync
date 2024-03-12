@@ -45,14 +45,14 @@ namespace StudentSync::Common::FFmpeg::Encoders {
 
 		SendFrameResult SendFrame(std::vector<uint8_t> const& imageData, bool forceKeyframe);
 
-		enum class ReceiveFrameError {
+		enum class ReceivePacketError {
 			InsufficientInput,
 			FullyFlushed,
 			InvalidState,
 			Unknown
 		};
 
-		cpp::result<std::vector<uint8_t>, ReceiveFrameError> ReceivePacket();
+		cpp::result<std::vector<uint8_t>, ReceivePacketError> ReceivePacket();
 
 		enum class FlushResult {
 			Success,
@@ -63,17 +63,5 @@ namespace StudentSync::Common::FFmpeg::Encoders {
 		};
 
 		FlushResult Flush();
-
-		// THIS IS A TEMPORARY BODGING MEASURE! DO NOT KEEP!
-		AVCodecContext* GetCodecContext() { return context.get(); }
-		AVPacket* ReceievePacketRaw() {
-			switch (avcodec_receive_packet(context.get(), packet.get())) {
-				case 0:
-					// copy data into a vector
-					return packet.get();
-				default:
-					return nullptr;
-			}
-		}
 	};
 }
