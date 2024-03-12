@@ -12,13 +12,13 @@ static inline constexpr T* throwIfNull(T* ptr, std::string_view error) {
 	return ptr;
 }
 
-static inline int getBitsPerPixel(AVPixelFormat format) {
+static inline size_t getBitsPerPixel(AVPixelFormat format) {
 	const AVPixFmtDescriptor* descriptor = av_pix_fmt_desc_get(format);
 	if (!descriptor) {
 		throw std::format("Unknown pixel format {}", static_cast<std::underlying_type_t<AVPixelFormat>>(format));
 	}
 
-	return av_get_bits_per_pixel(descriptor);
+	return static_cast<size_t>(av_get_bits_per_pixel(descriptor));
 }
 
 namespace StudentSync::Common::FFmpeg::Encoders {
@@ -50,7 +50,7 @@ namespace StudentSync::Common::FFmpeg::Encoders {
 
 	H264Decoder::SendPacketResult H264Decoder::SendPacket(std::vector<uint8_t> data) {
 		packet->data = data.data();
-		packet->size = data.size();
+		packet->size = static_cast<int>(data.size());
 
 		switch (avcodec_send_packet(context.get(), packet.get())) {
 			case 0: return SendPacketResult::Success;
@@ -82,8 +82,9 @@ namespace StudentSync::Common::FFmpeg::Encoders {
 				std::vector<uint8_t> result;
 				result.resize(outgoingBytesPerPixel * frame->width * frame->height);
 
-				int outLineSize = outgoingBytesPerPixel * frame->width;
-				sws_scale(swsContext.get(), frame->data, frame->linesize, 0, frame->height, result.data(), &outLineSize);
+				uint8_t* dataPtr = result.data();
+				int outLineSize = static_cast<int>(outgoingBytesPerPixel * frame->width);
+				sws_scale(swsContext.get(), frame->data, frame->linesize, 0, frame->height, &dataPtr, &outLineSize);
 
 				return result;
 			}
