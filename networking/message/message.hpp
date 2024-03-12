@@ -6,6 +6,7 @@
 #include "../socket/tcpsocket.hpp"
 
 #include "hello.hpp"
+#include "h264packetmessage.hpp"
 #include "ok.hpp"
 #include "getstreamparams.hpp"
 #include "streamparams.hpp"

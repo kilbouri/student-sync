@@ -48,7 +48,7 @@ namespace StudentSync::Common::FFmpeg::Encoders {
 		}
 	}
 
-	H264Decoder::SendPacketResult H264Decoder::SendPacket(std::vector<uint8_t> data) {
+	H264Decoder::SendPacketResult H264Decoder::SendPacket(std::vector<uint8_t>& data) {
 		packet->data = data.data();
 		packet->size = static_cast<int>(data.size());
 

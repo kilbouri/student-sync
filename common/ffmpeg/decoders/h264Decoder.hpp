@@ -35,7 +35,7 @@ namespace StudentSync::Common::FFmpeg::Encoders {
 			Skipped, // ie. because the frame is not a keyframe and no keyframes have been received yet
 		};
 
-		SendPacketResult SendPacket(std::vector<uint8_t> data);
+		SendPacketResult SendPacket(std::vector<uint8_t>& data);
 
 		enum class ReadFrameError {
 			InsufficientInput,
