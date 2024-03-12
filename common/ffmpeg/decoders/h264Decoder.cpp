@@ -21,7 +21,7 @@ static inline size_t getBitsPerPixel(AVPixelFormat format) {
 	return static_cast<size_t>(av_get_bits_per_pixel(descriptor));
 }
 
-namespace StudentSync::Common::FFmpeg::Encoders {
+namespace StudentSync::Common::FFmpeg::Decoders {
 	H264Decoder::H264Decoder(AVPixelFormat outputFormat)
 		: codec{
 			throwIfNull(avcodec_find_decoder(AVCodecID::AV_CODEC_ID_H264), "Failed to find h264 codec")

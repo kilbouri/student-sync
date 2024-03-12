@@ -31,6 +31,11 @@ namespace StudentSync::Server {
 			/// Called upon receipt of a video frame.
 			/// </summary>
 			virtual void ClientFrameReceived(Session const& session, Networking::Message::StreamFrame const& message) = 0;
+
+			/// <summary>
+			/// Called upon receipt of an H264 video packet.
+			/// </summary>
+			virtual void ClientH264PacketRecieved(Session const& session, Networking::Message::H264Packet& packet) = 0;
 		};
 
 		enum class State {

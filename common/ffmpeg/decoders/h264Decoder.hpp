@@ -5,7 +5,7 @@
 
 #include "../../../ffmpegincludes.h"
 
-namespace StudentSync::Common::FFmpeg::Encoders {
+namespace StudentSync::Common::FFmpeg::Decoders {
 	class H264Decoder {
 		template <typename T>
 		using ffmpeg_struct_ptr = std::unique_ptr<T, void(*)(T*)>;
