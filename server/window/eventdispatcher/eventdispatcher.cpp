@@ -1,13 +1,14 @@
 #include "eventdispatcher.hpp"
 
 #include <format>
+#include <wx/rawbmp.h>
 
 using namespace StudentSync::Networking;
 
 namespace StudentSync::Server {
 	EventDispatcher::EventDispatcher(Window* window)
 		: window{ window }
-		, decoder{}
+		, decoder{ AVPixelFormat::AV_PIX_FMT_BGR24 }
 	{}
 
 	void EventDispatcher::SessionStarted(Session const& session) {
@@ -56,7 +57,22 @@ namespace StudentSync::Server {
 		}
 
 		auto& rgbPixelData = readResult.value();
-		wxBitmap bmp{ reinterpret_cast<char*>(rgbPixelData.data()), 2256, 1504, 24 };
+
+		size_t pixelDataByteLength = rgbPixelData.size() * sizeof(uint8_t);
+		void* bmpDataPtr = std::malloc(pixelDataByteLength);
+		if (bmpDataPtr == nullptr) {
+			throw "Failed to allocate bitmap";
+		}
+
+		std::memcpy(bmpDataPtr, rgbPixelData.data(), pixelDataByteLength);
+
+		wxImage image{ 2256, 1504, reinterpret_cast<unsigned char*>(bmpDataPtr), false };
+		wxBitmap bmp{ image };
+
+		if (!bmp.IsOk()) {
+			wxLogFatalError("Invalid bitmap!");
+			return;
+		}
 
 		wxThreadEvent* event = new wxThreadEvent(SERVER_EVT_CLIENT_STREAM_FRAME_RECEIVED);
 		event->SetPayload(bmp);

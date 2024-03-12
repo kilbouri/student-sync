@@ -41,7 +41,7 @@ namespace StudentSync::Client {
 			auto message = TLVMessage::TryReceive(connection.socket);
 			if (!message) {
 				PushLogMessage("Failed to recieve message");
-				continue;
+				connection.socket.Close();
 			}
 
 			MessageReceived(connection, *message);
@@ -91,13 +91,62 @@ namespace StudentSync::Client {
 			reply->frameRate
 		));
 
+		int width = reply->resolution.width;
+		int height = reply->resolution.height;
+		int fps = reply->frameRate;
+		GDIPlusUtil::PixelFormat pixelFormat = GDIPlusUtil::PixelFormat::RGB_24bpp;
+
+		using Common::FFmpeg::Encoders::H264Encoder;
+		H264Encoder encoder{ width, height, fps };
+
+		auto bitmap = GDIPlusUtil::GetBitmap(width, height, pixelFormat);
+
 		// Begin sending frames at regular interval on a background thread
 		Common::Timer streamTimer{
-			[&connection]() { // sending a message may mutate state, thus we need the closure to also be mutable
-				auto message = Message::StreamFrame::FromDisplay(Common::GDIPlusUtil::Encoding::PNG);
-				if (message) {
-					message->ToTLVMessage().Send(connection.socket);
+			[&]() {
+				auto capture = GDIPlusUtil::CaptureScreen(pixelFormat, Gdiplus::Color::Black, bitmap);
+				if (!capture) {
+					PushLogMessage(std::format("Failed to capture screen: %d", static_cast<int>(capture.error())));
+					return;
 				}
+
+				bitmap = *capture;
+
+				auto bitmapData = GDIPlusUtil::GetPixelData(bitmap, pixelFormat);
+				if (!bitmapData) {
+					PushLogMessage(std::format("Failed to get bitmap data: %d", static_cast<int>(bitmapData.error())));
+					return;
+				}
+
+				auto encodeResult = encoder.SendFrame(*bitmapData, true);
+				if (encodeResult != H264Encoder::SendFrameResult::Success) {
+					PushLogMessage(std::format("Failed to send bitmap to encoder: %d", static_cast<int>(encodeResult)));
+
+					if (encodeResult != H264Encoder::SendFrameResult::OutputBufferFull) {
+						PushLogMessage("Output buffer full!");
+						return;
+					}
+				};
+
+				auto
+					packet = encoder.ReceivePacket();
+				if (!packet) {
+					PushLogMessage(std::format("Failed to read packet from encoder: %d", static_cast<int>(packet.error())));
+					if (packet.error() != H264Encoder::ReceivePacketError::InsufficientInput) {
+						PushLogMessage("Insufficient input!");
+						return;
+					}
+				}
+
+				Message::H264Packet message{
+					.imageData = *packet
+				};
+
+				if (!message.ToTLVMessage().Send(connection.socket)) {
+					PushLogMessage("Failed to send H264Packet message");
+				}
+
+				PushLogMessage("Sent frame!");
 			},
 			std::chrono::milliseconds(1000 / reply->frameRate)
 		};

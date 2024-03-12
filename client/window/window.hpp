@@ -6,6 +6,7 @@
 #include "../client/client.hpp"
 #include "../../common/timer/timer.hpp"
 #include "../../networking/tlvmessage/tlvmessage.hpp"
+#include "../../common/ffmpeg/encoders/h264Encoder.hpp"
 
 namespace StudentSync::Client {
 	#define Events(x) \
