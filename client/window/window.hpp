@@ -6,6 +6,7 @@
 #include "../client/client.hpp"
 #include "../../common/timer/timer.hpp"
 #include "../../networking/tlvmessage/tlvmessage.hpp"
+#include "../../common/ffmpeg/encoders/h264Encoder.hpp"
 
 namespace StudentSync::Client {
 	#define Events(x) \
@@ -16,8 +17,8 @@ namespace StudentSync::Client {
 	Events(DeclareEvent);
 
 	struct Window : public wxFrame {
-		enum {
-			ID_ShowPreferences,
+		enum Id {
+			ShowPreferences,
 		};
 
 		Window(wxString title, std::string& serverHostname, int serverPort);

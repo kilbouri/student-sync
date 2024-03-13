@@ -1,4 +1,5 @@
 ﻿#include <wx/numdlg.h>
+#include <format>
 
 #include "ffmpegincludes.h"
 #include "win32includes.h"
@@ -37,8 +38,6 @@ bool App::OnInit() {
 		wxLogFatalError("GDI+ startup failed");
 		return false;
 	}
-
-
 
 	// Initialize WinSock2
 	int winsockStartupCode = Winsock2Startup();

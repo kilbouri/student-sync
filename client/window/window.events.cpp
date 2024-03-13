@@ -1,10 +1,19 @@
+
 #include "window.hpp"
 
 #include <format>
+#include <wx/mstream.h>
+#include <fstream>
+#include <algorithm>
+#include <iterator>
 
+#include "../../common/timer/timer.hpp"
+#include "../../common/screenresolution/screenresolution.hpp"
+#include "../../common/ffmpeg/encoders/h264Encoder.hpp"
+#include "../../common/gdiplusutil/gdiplusutil.hpp"
 #include "../preferenceseditor/preferenceseditor.hpp"
 
-using namespace StudentSync::Networking;
+using namespace StudentSync::Common;
 
 namespace StudentSync::Client {
 
@@ -14,6 +23,8 @@ namespace StudentSync::Client {
 	}
 
 	void Window::OnAbout(wxCommandEvent& event) {
+		using namespace Networking;
+
 		TCPSocket::SocketInfo localConnection = client->GetClientInfo();
 		TCPSocket::SocketInfo remoteConnection = client->GetRemoteInfo();
 

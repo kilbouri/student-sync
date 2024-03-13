@@ -14,7 +14,7 @@ namespace StudentSync::Client {
 		, clientThread{ std::nullopt }
 	{
 		wxMenu* menuFile = new wxMenu;
-		menuFile->Append(ID_ShowPreferences, "Preferences...\tCtrl-,", "Edit client preferences");
+		menuFile->Append(Id::ShowPreferences, "Preferences...\tCtrl-,", "Edit client preferences");
 		menuFile->AppendSeparator();
 		menuFile->Append(wxID_ABOUT);
 		menuFile->Append(wxID_EXIT);
@@ -26,7 +26,7 @@ namespace StudentSync::Client {
 		statusBar = new wxStatusBar(this);
 		SetStatusBar(statusBar);
 
-		Bind(wxEVT_MENU, &Window::OnShowPreferences, this, ID_ShowPreferences);
+		Bind(wxEVT_MENU, &Window::OnShowPreferences, this, Id::ShowPreferences);
 		Bind(wxEVT_MENU, &Window::OnAbout, this, wxID_ABOUT);
 		Bind(wxEVT_MENU, &Window::OnExit, this, wxID_EXIT);
 		Bind(wxEVT_CLOSE_WINDOW, &Window::OnClose, this);
@@ -36,10 +36,8 @@ namespace StudentSync::Client {
 		Bind(CLIENT_EVT_PUSH_LOG, &Window::OnClientPushLog, this);
 
 		// create a Client instance
-		{
-			using namespace std::placeholders;
-			client = std::make_unique<Client>(hostname, port, std::bind(&Window::ConnectionHandler, this, _1));
-		}
+		using namespace std::placeholders;
+		client = std::make_unique<Client>(hostname, port, std::bind(&Window::ConnectionHandler, this, _1));
 
 		// start the thread
 		clientThread = std::jthread(std::bind(&Window::ThreadEntry, this));

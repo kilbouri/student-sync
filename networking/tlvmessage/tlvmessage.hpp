@@ -12,6 +12,7 @@
 namespace StudentSync::Networking {
 
 	// Hello: initial message sent by the client upon connecting
+	// H264Packet: an H264-encoded packet sent from the client during a stream
 	// Ok: the server has registered the client
 	// GetStreamParams: the server would like to know the client's stream preferences
 	// StreamParams: the client's stream preferences
@@ -20,6 +21,7 @@ namespace StudentSync::Networking {
 	// EndStream: the client should stop sending frames
 	#define TagValues(x)	\
 		x(Hello)			\
+		x(H264Packet)		\
 		x(Ok)				\
 		x(GetStreamParams)	\
 		x(StreamParams)		\

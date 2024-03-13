@@ -177,12 +177,24 @@ namespace StudentSync::Server {
 		// iteration.
 		State state = State::Idle;
 		while ((state = GetState()) == State::Streaming) {
-			auto frame = Message::TryReceive<Message::StreamFrame>(socket);
-			if (!frame) {
+			auto next = TLVMessage::TryReceive(socket);
+			if (!next) {
 				break;
 			}
 
-			dispatcher->ClientFrameReceived(*this, *frame);
+			auto asLegacyFrame = Message::StreamFrame::FromTLVMessage(*next);
+			auto asH264Packet = Message::H264Packet::FromTLVMessage(*next);
+
+			if (!asLegacyFrame && !asH264Packet) {
+				break;
+			}
+
+			if (asLegacyFrame) {
+				dispatcher->ClientFrameReceived(*this, *asLegacyFrame);
+			}
+			else {
+				dispatcher->ClientH264PacketRecieved(*this, *asH264Packet);
+			}
 		}
 
 		if (!Message::EndStream{}.ToTLVMessage().Send(socket)) {
