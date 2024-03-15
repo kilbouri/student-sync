@@ -9,15 +9,6 @@ static inline constexpr T* throwIfNull(T* ptr, std::string_view error) {
 	return ptr;
 }
 
-static inline int getBitsPerPixel(AVPixelFormat format) {
-	const AVPixFmtDescriptor* descriptor = av_pix_fmt_desc_get(format);
-	if (!descriptor) {
-		throw std::format("Unknown pixel format {}", static_cast<std::underlying_type_t<AVPixelFormat>>(format));
-	}
-
-	return av_get_bits_per_pixel(descriptor);
-}
-
 namespace StudentSync::Common::FFmpeg::Encoders {
 	H264Encoder::H264Encoder(int width, int height, int fps, AVPixelFormat incomingFormat)
 		: codec{

@@ -19,8 +19,8 @@ namespace StudentSync::Common::FFmpeg::Decoders {
 		ffmpeg_struct_ptr<AVFrame> frame;
 		ffmpeg_struct_ptr<AVPacket> packet;
 
-		size_t incomingBytesPerPixel;
-		size_t outgoingBytesPerPixel;
+		int incomingBytesPerPixel;
+		int outgoingBytesPerPixel;
 		AVPixelFormat outputFormat;
 
 	public:
