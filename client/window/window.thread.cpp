@@ -128,8 +128,7 @@ namespace StudentSync::Client {
 					}
 				};
 
-				auto
-					packet = encoder.ReceivePacket();
+				auto packet = encoder.ReceivePacket();
 				if (!packet) {
 					PushLogMessage(std::format("Failed to read packet from encoder: %d", static_cast<int>(packet.error())));
 					if (packet.error() != H264Encoder::ReceivePacketError::InsufficientInput) {
@@ -139,7 +138,9 @@ namespace StudentSync::Client {
 				}
 
 				Message::H264Packet message{
-					.imageData = *packet
+					.imageData = *packet,
+					.frameWidth = width,
+					.frameHeight = height
 				};
 
 				if (!message.ToTLVMessage().Send(connection.socket)) {

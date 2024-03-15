@@ -66,7 +66,7 @@ namespace StudentSync::Server {
 
 		std::memcpy(bmpDataPtr, rgbPixelData.data(), pixelDataByteLength);
 
-		wxImage image{ 2256, 1504, reinterpret_cast<unsigned char*>(bmpDataPtr), false };
+		wxImage image{ packet.frameWidth, packet.frameHeight, reinterpret_cast<unsigned char*>(bmpDataPtr), false };
 		wxBitmap bmp{ image };
 
 		if (!bmp.IsOk()) {
